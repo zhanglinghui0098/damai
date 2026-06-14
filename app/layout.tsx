@@ -1,21 +1,9 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
-
 export const metadata: Metadata = {
-  title: "天禧派视频创作助手 | 家居行业 AI 视频生成工具",
-  description: "为家居经销商量身打造的 AI 视频生成工具 — 上传素材、选择模板、一键生成抖音/小红书短视频",
+  title: "大脉 — 把素材变成获客的爆款视频",
+  description: "大脉是 AI 武装的获客视频工具，让每一份素材都成为获客的爆款。",
 };
 
 export default function RootLayout({
@@ -25,9 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-stone-50`}
-      >
+      <body className="antialiased bg-[#FAFAF7] text-[#1D1D1F] font-sans selection:bg-orange-100">
         {children}
       </body>
     </html>
