@@ -102,8 +102,28 @@ class VolcengineClient:
             print(f"  ✅ task_id = {task_id}")
             return task_id
 
+    def poll_task_once(self, task_id: str) -> VideoResult:
+        """单次查询任务状态（用于 Vercel serverless 短轮询）"""
+        url = f"{self.base}/{task_id}"
+        with httpx.Client(timeout=15) as client:
+            r = client.get(url, headers=self.headers)
+            r.raise_for_status()
+            data = r.json()
+        status = data.get("status", "unknown")
+        video_url = (
+            data.get("content", {}).get("video_url")
+            or data.get("output", {}).get("video_url")
+            or data.get("video_url")
+        )
+        if status == "succeeded":
+            return VideoResult(task_id=task_id, status="succeeded", video_url=video_url, raw=data)
+        if status in ("failed", "cancelled"):
+            err = data.get("error", {}).get("message") or str(data)
+            return VideoResult(task_id=task_id, status=status, error=err, raw=data)
+        return VideoResult(task_id=task_id, status=status, raw=data)
+
     def poll_task(self, task_id: str, timeout_sec: int = 300, interval_sec: int = 5) -> VideoResult:
-        """轮询任务状态"""
+        """轮询任务状态（长轮询版本，本地脚本用）"""
         start = time.time()
         url = f"{self.base}/{task_id}"
         print(f"  ⏳ 轮询 {url}")
