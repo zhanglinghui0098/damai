@@ -36,7 +36,7 @@ export async function GET(
     return NextResponse.json({
       task_id: taskId,
       status: result.status,
-      video_url: result.video_url,
+      video_url: result.videoUrl,
       error: result.error,
     });
   } catch (e: any) {

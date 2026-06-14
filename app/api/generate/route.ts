@@ -30,14 +30,14 @@ export async function POST(req: NextRequest) {
 
     const client = new VolcengineClient();
 
-    const taskId = client.create_task({
+    const taskId = await client.createTask({
       model,
       text: text.trim(),
-      image_urls: image_urls || [],
-      audio_urls: audio_urls || [],
+      imageUrls: image_urls || [],
+      audioUrls: audio_urls || [],
       ratio: ratio || "16:9",
       duration: duration || 11,
-      generate_audio: true,
+      generateAudio: true,
     });
 
     return NextResponse.json({ task_id: taskId, model });
