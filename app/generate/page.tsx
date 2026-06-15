@@ -19,6 +19,36 @@ type Job = {
   elapsed?: number;
 };
 
+type JobRecord = {
+  taskId: string;
+  templateId: string;
+  templateName: string;
+  model: string;
+  status: "succeeded" | "failed";
+  videoUrl?: string;
+  error?: string;
+  text: string;
+  duration: number;
+  ratio: string;
+  createdAt: number;
+  finishedAt: number;
+};
+
+const HISTORY_KEY = "damai:jobs";
+
+function saveToHistory(record: JobRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const arr: JobRecord[] = raw ? JSON.parse(raw) : [];
+    // 去重（同一个 taskId 不重复存）
+    const next = [record, ...arr.filter(j => j.taskId !== record.taskId)].slice(0, 100);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage 满了或被禁用，忽略
+  }
+}
+
 const TEMPLATES: Template[] = [
   {
     id: "owner",
@@ -105,14 +135,14 @@ export default function GeneratePage() {
       setJob({ taskId: task_id, status: "queued" });
       setSubmitting(false);
       setPolling(true);
-      pollTask(task_id);
+      pollTask(task_id, Date.now());
     } catch (e: any) {
       setJob({ taskId: "", status: "failed", error: e.message });
       setSubmitting(false);
     }
   }
 
-  async function pollTask(taskId: string) {
+  async function pollTask(taskId: string, createdAt: number) {
     const start = Date.now();
     const tick = async () => {
       try {
@@ -130,6 +160,19 @@ export default function GeneratePage() {
             elapsed,
           });
           setPolling(false);
+          saveToHistory({
+            taskId,
+            templateId: template.id,
+            templateName: template.name,
+            model,
+            status: "succeeded",
+            videoUrl: data.video_url,
+            text,
+            duration,
+            ratio,
+            createdAt,
+            finishedAt: Date.now(),
+          });
           return;
         }
         if (data.status === "failed" || data.status === "cancelled") {
@@ -140,6 +183,19 @@ export default function GeneratePage() {
             elapsed,
           });
           setPolling(false);
+          saveToHistory({
+            taskId,
+            templateId: template.id,
+            templateName: template.name,
+            model,
+            status: "failed",
+            error: data.error || "生成失败",
+            text,
+            duration,
+            ratio,
+            createdAt,
+            finishedAt: Date.now(),
+          });
           return;
         }
         // 还在跑

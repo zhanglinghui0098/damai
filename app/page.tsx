@@ -53,13 +53,13 @@ export default function Home() {
             </Link>
             <div className="hidden md:flex items-center gap-7 text-sm text-[#1D1D1F]/80">
               <Link href="#discover" className="hover:text-[#1D1D1F] transition">发现</Link>
-              <Link href="#generate" className="hover:text-[#1D1D1F] transition">生成</Link>
+              <Link href="/generate" className="hover:text-[#1D1D1F] transition">生成</Link>
               <Link href="#templates" className="hover:text-[#1D1D1F] transition">模板</Link>
-              <Link href="#asset" className="hover:text-[#1D1D1F] transition">资产</Link>
+              <Link href="/asset" className="hover:text-[#1D1D1F] transition">视频库</Link>
             </div>
           </div>
           <Link
-            href="#generate"
+            href="/generate"
             className="text-sm px-4 py-1.5 rounded-full bg-[#1D1D1F] text-white hover:bg-black/90 transition"
           >
             开始创作
@@ -78,7 +78,7 @@ export default function Home() {
         </p>
         <div className="mt-10 flex items-center justify-center gap-3">
           <Link
-            href="#generate"
+            href="/generate"
             className="px-7 py-3 rounded-full bg-[#1D1D1F] text-white text-base font-medium hover:bg-black/90 transition"
           >
             开始创作 →
@@ -163,6 +163,26 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* 视频库入口 — 我的资产 */}
+      <section className="max-w-7xl mx-auto px-6 pb-24">
+        <div className="rounded-3xl bg-gradient-to-br from-stone-100 to-amber-50 p-10 sm:p-14 flex items-center justify-between flex-wrap gap-6">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight text-[#1D1D1F]">
+              我生成过的视频
+            </h2>
+            <p className="mt-2 text-base text-[#1D1D1F]/60">
+              查看历史记录、下载视频、跟踪数据
+            </p>
+          </div>
+          <Link
+            href="/asset"
+            className="px-7 py-3 rounded-full bg-[#1D1D1F] text-white text-base font-medium hover:bg-black/90 transition"
+          >
+            打开视频库 →
+          </Link>
         </div>
       </section>
 
