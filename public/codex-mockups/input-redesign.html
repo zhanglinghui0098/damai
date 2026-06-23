@@ -1,0 +1,527 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>大脉 - 栏目一输入框重设计 v1 (动态版)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #0a0a0a;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: #e4e4e7;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ===== Top nav (与 v3 画布一致) ===== */
+  .topnav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #27272a;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 24px;
+    margin-bottom: 40px;
+  }
+  .topnav .logo { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .topnav .logo-mark { width: 24px; height: 24px; border-radius: 6px; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .topnav nav { display: flex; gap: 4px; }
+  .topnav nav a { color: #a1a1aa; text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+  .topnav nav a:hover { background: #18181b; color: #fff; }
+
+  /* ===== Sections ===== */
+  .section { margin-bottom: 64px; }
+  .eyebrow { font-size: 12px; color: #71717a; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .desc { color: #a1a1aa; font-size: 14px; margin-bottom: 24px; max-width: 720px; }
+
+  /* ===================================================== */
+  /* ====== 主组件: 动态输入框 ====== */
+  /* ===================================================== */
+
+  .ai-input {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2px;            /* 给旋转光圈留出厚度 */
+    border-radius: 999px;
+    background: conic-gradient(
+      from 0deg,
+      #0a0a0a 0deg,
+      #0a0a0a 60deg,
+      #6366f1 200deg,
+      #a78bfa 240deg,
+      #ffffff 260deg,         /* 最亮的高光点 */
+      #a78bfa 280deg,
+      #6366f1 320deg,
+      #0a0a0a 360deg
+    );
+    animation: spinRing 4s linear infinite;
+    box-shadow:
+      0 0 40px rgba(167, 139, 250, 0.25),
+      0 0 80px rgba(139, 92, 246, 0.15);
+  }
+  .ai-input::before {
+    /* 内层把中心遮黑, 只留外圈光带 */
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 999px;
+    background: #0a0a0a;
+    z-index: 0;
+  }
+
+  @keyframes spinRing {
+    to { transform: rotate(360deg); }
+  }
+
+  .ai-input-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px 12px 16px;
+    background: linear-gradient(180deg, #131316 0%, #0a0a0a 100%);
+    border-radius: 999px;
+    border: 1px solid rgba(167, 139, 250, 0.12);
+    min-height: 64px;
+  }
+
+  /* 加号按钮 */
+  .ai-input-upload {
+    width: 40px; height: 40px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .ai-input-upload:hover {
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.3);
+    color: #fff;
+  }
+
+  /* ====== 头像 + 光斑 ====== */
+  .ai-input-avatar-wrap {
+    position: relative;
+    width: 48px; height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ai-input-glow {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(196, 181, 253, 0.55) 0%,
+      rgba(167, 139, 250, 0.35) 35%,
+      rgba(99, 102, 241, 0.15) 65%,
+      transparent 100%
+    );
+    filter: blur(8px);
+    animation: pulseGlow 3.5s ease-in-out infinite;
+    z-index: 0;
+  }
+  .ai-input-glow-2 {
+    /* 第二层更外圈, 慢节奏呼吸 */
+    position: absolute;
+    inset: -24px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(167, 139, 250, 0.25) 0%,
+      rgba(99, 102, 241, 0.12) 40%,
+      transparent 70%
+    );
+    filter: blur(14px);
+    animation: pulseGlow 5s ease-in-out infinite reverse;
+    z-index: -1;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50%      { transform: scale(1.15); opacity: 1; }
+  }
+
+  .ai-input-avatar {
+    position: relative;
+    z-index: 1;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 35% 30%,
+      #ffffff 0%,
+      #f5f3ff 18%,
+      #c4b5fd 45%,
+      #a78bfa 75%,
+      #6d28d9 100%
+    );
+    box-shadow:
+      0 0 18px rgba(196, 181, 253, 0.7),
+      0 0 36px rgba(167, 139, 250, 0.4),
+      inset 0 0 8px rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: avatarBreathe 4s ease-in-out infinite;
+  }
+  @keyframes avatarBreathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.04); }
+  }
+
+  /* 眼睛 */
+  .ai-eye {
+    width: 5px; height: 5px;
+    background: #0a0a0a;
+    border-radius: 50%;
+    transform-origin: center;
+    animation: blink 6s infinite;
+  }
+  .ai-eye.left  { animation-delay: 0s; }
+  .ai-eye.right { animation-delay: 0.08s; }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    93%, 96%      { transform: scaleY(0.1); }
+  }
+
+  /* ====== placeholder 文字区 ====== */
+  .ai-input-text {
+    flex: 1;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 16px;
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ai-input-text.focused {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .ai-input-cursor {
+    display: inline-block;
+    width: 2px; height: 18px;
+    background: #a78bfa;
+    margin-left: 2px;
+    vertical-align: -3px;
+    animation: caret 1s steps(2) infinite;
+  }
+  @keyframes caret {
+    50% { opacity: 0; }
+  }
+
+  /* ====== GO 按钮 ====== */
+  .ai-input-go {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 18px 0 20px;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 50%, #c4b5fd 100%);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow:
+      0 0 24px rgba(196, 181, 253, 0.4),
+      0 4px 12px rgba(167, 139, 250, 0.2);
+    transition: all 0.2s;
+  }
+  .ai-input-go:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 32px rgba(196, 181, 253, 0.6),
+      0 8px 20px rgba(167, 139, 250, 0.35);
+  }
+
+  /* ====== focused state 整体加速 ====== */
+  .ai-input.is-focused {
+    animation-duration: 2s;
+  }
+  .ai-input.is-focused .ai-input-avatar {
+    animation-duration: 2.5s;
+  }
+  .ai-input.is-focused .ai-input-glow {
+    animation-duration: 1.8s;
+  }
+  .ai-input.is-focused .ai-input-glow-2 {
+    animation-duration: 2.5s;
+  }
+
+  /* ====== 状态切换按钮 (demo only) ===== */
+  .state-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    justify-content: center;
+  }
+  .state-btn {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .state-btn:hover { background: rgba(167, 139, 250, 0.12); color: #fff; }
+  .state-btn.active {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: rgba(167, 139, 250, 0.5);
+    color: #fff;
+  }
+
+  /* ====== Color palette ====== */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+  }
+  .swatch {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .swatch-color {
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    padding: 8px 10px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 11px;
+  }
+  .swatch-color.dark  { color: rgba(255, 255, 255, 0.9); }
+  .swatch-color.light { color: rgba(0, 0, 0, 0.85); }
+  .swatch-info {
+    background: #18181b;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #a1a1aa;
+  }
+  .swatch-info b { color: #e4e4e7; display: block; font-size: 12px; }
+
+  /* ====== small variants ====== */
+  .small-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .small-cell {
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+  }
+  .small-cell-label {
+    font-size: 12px;
+    color: #71717a;
+    margin-bottom: 12px;
+  }
+  .ai-input.compact {
+    max-width: none;
+  }
+  .ai-input.compact .ai-input-body {
+    min-height: 48px;
+    padding: 8px 10px 8px 12px;
+  }
+  .ai-input.compact .ai-input-upload { width: 32px; height: 32px; border-radius: 10px; font-size: 14px; }
+  .ai-input.compact .ai-input-avatar-wrap { width: 36px; height: 36px; }
+  .ai-input.compact .ai-input-avatar { width: 36px; height: 36px; gap: 6px; }
+  .ai-input.compact .ai-eye { width: 4px; height: 4px; }
+  .ai-input.compact .ai-input-text { font-size: 14px; }
+  .ai-input.compact .ai-input-go { height: 32px; padding: 0 12px; font-size: 13px; }
+
+  /* ===== 减弱动画 fallback ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .ai-input, .ai-input-avatar, .ai-input-glow, .ai-input-glow-2, .ai-eye, .ai-input-cursor {
+      animation: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="logo"><div class="logo-mark">脉</div>大脉 - 栏目一输入框重设计</div>
+  <nav>
+    <a href="#hero">Hero</a>
+    <a href="#variants">状态变体</a>
+    <a href="#palette">配色</a>
+  </nav>
+</div>
+
+<div class="container">
+
+  <!-- ========== Hero ========== -->
+  <section class="section" id="hero">
+    <div class="eyebrow">栏目一 · 输入框重设计</div>
+    <div class="h2">动态光圈 + 蓝紫光斑 + 眨眼头像</div>
+    <div class="desc">
+      4 个动态效果联动：外圈 conic-gradient 渐变光斑持续旋转、输入框内 Siri 风格光斑呼吸明灭、
+      头像每 6 秒随机眨一下、focus 时全部加速。点击下方按钮切换状态预览。
+    </div>
+
+    <div id="inputHero" class="ai-input">
+      <div class="ai-input-body">
+        <button class="ai-input-upload" title="上传素材">+</button>
+        <div class="ai-input-avatar-wrap">
+          <div class="ai-input-glow-2"></div>
+          <div class="ai-input-glow"></div>
+          <div class="ai-input-avatar">
+            <div class="ai-eye left"></div>
+            <div class="ai-eye right"></div>
+          </div>
+        </div>
+        <div class="ai-input-text" id="heroText">说说你想做什么视频...</div>
+        <button class="ai-input-go">GO <span style="font-size:16px;">↗</span></button>
+      </div>
+    </div>
+
+    <div class="state-controls">
+      <button class="state-btn active" data-state="idle">默认</button>
+      <button class="state-btn" data-state="focused">Focus (光圈加速)</button>
+      <button class="state-btn" data-state="typing">输入中 (光标闪烁)</button>
+    </div>
+  </section>
+
+  <!-- ========== Variants ========== -->
+  <section class="section" id="variants">
+    <div class="eyebrow">状态变体</div>
+    <div class="h2">Compact (右上角 mini 版)</div>
+    <div class="desc">塞到画布 / 周报顶部的搜索条位置时, 缩成小尺寸。动态效果保持。</div>
+
+    <div class="small-grid">
+      <div class="small-cell">
+        <div class="small-cell-label">画布顶部 · 搜素材</div>
+        <div class="ai-input compact">
+          <div class="ai-input-body">
+            <button class="ai-input-upload">+</button>
+            <div class="ai-input-avatar-wrap">
+              <div class="ai-input-glow"></div>
+              <div class="ai-input-avatar">
+                <div class="ai-eye left"></div>
+                <div class="ai-eye right"></div>
+              </div>
+            </div>
+            <div class="ai-input-text">搜素材 / @引用节点</div>
+            <button class="ai-input-go">GO ↗</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="small-cell">
+        <div class="small-cell-label">周报顶部 · 让 AI 帮你找数据</div>
+        <div class="ai-input compact">
+          <div class="ai-input-body">
+            <button class="ai-input-upload">+</button>
+            <div class="ai-input-avatar-wrap">
+              <div class="ai-input-glow"></div>
+              <div class="ai-input-avatar">
+                <div class="ai-eye left"></div>
+                <div class="ai-eye right"></div>
+              </div>
+            </div>
+            <div class="ai-input-text">问问 AI: 上周 ROI 最高的是哪条?</div>
+            <button class="ai-input-go">GO ↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== Palette ========== -->
+  <section class="section" id="palette">
+    <div class="eyebrow">配色 (锁定)</div>
+    <div class="h2">蓝紫调, 高光提亮</div>
+    <div class="desc">对比 v3 画布的"纯白高光", 这里改用蓝紫渐变高光, 但保留一个近白亮点制造动感。</div>
+
+    <div class="palette">
+      <div class="swatch">
+        <div class="swatch-color light" style="background:#ffffff;">#ffffff</div>
+        <div class="swatch-info"><b>高光白</b>头像核心 / 光圈最亮 / GO 按钮</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color light" style="background:#f5f3ff;">#f5f3ff</div>
+        <div class="swatch-info"><b>近白</b>头像内层 / GO 按钮渐变</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color dark" style="background:#c4b5fd;">#c4b5fd</div>
+        <div class="swatch-info"><b>浅紫</b>光斑外圈 / 高亮过渡</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color dark" style="background:#a78bfa;">#a78bfa</div>
+        <div class="swatch-info"><b>主紫</b>光圈主色 / 头像主色</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color dark" style="background:#8b5cf6;">#8b5cf6</div>
+        <div class="swatch-info"><b>深紫</b>光圈次色 / 焦点态</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color dark" style="background:#6366f1;">#6366f1</div>
+        <div class="swatch-info"><b>靛蓝</b>光圈渐变尾 / 冷调过渡</div>
+      </div>
+    </div>
+  </section>
+
+  <hr style="border:none;border-top:1px solid #27272a;margin:48px 0;">
+  <p style="text-align:center;color:#71717a;font-size:12px;">大脉 · 栏目一输入框 v1 mockup · 2026-06-23 · 高光对比已拉, 待 Hermes 接手实现</p>
+
+</div>
+
+<script>
+  // 状态切换 demo
+  const heroBox = document.getElementById('inputHero');
+  const heroText = document.getElementById('heroText');
+  const btns = document.querySelectorAll('.state-btn');
+
+  btns.forEach(b => {
+    b.addEventListener('click', () => {
+      btns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const s = b.dataset.state;
+      heroBox.classList.toggle('is-focused', s === 'focused' || s === 'typing');
+      if (s === 'idle') {
+        heroText.classList.remove('focused');
+        heroText.innerHTML = '说说你想做什么视频...';
+      } else if (s === 'focused') {
+        heroText.classList.add('focused');
+        heroText.innerHTML = '';
+      } else if (s === 'typing') {
+        heroText.classList.add('focused');
+        heroText.innerHTML = '618 沙发选购<span class="ai-input-cursor"></span>';
+      }
+    });
+  });
+
+  // 让 hero 直接有点击 focus 行为, 给个默认体验
+  heroBox.addEventListener('click', () => {
+    btns[1].click();   // 默认点进去到 focus 态
+  });
+</script>
+
+</body>
+</html>

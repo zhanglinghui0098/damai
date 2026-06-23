@@ -1,0 +1,107 @@
+{
+  "version": "2.6.0",
+  "last_updated": "2026-06-24T05:30:00+08:00",
+  "current_phase": "P0 鉴权+多租户完成, 待用户验收",
+  "phase_status": "auth_tenant_done_awaiting_user_verify",
+  "deployment": {
+    "public_url": "https://trustees-organisations-pleasant-humanity.trycloudflare.com",
+    "public_url_note": "2026-06-24 05:21 重启 cloudflared (PID 8330, --protocol http2). 老 3 个 defunct 已清,新 URL 上线",
+    "internal_url": "http://127.0.0.1:3000",
+    "tunnel_type": "cloudflared quick-tunnel (临时)",
+    "tunnel_note": "URL 每次重启 cloudflared 会变。稳定需要 named tunnel (需 Cloudflare 账号 + 域名)。⚠️ 必须用 --protocol http2, QUIC 在 NAS 容器不通。启动必须 setsid",
+    "dev_server_pid": 8109,
+    "cloudflared_pid": 8330
+  },
+  "tasks": {
+    "P0_鉴权_多租户": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-24T05:30:00+08:00",
+      "notes": "手机号 + 阿里云短信验证码 (用户选手机号,不要飞书). 8 个文件: ① lib/auth.ts (HMAC session, Web Crypto Edge+Node 双 runtime 兼容) ② lib/hmac.ts (通用 sign/verify 工具) ③ lib/sms.ts (阿里云 SMS stub + 真实双模式) ④ lib/verify-store.ts (验证码存 cookie, 限流 1m/1h/IP 三维度) ⑤ middleware.ts (公域白名单 + 私域验真 + 注入 x-tenant-id/x-user-phone) ⑥ app/api/auth/send-code/route.ts ⑦ app/api/auth/verify-code/route.ts ⑧ app/api/auth/logout/route.ts ⑨ app/login/page.tsx (手机号 + 6 位验证码 + 60s 倒计时) ⑩ app/dashboard/page.tsx 拆 server/client, 显示真实手机号 + tenantId ⑪ .env.local + .env.example 加 4 个 SMS env. 模式: DAMI_SMS_REAL=false (默认 stub, 验证码直接返回). 待用户去阿里云申请签名/模板/AK"
+    },
+    "P0_核心功能": {
+      "status": "completed",
+      "progress": 100,
+      "notes": "5 件事一次性出: ① lib/templates.ts (5 核心 + 7 敬请期待) ② /templates 改版 (12 模板卡片, 5 可用) ③ /create/[id] 3 步表单 (1 屏 3 问题, 不点下一步下一步) ④ /generate 出片页 (比例 + AI 水印 + 下载, mock) ⑤ /canvas 画布 (React Flow, 5 节点: 素材→分镜→生成→配音→合成). 流程: /templates→/create/[id]→/generate→/canvas. middleware 改: /templates, /generate, /create/* 加公域白名单"
+    },
+    "P0_画布": {
+      "status": "completed",
+      "progress": 100,
+      "notes": "React Flow (@xyflow/react ~80KB) 装好. 5 节点: asset/storyboard/generate/audio/compose. 节点可拖, 边可连"
+    },
+    "P1_画布持久化": {
+      "status": "completed",
+      "progress": 100,
+      "notes": "5 处改完: /canvas → /canvas/new 重定向 + middleware 加公域 + /canvas/[id] 接 searchParams + CanvasEditor 5 个 templateStarter + useState lazy init + 模板预设 fallback + useEffect 自动保存 500ms debounce + 项目索引 + 顶部状态条"
+    },
+    "P1_画布UX升级": {
+      "status": "completed",
+      "progress": 100,
+      "notes": "对标 TapNow/LibTV, 3 处 patch: 双击画布空白处弹'添加节点'菜单 + 空画布显示 3 张模板预览卡 + NodeView data-canvas-node 属性"
+    },
+    "P1_画布TapNow重做": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-23T17:02:00+08:00",
+      "notes": "CanvasEditor.tsx 1755→2306 行 (迭代过), TapNow 风格: 6 节点 (text/image/video-gen/audio-gen/merge/output) + 6 模型 (DeepSeek V4 Pro / Minimax / Gemini / 即梦 / Nano Banana Pro / Seedance 2.0 / Clean / MiniMax Music 2.6) + 4 节点设置面板 + 节点运行按钮 + Text 工具条"
+    },
+    "P1_数据工作台": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-23T17:02:00+08:00",
+      "notes": "DataCenterSection (138 行) + WorkbenchSection (131 行) + app/dashboard/[id]/page.tsx + report/page.tsx 全在. /dashboard 4 Tab (项目/AI推荐/周月复盘/数据管理) + 4 mock 项目"
+    },
+    "02_模型接入": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "用户需提供 API keys (火山方舟 Seedance 2.0 / 即梦 / 可灵 / Vidu)"
+    },
+    "03_AI水印": {
+      "status": "pending",
+      "progress": 0,
+      "next_actions": ["强制标识组件 (合规刚需)"]
+    },
+    "04_内容": {
+      "status": "pending",
+      "progress": 0,
+      "next_actions": ["3 case study + 5 hero + FAQ 20 条 (Hermes 独立写)"]
+    },
+    "05_业务流程": {
+      "status": "pending",
+      "progress": 0,
+      "next_actions": ["3 类流程图 (Hermes 独立画)"]
+    },
+    "06_公域3页": {
+      "status": "pending",
+      "progress": 0,
+      "next_actions": ["/pricing /about /contact 3 个公域页面"]
+    },
+    "07_合规模板": {
+      "status": "in_progress",
+      "progress": 30,
+      "next_actions": [
+        "AI 标识 (第十二条) — 等 03_AI水印 完成",
+        "算法备案 (第十七条) — 待网信办 (010)82990520 电话确认是否必须"
+      ]
+    },
+    "08_v3首页改版": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-19T02:20:00+08:00",
+      "notes": "用户 6/19 02:00 提供 2 张对标截图, 4 项要求全部实现: ① 字号缩小 ② 4 屏→3 屏 ③ 样片板块 TV Show 风格 ④ 删所有'家居'"
+    }
+  },
+  "build_history": {
+    "v1_2026-06-12": "Vercel 上线 (commit dc47be2)",
+    "v2_2026-06-18_2045": "11 页面框架就位 + 5 页面 500 错误 (Pages Router 冲突)",
+    "v2_2026-06-18_2110": "清空 .next/.open-next/.cache → 11 页面全 200",
+    "v2_2026-06-18_2142": "cloudflared setsid 启动 → 公网 9 页面全 200 (thomson- URL)",
+    "v3_2026-06-19_0220": "首页 v3 改版: 字号缩小 + 3 列布局 + TV Show 样片 + 删家居 → 12 个文件改, 0 编译错误, HTTP 200, 8 张案例卡都有查看创作过程 pill, 0 家居 残留",
+    "v3_2026-06-19_1700": "P0 5 模板 + 3 步表单 + 5 节点画布 (React Flow)",
+    "v3_2026-06-22_1850": "P1 画布持久化 (localStorage 500ms debounce + 5 模板预置)",
+    "v3_2026-06-22_1950": "P1 画布 UX 升级 (双击 + 空画布模板卡)",
+    "v3_2026-06-23_1702": "P1 画布 TapNow 重做 (1755→2306 行) + 数据工作台 v2 (4 屏 + 4 mock 项目)",
+    "v4_2026-06-24_0530": "P0 鉴权+多租户 (手机号 + 阿里云 SMS stub) + cloudflared 重启 (新 URL trustees-organisations-pleasant-humanity)"
+  },
+  "next_priority": "用户去阿里云申请 SMS 签名/模板/AccessKey → 切真实短信 → 联调"
+}

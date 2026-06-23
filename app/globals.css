@@ -1,27 +1,479 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ==========================================================================
+   大脉 v4 - Apple Dark Mode 设计系统
+   - 纯黑底, 灰阶 elevated cards
+   - 高对比文字, 极简留白
+   - Apple system colors (iOS-style + opacity text)
+   ========================================================================== */
 
-@layer base {
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-                 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  }
+:root {
+  /* 颜色 — Apple Pro Dark Mode + 极黑底 (v5 配色) */
+  --bg: #0A0A0B;                          /* 极黑底,几乎无蓝调 */
+  --bg-gray: #141415;                     /* 画布/次级背景 */
+  --bg-elevated: #1E1E20;                 /* 卡/弹窗 elevated */
+
+  --text: #f5f5f7;                        /* off-white 商务柔和 */
+  --text-secondary: rgba(235, 235, 245, 0.62);
+  --text-tertiary: rgba(235, 235, 245, 0.34);
+
+  --border: rgba(255, 255, 255, 0.08);    /* 暗模式白线 (略减,更隐蔽) */
+  --border-light: rgba(255, 255, 255, 0.05);
+
+  --accent: #6e8cd6;                      /* 商务蓝 (克制, 非 Apple 鲜蓝) */
+  --accent-hover: #87a3dc;
+
+  --watermark: rgba(255, 255, 255, 0.20); /* 暗模式: 半透明白底 */
+  --overlay: rgba(10, 10, 11, 0.78);      /* 极黑底 overlay */
+
+  /* 字体 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* 字号 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-7xl: 4.5rem;
+  --text-8xl: 6rem;
+
+  /* 间距 (紧凑化 v2: 3.5→2.5rem, 再砍 30%) */
+  --section-py: 2.5rem;
+  --section-px: 1.5rem;
+  --max-w: 1800px;                        /* v4.3 4K 屏适配: 1400 → 1800 */
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; }
+
+html {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.47;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body { min-height: 100vh; }
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: 0; background: none; padding: 0; color: inherit; }
+img, svg, video { display: block; max-width: 100%; }
+
+/* ---------- 排版 ---------- */
+.h-hero { font-size: clamp(2rem, 5vw, 3rem); font-weight: 600; letter-spacing: -0.015em; line-height: 1.05; }
+.h-section { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 600; letter-spacing: -0.012em; line-height: 1.1; }
+.h-card { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.008em; line-height: 1.2; }
+.t-sub { font-size: clamp(1.125rem, 1.6vw, var(--text-2xl)); color: var(--text-secondary); line-height: 1.4; }
+.t-body { font-size: var(--text-base); line-height: 1.5; }
+.t-small { font-size: var(--text-sm); color: var(--text-secondary); }
+.t-mono { font-family: var(--font-mono); }
+
+/* ---------- 容器 ---------- */
+.container { max-width: var(--max-w); margin: 0 auto; padding: 0 var(--section-px); }
+.section { padding: var(--section-py) 0; background: var(--bg); }
+.section--gray { background: var(--bg-gray); }
+
+/* ---------- 链接箭头 (Apple 风) ---------- */
+.link-arrow {
+  color: var(--accent);
+  font-size: var(--text-base);
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  transition: color 0.18s ease;
+}
+.link-arrow:hover { color: var(--accent-hover); text-decoration: underline; }
+.link-arrow::after { content: "›"; font-size: 1.2em; line-height: 1; }
+
+/* ---------- AI 水印 (v4.2 半透明弱化, Apple TV+ 风) ---------- */
+.watermark {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  background: var(--watermark);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 44px; padding: 0 1.25rem;
+  border-radius: 980px;            /* Apple pill */
+  font-size: var(--text-base); font-weight: 400;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: transparent; color: var(--accent); }
+.btn-secondary:hover { text-decoration: underline; }
+.btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ---------- 玻璃/半透明卡 (暗模式: 深底 + 蓝/橙 glow) ---------- */
+.glass {
+  background: linear-gradient(135deg, rgba(41,151,255,0.10), rgba(41,151,255,0.03));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 28px;
+}
+.glass-warm {
+  background: linear-gradient(135deg, rgba(255,159,10,0.10), rgba(255,159,10,0.03));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 159, 10, 0.18);
+  border-radius: 28px;
+}
+
+/* ---------- 滚动条 (暗模式) ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  :root { --section-py: 1.75rem; }
+  html { font-size: 16px; }
+}
+
+/* v3.1: 案例网格 桌面 4 / 平板 3 / 手机 2 */
+@media (max-width: 1024px) {
+  .cases-grid-4 { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .cases-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* v3.1: tile-square 在窄屏自动 2 列 */
+@media (max-width: 640px) {
+  .tile-square { aspect-ratio: 1 / 1 !important; }
+}
+
+/* v3.2: StartCreating 5 tile grid (桌面 5 / 平板 3 / 手机 2) */
+.tiles-grid-5 { display: grid; gap: 0.875rem; grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 1024px) { .tiles-grid-5 { grid-template-columns: repeat(3, 1fr) !important; } }
+@media (max-width: 640px)  { .tiles-grid-5 { grid-template-columns: repeat(2, 1fr) !important; } }
+
+/* v3.2: SiteNav 移动端折叠 (≤768px 隐藏桌面导航, 显示汉堡按钮) */
+.nav-desktop { display: flex; }
+.nav-mobile-btn { display: none; }
+@media (max-width: 768px) {
+  .nav-desktop { display: none !important; }
+  .nav-mobile-btn { display: inline-flex !important; }
+}
+
+/* v3.2: iOS safe-area (Safari 底部工具栏不遮挡内容) */
+body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* v3.2: 移动端抽屉 (手机全屏, 桌面隐藏) */
+/* nav-mobile-drawer 现在用 inline style + portal 渲染, 不需要这里的样式 */
+.nav-mobile-drawer { display: none; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+/* v3.2: FeaturedCases 搜索框 (手机端 wrap 到独立一行) */
+@media (max-width: 768px) {
+  .featured-search { flex: 0 0 100% !important; max-width: 100% !important; min-width: 0 !important; margin-top: 0.5rem; }
+}
+
+/* v3.2: Hero 4 个建议按钮 (手机端缩小到 1 排 4 个) */
+@media (max-width: 768px) {
+  .hero-suggested button { padding: 0.4rem 0.6rem !important; font-size: 0.72rem !important; }
+}
+
+/* v3.2: StartCreating mobile 5 → 4 tiles (2×2 布局) */
+@media (max-width: 640px) {
+  .tiles-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+  .tile-slot:nth-child(5) { display: none !important; }
+}
+
+
+/* ============================================================
+   AIInput v4 — 头像 Siri 光环 + 蓝紫光斑 + 眨眼
+   - 头像外置在 input 左侧 (v3 是内置, v4 改外置)
+   - 头像外环: conic-gradient 旋转高光 (Siri 风) — mask-composite
+   - 头像: 2 层 radial-gradient 光斑呼吸 (蓝紫调)
+   - 头像本体: 呼吸 + 6s 随机眨眼
+   - 边框: 静态 1px 蓝紫, focused 时头像动画加速
+   ============================================================ */
+
+.ai-input {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* === 输入框主体 (右) — + 按钮 + input + GO 按钮 === */
+.ai-input-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 16px;
+  background: linear-gradient(180deg, #131316 0%, #0a0a0a 100%);
+  border-radius: 999px;
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  min-height: 64px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ai-input.is-focused .ai-input-body {
+  border-color: rgba(167, 139, 250, 0.32);
+  box-shadow:
+    0 0 24px rgba(167, 139, 250, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* === + 上传按钮 === */
+.ai-input-upload {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.ai-input-upload:hover {
+  background: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.3);
+  color: #fff;
+}
+
+/* === 头像 (左) — Siri 光环 + 双层光斑 + 渐变球 + 双眼 === */
+.ai-input-avatar-wrap {
+  position: relative;
+  width: 48px; height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Siri 风格光环: 绕头像的圆环上有一个会转的高光点 (mask-composite 只显环) */
+.ai-input-avatar-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -6px;             /* 比头像大一圈, 形成外环 */
+  border-radius: 50%;
+  padding: 1.5px;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 200deg,        /* 短一些的暗段, 让高光段更显眼 */
+    #6366f1 240deg,
+    #8b5cf6 275deg,
+    #a78bfa 310deg,
+    #c4b5fd 335deg,
+    #ffffff 355deg,            /* 最亮高光点, 约 20° 宽 */
+    #f5f3ff 360deg
+  );
+  animation: aiSpinRing 4s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.75));
+}
+@keyframes aiSpinRing {
+  to { transform: rotate(360deg); }
+}
+
+/* 内层光斑 */
+.ai-input-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(196, 181, 253, 0.55) 0%,
+    rgba(167, 139, 250, 0.35) 35%,
+    rgba(99, 102, 241, 0.15) 65%,
+    transparent 100%
+  );
+  filter: blur(8px);
+  animation: aiPulseGlow 3.5s ease-in-out infinite;
+  z-index: 0;
+}
+/* 外层光斑, 慢节奏呼吸, 反向 */
+.ai-input-glow-2 {
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(196, 181, 253, 0.45) 0%,
+    rgba(167, 139, 250, 0.28) 30%,
+    rgba(139, 92, 246, 0.12) 55%,
+    transparent 75%
+  );
+  filter: blur(12px);
+  animation: aiPulseGlow 5s ease-in-out infinite reverse;
+  z-index: 0;
+  pointer-events: none;
+}
+@keyframes aiPulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+/* 头像本体 (渐变球) */
+.ai-input-avatar {
+  position: relative;
+  z-index: 1;
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%,
+    #ffffff 0%, #f5f3ff 18%, #c4b5fd 45%, #a78bfa 75%, #6d28d9 100%
+  );
+  box-shadow:
+    0 0 18px rgba(196, 181, 253, 0.7),
+    0 0 36px rgba(167, 139, 250, 0.4),
+    inset 0 0 8px rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: aiBreathe 4s ease-in-out infinite;
+}
+@keyframes aiBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+/* 眼睛: 竖椭圆 (比圆点更神) */
+.ai-eye {
+  width: 6px; height: 10px;
+  background: #0a0a0a;
+  border-radius: 50%;
+  transform-origin: center;
+  animation: aiBlink 6s infinite;
+}
+.ai-eye.left  { animation-delay: 0s; }
+.ai-eye.right { animation-delay: 0.08s; }
+@keyframes aiBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  93%, 96%      { transform: scaleY(0.1); }
+}
+
+/* === Input 文本区 === */
+.ai-input-text {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 16px;
+  font-family: inherit;
+  padding: 0 4px;
+}
+.ai-input-text::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+/* === GO 按钮 (Codex 风格渐变 pill, 蓝紫高亮) === */
+.ai-input-go {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 18px 0 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 50%, #c4b5fd 100%);
+  color: #0a0a0a;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow:
+    0 0 24px rgba(196, 181, 253, 0.4),
+    0 4px 12px rgba(167, 139, 250, 0.2);
+  transition: all 0.2s;
+}
+.ai-input-go:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 32px rgba(196, 181, 253, 0.6),
+    0 8px 20px rgba(167, 139, 250, 0.35);
+}
+.ai-input-go:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* === focused 状态: 头像动画加速 === */
+.ai-input.is-focused .ai-input-avatar-wrap::before { animation-duration: 2s; }
+.ai-input.is-focused .ai-input-avatar             { animation-duration: 2.5s; }
+.ai-input.is-focused .ai-input-glow               { animation-duration: 1.8s; }
+.ai-input.is-focused .ai-input-glow-2             { animation-duration: 2.5s; }
+
+/* === Compact 变体 (右上角 mini 版) === */
+.ai-input.compact { max-width: none; }
+.ai-input.compact .ai-input-body {
+  min-height: 48px;
+  padding: 8px 10px 8px 12px;
+}
+.ai-input.compact .ai-input-upload {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.ai-input.compact .ai-input-avatar-wrap { width: 36px; height: 36px; }
+.ai-input.compact .ai-input-avatar-wrap::before { inset: -4px; }
+.ai-input.compact .ai-input-glow { inset: -8px; }
+.ai-input.compact .ai-input-glow-2 { inset: -16px; }
+.ai-input.compact .ai-input-avatar {
+  width: 36px; height: 36px;
+  gap: 6px;
+  box-shadow:
+    0 0 12px rgba(196, 181, 253, 0.6),
+    0 0 24px rgba(167, 139, 250, 0.3),
+    inset 0 0 6px rgba(255, 255, 255, 0.5);
+}
+.ai-input.compact .ai-eye {
+  width: 4px; height: 7px;
+}
+.ai-input.compact .ai-input-text { font-size: 14px; }
+.ai-input.compact .ai-input-go {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* === Reduced motion fallback === */
+@media (prefers-reduced-motion: reduce) {
+  .ai-input-avatar-wrap::before,
+  .ai-input-avatar,
+  .ai-input-glow,
+  .ai-input-glow-2,
+  .ai-eye {
+    animation: none !important;
   }
 }

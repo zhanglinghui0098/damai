@@ -1,0 +1,669 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>大脉 - 首页第 4 屏 · 数据中心 (v2 定稿)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #0a0a0a;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: #e4e4e7;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* Top nav */
+  .topnav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #27272a;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 24px;
+    margin-bottom: 40px;
+  }
+  .topnav .logo { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .topnav .logo-mark { width: 24px; height: 24px; border-radius: 6px; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .topnav .badge-v2 { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #4ade80; color: #052e16; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
+  .topnav nav { display: flex; gap: 4px; }
+  .topnav nav a { color: #a1a1aa; text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+  .topnav nav a:hover { background: #18181b; color: #fff; }
+
+  /* Screen section */
+  .screen { margin-bottom: 80px; scroll-margin-top: 80px; }
+  .screen-eyebrow { font-size: 12px; color: #71717a; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .screen-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+  .screen-desc { color: #a1a1aa; font-size: 14px; margin-bottom: 24px; max-width: 720px; }
+
+  /* Mockup frame */
+  .mockup { background: #0a0a0a; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; }
+  .mockup-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #18181b; border-bottom: 1px solid #27272a; font-size: 12px; color: #71717a; }
+  .mockup-header .dot { width: 10px; height: 10px; border-radius: 50%; background: #3f3f46; }
+  .mockup-header .title { margin-left: 8px; }
+  .mockup-body { padding: 24px; }
+
+  /* Cards */
+  .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; }
+  .card-pad-sm { padding: 14px 16px; }
+  .card-title { font-size: 12px; color: #a1a1aa; margin-bottom: 6px; }
+  .card-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .card-trend { font-size: 12px; margin-top: 4px; }
+  .trend-up { color: #4ade80; }
+  .trend-down { color: #f87171; }
+
+  /* Layout */
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .row { display: flex; gap: 12px; align-items: center; }
+  .spacer { flex: 1; }
+  .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-24 { gap: 24px; }
+  .mt-8 { margin-top: 8px; } .mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; } .mt-24 { margin-top: 24px; }
+  .mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; } .mb-16 { margin-bottom: 16px; } .mb-24 { margin-bottom: 24px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; background: #27272a; color: #e4e4e7; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+  .btn-primary { background: #fff; color: #000; }
+  .btn-ghost { background: transparent; border: 1px solid #3f3f46; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #27272a; margin-bottom: 20px; }
+  .tab { padding: 10px 14px; color: #a1a1aa; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: #fff; border-bottom-color: #fff; font-weight: 500; }
+
+  /* Selects */
+  select.btn { appearance: none; padding-right: 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #71717a; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #27272a; font-size: 12px; }
+  td { padding: 12px; border-bottom: 1px solid #1f1f23; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #27272a; color: #a1a1aa; }
+  .tag-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .tag-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .tag-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .tag-amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .tag-violet { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+  /* Bar */
+  .bar { height: 6px; background: #27272a; border-radius: 3px; overflow: hidden; position: relative; }
+  .bar-fill { position: absolute; top: 0; left: 0; height: 100%; background: #fff; border-radius: 3px; }
+  .bar-fill.green { background: #4ade80; }
+
+  /* Section heading */
+  .h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+
+  /* AI panel */
+  .ai-panel { background: linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04)); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; }
+  .ai-panel .head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ai-icon { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, #a78bfa, #60a5fa); display: flex; align-items: center; justify-content: center; color: #000; font-weight: 700; font-size: 13px; }
+
+  /* Inline icon */
+  .ico { width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
+  .ico-16 { width: 16px; height: 16px; }
+  .ico-18 { width: 18px; height: 18px; }
+
+  /* H rule */
+  hr { border: none; border-top: 1px solid #27272a; margin: 24px 0; }
+
+  /* Bullet list */
+  ul.tight { list-style: none; font-size: 14px; line-height: 1.9; }
+  ul.tight li { padding-left: 18px; position: relative; }
+  ul.tight li::before { content: "·"; position: absolute; left: 6px; color: #71717a; }
+
+  ol.tight { list-style: none; font-size: 14px; line-height: 1.9; counter-reset: n; }
+  ol.tight li { padding-left: 26px; position: relative; counter-increment: n; }
+  ol.tight li::before { content: counter(n); position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%; background: #27272a; color: #a1a1aa; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+
+  /* Tabs top */
+  .tab-row { display: flex; gap: 4px; border-bottom: 1px solid #27272a; margin-bottom: 20px; }
+  .tab-row .tab { padding: 10px 14px; color: #a1a1aa; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab-row .tab.active { color: #fff; border-bottom-color: #fff; font-weight: 500; }
+
+  /* Right panel */
+  .two-col { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+  @media (max-width: 980px) { .two-col { grid-template-columns: 1fr; } .grid-4 { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Simple SVG icon classes */
+  .ic-trend-up::before { content: "↑"; }
+  .ic-trend-down::before { content: "↓"; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="logo"><div class="logo-mark">脉</div>首页第 4 屏 · 数据中心<span class="badge-v2">v2 定稿</span></div>
+  <nav>
+    <a href="#overview">设计思路</a>
+    <a href="#home">首页第 4 板块</a>
+    <a href="#workbench">工作台主页</a>
+    <a href="#project">项目详情</a>
+    <a href="#report">周报</a>
+  </nav>
+</nav>
+
+<div class="container">
+
+  <!-- 0. 概述 -->
+  <section id="overview" class="screen">
+    <div class="screen-eyebrow">设计思路</div>
+    <h1 class="screen-title">数据工作台 - 核心定位</h1>
+    <p class="screen-desc">不是"选题工具"或"数据看板"——是 AI 的训练场。用户每天用 → 投喂数据（行业 / 城市 / 账号 / 爆款 / 投流）→ 平台输出更准的选题和方向预测 → 用户用画布生成内容 → 平台数据回流 → AI 更聪明。正循环。</p>
+
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="h3">① 不绑死画布</div>
+        <p style="color: #a1a1aa; font-size: 13px;">用户自拍的视频 / 第三方剪辑的视频也能录入, 手动回填或导数据。哪怕不用画布, 数据工具也要是个合格的新媒体助手。</p>
+      </div>
+      <div class="card">
+        <div class="h3">② 项目-子项目两层结构</div>
+        <p style="color: #a1a1aa; font-size: 13px;">大项目 = 一个新媒体账号的一次运营目标（如"顾家家居 618 大促"）；子项目 = 账号下每条视频。数据按这条线汇总, AI 按这条线学习。</p>
+      </div>
+      <div class="card">
+        <div class="h3">③ 优化目标: ROI, 不是点赞</div>
+        <p style="color: #a1a1aa; font-size: 13px;">投流用户要的是表单成本 / ROI, 不是完播率。100 万播放 0 转化是垃圾, 5000 播放 50 表单是金矿。AI 的目标函数是这个。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. 首页第 4 板块 -->
+  <section id="home" class="screen">
+    <div class="screen-eyebrow">屏幕 1 / 4 · 首页第 4 屏</div>
+    <h2 class="screen-title">数据中心 (复盘页 + 数据工作台 · 三合一)</h2>
+    <p class="screen-desc">作为首页的入口卡片, 给一个一眼能看懂的全景: 当前投流状态、进行中项目, 引导进完整看板。</p>
+
+    <div class="mockup">
+      <div class="mockup-header">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">damai.com / 首页 - 数据工作台板块</span>
+      </div>
+      <div class="mockup-body">
+
+        <!-- KPI 行 -->
+        <div class="row" style="justify-content: space-between; margin-bottom: 20px;">
+          <div>
+            <h3 style="font-size: 20px; font-weight: 600;">📊 数据工作台</h3>
+            <p style="color: #a1a1aa; font-size: 13px; margin-top: 4px;">追踪每条内容的真实表现, 让 AI 越用越懂你</p>
+          </div>
+          <button class="btn btn-primary">查看完整看板 →</button>
+        </div>
+
+        <div class="grid grid-4 mb-24">
+          <div class="card card-pad-sm">
+            <div class="card-title">本周投放</div>
+            <div class="card-value">¥12,840</div>
+            <div class="card-trend trend-up">↑ 23% vs 上周</div>
+          </div>
+          <div class="card card-pad-sm">
+            <div class="card-title">本周表单</div>
+            <div class="card-value">328</div>
+            <div class="card-trend trend-up">↑ 18%</div>
+          </div>
+          <div class="card card-pad-sm">
+            <div class="card-title">平均 CPL</div>
+            <div class="card-value">¥39.1</div>
+            <div class="card-trend trend-down">↓ 12% (变好)</div>
+          </div>
+          <div class="card card-pad-sm">
+            <div class="card-title">平均 ROI</div>
+            <div class="card-value">3.2x</div>
+            <div class="card-trend trend-up">↑ 0.4x</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <div class="h3">进行中的项目</div>
+            <div class="grid" style="gap: 12px;">
+              <div class="card card-pad-sm">
+                <div class="row" style="justify-content: space-between; align-items: start;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 500;">顾家家居 - 618 大促</div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">12 条视频 · 进行中 · 家居</div>
+                  </div>
+                  <span class="tag tag-green">进行中</span>
+                </div>
+                <div class="row mt-12" style="font-size: 12px; gap: 16px;">
+                  <span><span style="color: #71717a;">投放</span> ¥8,420</span>
+                  <span><span style="color: #71717a;">CPL</span> ¥38.6</span>
+                  <span><span style="color: #71717a;">ROI</span> <span class="tag tag-green" style="padding: 0 6px;">2.8x</span></span>
+                </div>
+              </div>
+              <div class="card card-pad-sm">
+                <div class="row" style="justify-content: space-between; align-items: start;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 500;">敏华控股 - 抖音品牌号</div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">8 条视频 · 进行中 · 家居</div>
+                  </div>
+                  <span class="tag tag-green">进行中</span>
+                </div>
+                <div class="row mt-12" style="font-size: 12px; gap: 16px;">
+                  <span><span style="color: #71717a;">投放</span> ¥4,420</span>
+                  <span><span style="color: #71717a;">CPL</span> ¥40.0</span>
+                  <span><span style="color: #71717a;">ROI</span> <span class="tag tag-green" style="padding: 0 6px;">3.5x</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="h3">✨ AI 今日建议</div>
+            <div class="ai-panel">
+              <ul class="tight">
+                <li>"避坑指南"类内容 CPL 比平均低 30%, <strong>建议加投 2 条</strong></li>
+                <li>前 3 秒含"价格"关键词的视频 ROI 高 1.8x</li>
+                <li>30-45 岁女性人群定向转化率最佳, 可加预算 20%</li>
+              </ul>
+              <button class="btn btn-sm mt-12" style="background: rgba(167,139,250,0.15); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3);">查看完整洞察 →</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 工作台主页 -->
+  <section id="workbench" class="screen">
+    <div class="screen-eyebrow">屏幕 2 / 4</div>
+    <h2 class="screen-title">数据工作台 · 主页</h2>
+    <p class="screen-desc">用户进入后的主操作台。左侧是项目列表, 右侧是 AI 推荐和今日待办。顶部有筛选维度和新建入口。</p>
+
+    <div class="mockup">
+      <div class="mockup-header">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">damai.com / workbench</span>
+      </div>
+      <div class="mockup-body">
+
+        <div class="tab-row">
+          <div class="tab active">📁 项目</div>
+          <div class="tab">✨ AI 推荐</div>
+          <div class="tab">📋 周/月复盘</div>
+          <div class="tab">🗃 数据管理</div>
+        </div>
+
+        <div class="row mb-24">
+          <select class="btn">行业: 全部</select>
+          <select class="btn">账号: 全部</select>
+          <select class="btn">时间: 最近 30 天</select>
+          <div class="spacer"></div>
+          <button class="btn">📥 导入数据</button>
+          <button class="btn btn-primary">+ 新建项目</button>
+        </div>
+
+        <div class="two-col">
+
+          <div>
+            <div class="row mb-12" style="justify-content: space-between;">
+              <div class="h3" style="margin: 0;">项目 (3)</div>
+              <div class="row" style="gap: 8px; font-size: 12px; color: #a1a1aa;">
+                <span>排序: 最近活跃</span>
+              </div>
+            </div>
+            <div class="grid" style="gap: 12px;">
+
+              <div class="card">
+                <div class="row" style="justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 16px; font-weight: 600;">顾家家居 - 618 大促</div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">12 条视频 · 进行中 · 家居 / 抖音</div>
+                  </div>
+                  <span class="tag tag-green">进行中</span>
+                </div>
+                <div class="grid grid-4" style="font-size: 12px;">
+                  <div><div style="color: #71717a;">投放</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥8,420</div></div>
+                  <div><div style="color: #71717a;">表单</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">218</div></div>
+                  <div><div style="color: #71717a;">CPL</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥38.6</div></div>
+                  <div><div style="color: #71717a;">ROI</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;"><span class="tag tag-green" style="padding: 0 6px;">2.8x</span></div></div>
+                </div>
+                <div class="bar mt-12"><div class="bar-fill green" style="width: 62%;"></div></div>
+                <div style="font-size: 11px; color: #71717a; margin-top: 4px;">已消耗预算 62% (¥8,420 / ¥13,500)</div>
+              </div>
+
+              <div class="card">
+                <div class="row" style="justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 16px; font-weight: 600;">敏华控股 - 抖音品牌号</div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">8 条视频 · 进行中 · 家居 / 抖音</div>
+                  </div>
+                  <span class="tag tag-green">进行中</span>
+                </div>
+                <div class="grid grid-4" style="font-size: 12px;">
+                  <div><div style="color: #71717a;">投放</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥4,420</div></div>
+                  <div><div style="color: #71717a;">表单</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">110</div></div>
+                  <div><div style="color: #71717a;">CPL</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥40.2</div></div>
+                  <div><div style="color: #71717a;">ROI</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;"><span class="tag tag-green" style="padding: 0 6px;">3.5x</span></div></div>
+                </div>
+                <div class="bar mt-12"><div class="bar-fill green" style="width: 38%;"></div></div>
+                <div style="font-size: 11px; color: #71717a; margin-top: 4px;">已消耗预算 38% (¥4,420 / ¥11,500)</div>
+              </div>
+
+              <div class="card">
+                <div class="row" style="justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 16px; font-weight: 600;">林氏木业 - 小红书种草</div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">5 条视频 · 已结束 · 家居 / 小红书</div>
+                  </div>
+                  <span class="tag">已结束</span>
+                </div>
+                <div class="grid grid-4" style="font-size: 12px;">
+                  <div><div style="color: #71717a;">投放</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥2,180</div></div>
+                  <div><div style="color: #71717a;">表单</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">38</div></div>
+                  <div><div style="color: #71717a;">CPL</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;">¥57.4</div></div>
+                  <div><div style="color: #71717a;">ROI</div><div style="font-size: 15px; font-weight: 500; margin-top: 2px;"><span class="tag tag-amber" style="padding: 0 6px;">1.4x</span></div></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div>
+            <div class="h3">✨ AI 推荐选题 (今日)</div>
+            <div class="ai-panel mb-16">
+              <div style="font-size: 13px; color: #a1a1aa; margin-bottom: 8px;">家居 / 抖音 · 根据你历史数据</div>
+              <ul class="tight">
+                <li><strong>避坑指南 - 沙发选购 5 大坑</strong><br><span style="color: #a1a1aa; font-size: 12px;">预估 CPL ¥25, ROI 3.5x</span></li>
+                <li><strong>618 价格对比 - 顾家 vs 林氏</strong><br><span style="color: #a1a1aa; font-size: 12px;">预估 CPL ¥32, ROI 3.0x</span></li>
+                <li><strong>实拍: 一家 4 口的新家入住</strong><br><span style="color: #a1a1aa; font-size: 12px;">预估 CPL ¥45, ROI 2.5x</span></li>
+              </ul>
+              <div class="row mt-12" style="gap: 6px;">
+                <button class="btn btn-sm btn-primary">→ 画布生成</button>
+                <button class="btn btn-sm">收藏</button>
+              </div>
+            </div>
+
+            <div class="h3 mt-24">📥 今日待回填 (3)</div>
+            <div class="grid" style="gap: 8px;">
+              <div class="card card-pad-sm" style="font-size: 13px;">
+                <div style="font-weight: 500;">茶几选购避坑</div>
+                <div style="font-size: 12px; color: #a1a1aa; margin-top: 2px;">已发布 3 天, 待录投流数据</div>
+              </div>
+              <div class="card card-pad-sm" style="font-size: 13px;">
+                <div style="font-weight: 500;">618 直播间切片 02</div>
+                <div style="font-size: 12px; color: #a1a1aa; margin-top: 2px;">已发布 1 天, 待录投流数据</div>
+              </div>
+              <div class="card card-pad-sm" style="font-size: 13px;">
+                <div style="font-weight: 500;">床垫横评</div>
+                <div style="font-size: 12px; color: #a1a1aa; margin-top: 2px;">已发布 5 天, 待录投流数据</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 项目详情 -->
+  <section id="project" class="screen">
+    <div class="screen-eyebrow">屏幕 3 / 4</div>
+    <h2 class="screen-title">项目详情 · "顾家家居 - 618 大促"</h2>
+    <p class="screen-desc">单项目的全貌。顶部是该项目的 KPI, 下面是子项目（视频）列表, 底部是 AI 洞察。所有数据可加可改, AI 按这条线学。</p>
+
+    <div class="mockup">
+      <div class="mockup-header">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">damai.com / workbench / 顾家家居-618</span>
+      </div>
+      <div class="mockup-body">
+
+        <div class="card mb-24">
+          <div class="row" style="justify-content: space-between; align-items: start; margin-bottom: 16px;">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 600;">顾家家居 - 618 大促</h2>
+              <div class="row mt-8" style="gap: 16px; font-size: 13px; color: #a1a1aa;">
+                <span>🏠 家居</span>
+                <span>📅 2026-05-20 ~ 2026-06-23</span>
+                <span>👤 抖音 · 顾家官方旗舰店</span>
+                <span>💰 预算 ¥13,500</span>
+              </div>
+            </div>
+            <div class="row" style="gap: 8px;">
+              <button class="btn">+ 录入视频</button>
+              <button class="btn">📥 导入数据</button>
+              <button class="btn btn-primary">+ 用画布生成</button>
+            </div>
+          </div>
+
+          <div class="grid grid-4">
+            <div><div class="card-title">总投放</div><div class="card-value">¥8,420</div><div class="card-trend" style="color: #71717a;">62% 预算</div></div>
+            <div><div class="card-title">总表单</div><div class="card-value">218</div><div class="card-trend trend-up">↑ 22% vs 上阶段</div></div>
+            <div><div class="card-title">平均 CPL</div><div class="card-value">¥38.6</div><div class="card-trend trend-down">↓ 12% (变好)</div></div>
+            <div><div class="card-title">整体 ROI</div><div class="card-value">2.8x</div><div class="card-trend trend-up">↑ 0.3x</div></div>
+          </div>
+        </div>
+
+        <!-- 视频列表 + 数据录入 -->
+        <div class="card mb-24">
+          <div class="row mb-12" style="justify-content: space-between;">
+            <div class="h3" style="margin: 0;">子项目 / 视频 (12)</div>
+            <div class="row" style="gap: 8px;">
+              <button class="btn btn-sm">筛选 ▾</button>
+              <button class="btn btn-sm">排序: 投放 ↓</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>选题</th>
+                <th>类型</th>
+                <th>来源</th>
+                <th>状态</th>
+                <th style="text-align: right;">投放</th>
+                <th style="text-align: right;">表单</th>
+                <th style="text-align: right;">CPL</th>
+                <th style="text-align: right;">ROI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>618 沙发选购避坑指南</td>
+                <td><span class="tag tag-blue">种草</span></td>
+                <td>🎨 画布</td>
+                <td><span class="tag tag-green">已回填</span></td>
+                <td style="text-align: right;">¥1,200</td>
+                <td style="text-align: right;">45</td>
+                <td style="text-align: right;">¥26.7</td>
+                <td style="text-align: right;"><span class="tag tag-green" style="padding: 0 6px;">4.2x</span></td>
+              </tr>
+              <tr>
+                <td>618 价格对比 顾家 vs 林氏</td>
+                <td><span class="tag tag-violet">测评</span></td>
+                <td>🎨 画布</td>
+                <td><span class="tag tag-green">已回填</span></td>
+                <td style="text-align: right;">¥980</td>
+                <td style="text-align: right;">31</td>
+                <td style="text-align: right;">¥31.6</td>
+                <td style="text-align: right;"><span class="tag tag-green" style="padding: 0 6px;">3.5x</span></td>
+              </tr>
+              <tr>
+                <td>茶几选购避坑 (自拍)</td>
+                <td><span class="tag tag-blue">种草</span></td>
+                <td>📷 外部拍摄</td>
+                <td><span class="tag tag-amber">待回填</span></td>
+                <td style="text-align: right;">¥650</td>
+                <td style="text-align: right;">—</td>
+                <td style="text-align: right;">—</td>
+                <td style="text-align: right;">—</td>
+              </tr>
+              <tr>
+                <td>618 直播间切片 01</td>
+                <td><span class="tag tag-amber">直播切片</span></td>
+                <td>✂️ 外部剪辑</td>
+                <td><span class="tag tag-green">已回填</span></td>
+                <td style="text-align: right;">¥820</td>
+                <td style="text-align: right;">18</td>
+                <td style="text-align: right;">¥45.6</td>
+                <td style="text-align: right;"><span class="tag tag-amber" style="padding: 0 6px;">1.9x</span></td>
+              </tr>
+              <tr>
+                <td>一家 4 口新家入住</td>
+                <td><span class="tag tag-blue">种草</span></td>
+                <td>🎨 画布</td>
+                <td><span class="tag tag-amber">待回填</span></td>
+                <td style="text-align: right;">¥540</td>
+                <td style="text-align: right;">—</td>
+                <td style="text-align: right;">—</td>
+                <td style="text-align: right;">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- AI 洞察 -->
+        <div class="ai-panel">
+          <div class="head">
+            <div class="ai-icon">AI</div>
+            <div class="h3" style="margin: 0;">AI 洞察 - 基于本项目 12 条视频</div>
+          </div>
+          <ul class="tight">
+            <li><strong>最佳内容类型:</strong> "避坑指南" 类 CPL 比平均低 30% (¥26.7 vs ¥38.6), ROI 高 50%。建议加投 2-3 条同类型。</li>
+            <li><strong>最佳脚本结构:</strong> 前 3 秒含"价格对比"或"避坑"关键词的视频, 转化率提升 1.8x。</li>
+            <li><strong>最佳人群:</strong> 30-45 岁女性, 转化率 4.2%, 是次佳人群的 1.6 倍。可加预算 20%。</li>
+            <li><strong>疲软信号:</strong> "直播切片"类 ROI 持续低于 2.0x, 建议暂停或换模板。</li>
+            <li><strong>预测:</strong> 若按当前节奏, 本项目最终 ROI 预计 2.5x, 略低于 3.0x 目标。建议加投 2 条"避坑"类把均值拉上来。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 周报 -->
+  <section id="report" class="screen">
+    <div class="screen-eyebrow">屏幕 4 / 4</div>
+    <h2 class="screen-title">周/月复盘 · 自动生成</h2>
+    <p class="screen-desc">系统按周/月自动汇总数据, AI 给趋势、归因、下周计划。一键导出 PDF / 分享给老板。</p>
+
+    <div class="mockup">
+      <div class="mockup-header">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">damai.com / workbench / 顾家家居-618 / 复盘</span>
+      </div>
+      <div class="mockup-body">
+
+        <div class="card mb-24">
+          <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 600;">周报 · 2026-06-16 ~ 2026-06-22</h2>
+              <div style="font-size: 13px; color: #a1a1aa; margin-top: 4px;">顾家家居 - 618 大促 (12 条视频)</div>
+            </div>
+            <div class="row" style="gap: 8px;">
+              <button class="btn">📤 分享</button>
+              <button class="btn btn-primary">📄 导出 PDF</button>
+            </div>
+          </div>
+
+          <div class="grid grid-4">
+            <div><div class="card-title">本周投放</div><div class="card-value">¥4,820</div><div class="card-trend trend-up">↑ 15%</div></div>
+            <div><div class="card-title">本周表单</div><div class="card-value">126</div><div class="card-trend trend-up">↑ 22%</div></div>
+            <div><div class="card-title">平均 CPL</div><div class="card-value">¥38.3</div><div class="card-trend trend-down">↓ 8% (变好)</div></div>
+            <div><div class="card-title">整体 ROI</div><div class="card-value">3.0x</div><div class="card-trend trend-up">↑ 0.2x</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-2 mb-24">
+
+          <div class="card">
+            <div class="h3">内容类型 ROI 对比</div>
+            <div style="margin-top: 16px;">
+              <div style="margin-bottom: 14px;">
+                <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 6px;"><span>种草 - 避坑指南</span><span><strong>4.2x</strong></span></div>
+                <div class="bar"><div class="bar-fill green" style="width: 84%;"></div></div>
+              </div>
+              <div style="margin-bottom: 14px;">
+                <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 6px;"><span>测评 - 价格对比</span><span><strong>3.5x</strong></span></div>
+                <div class="bar"><div class="bar-fill" style="width: 70%;"></div></div>
+              </div>
+              <div style="margin-bottom: 14px;">
+                <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 6px;"><span>实拍 - 入住场景</span><span><strong>2.6x</strong></span></div>
+                <div class="bar"><div class="bar-fill" style="width: 52%;"></div></div>
+              </div>
+              <div style="margin-bottom: 14px;">
+                <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 6px;"><span>直播切片</span><span><strong>1.9x</strong></span></div>
+                <div class="bar"><div class="bar-fill" style="width: 38%; background: #fbbf24;"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="h3">每日消耗 vs 表单</div>
+            <div style="margin-top: 16px; position: relative; height: 160px;">
+              <!-- 简易 SVG 折线示意 -->
+              <svg viewBox="0 0 320 140" style="width: 100%; height: 100%;">
+                <line x1="0" y1="120" x2="320" y2="120" stroke="#27272a"/>
+                <line x1="0" y1="80"  x2="320" y2="80"  stroke="#1f1f23"/>
+                <line x1="0" y1="40"  x2="320" y2="40"  stroke="#1f1f23"/>
+                <!-- 投放柱 -->
+                <rect x="10"  y="80"  width="20" height="40" fill="#3f3f46"/>
+                <rect x="55"  y="70"  width="20" height="50" fill="#3f3f46"/>
+                <rect x="100" y="55"  width="20" height="65" fill="#3f3f46"/>
+                <rect x="145" y="45"  width="20" height="75" fill="#3f3f46"/>
+                <rect x="190" y="60"  width="20" height="60" fill="#3f3f46"/>
+                <rect x="235" y="50"  width="20" height="70" fill="#3f3f46"/>
+                <rect x="280" y="40"  width="20" height="80" fill="#3f3f46"/>
+                <!-- 表单折线 -->
+                <polyline points="20,100 65,90 110,75 155,65 200,80 245,70 290,60"
+                          fill="none" stroke="#4ade80" stroke-width="2"/>
+                <circle cx="20"  cy="100" r="3" fill="#4ade80"/>
+                <circle cx="65"  cy="90"  r="3" fill="#4ade80"/>
+                <circle cx="110" cy="75"  r="3" fill="#4ade80"/>
+                <circle cx="155" cy="65"  r="3" fill="#4ade80"/>
+                <circle cx="200" cy="80"  r="3" fill="#4ade80"/>
+                <circle cx="245" cy="70"  r="3" fill="#4ade80"/>
+                <circle cx="290" cy="60"  r="3" fill="#4ade80"/>
+              </svg>
+              <div class="row" style="justify-content: space-between; font-size: 11px; color: #71717a; margin-top: 4px;">
+                <span>周一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+              </div>
+            </div>
+            <div class="row mt-12" style="gap: 16px; font-size: 12px; color: #a1a1aa;">
+              <span><span style="display:inline-block;width:10px;height:10px;background:#3f3f46;border-radius:2px;margin-right:6px;vertical-align:-1px;"></span>每日投放</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:#4ade80;border-radius:2px;margin-right:6px;vertical-align:-1px;"></span>每日表单</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="ai-panel">
+          <div class="head">
+            <div class="ai-icon">AI</div>
+            <div class="h3" style="margin: 0;">下周计划 (AI 自动生成)</div>
+          </div>
+          <ol class="tight">
+            <li>加投 3 条"避坑指南"类内容, 预算 ¥3,000, 重点测试 30-45 岁女性人群。</li>
+            <li>复用"618 沙发"脚本结构, 复制到茶几 / 床垫 / 餐桌三个品类, 预计 CPL 可压到 ¥25-30。</li>
+            <li>暂停"直播切片"类内容, ROI 持续 < 2.0x, 释放预算给"避坑"类。</li>
+            <li>前 3 秒统一加"618 限时"价格钩子, 提升 3 秒完播率。</li>
+            <li>新开 1 个 A/B 测试: 同脚本不同人群包 (25-35 vs 35-45), 找最优定向。</li>
+          </ol>
+          <div class="row mt-16" style="gap: 8px;">
+            <button class="btn btn-sm btn-primary">📅 加入下周计划</button>
+            <button class="btn btn-sm">重新生成</button>
+            <button class="btn btn-sm">复制到画布 (3 条)</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr>
+  <p style="text-align: center; color: #71717a; font-size: 12px;">大脉 · 首页第 4 屏 · 数据中心 (v2 定稿) · 2026-06-23 · mockup 已锁定, 待拍板进入实现</p>
+
+</div>
+
+</body>
+</html>

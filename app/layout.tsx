@@ -1,20 +1,29 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SiteNav from "@/components/SiteNav";
+import SiteFooter from "@/components/SiteFooter";
+import LoginModal from "@/components/LoginModal";
 
 export const metadata: Metadata = {
-  title: "大脉 — 把素材变成获客的爆款视频",
-  description: "大脉是 AI 武装的获客视频工具，让每一份素材都成为获客的爆款。",
+  title: "大脉 | AI 视频工厂",
+  description:
+    "AI 让爆款短视频每家都能做。两条产线: 模板 (秒上手) + 画布 (玩花的)。",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased bg-[#FAFAF7] text-[#1D1D1F] font-sans selection:bg-orange-100">
-        {children}
+      <body>
+        <SiteNav />
+        <main style={{ minHeight: "calc(100vh - 200px)" }}>{children}</main>
+        <SiteFooter />
+        {/* 全局登录 modal — SiteNav 等派发 'damai:auth:open' 事件触发 */}
+        <LoginModal />
       </body>
     </html>
   );
