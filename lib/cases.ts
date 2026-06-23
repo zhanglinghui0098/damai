@@ -10,6 +10,8 @@ export type CaseItem = {
   videoUrl: string;    // /case/xxx.mp4
   posterUrl: string;   // /case/poster/xxx.jpg
   description: string; // 详情页描述
+  orientation: "landscape" | "portrait";  // 视频方向 (按真实分辨率判断)
+  duration: number;    // 秒
 };
 
 // 文件名 → URL slug 映射 (路由参数用, 不用中文 id 防编码坑)
@@ -40,25 +42,49 @@ const rawNames = [
   "运动精神", "这班谁爱上谁上", "青苔的触感",
 ];
 
-// hue 从品牌色系中分散取, 真实视频不依赖 (有 poster), 仅作 fallback
-function hueFor(i: number) {
-  return (220 + i * 13) % 360;
-}
+// 真实视频元数据 (从 ffprobe 探测, 2026-06-24)
+// 横 = 3840×2160 (16:9)   竖 = 2160×3840 (9:16)
+const metaMap: Record<string, { orientation: "landscape" | "portrait"; duration: number }> = {
+  "下班一刻":         { orientation: "portrait",  duration: 46 },
+  "世界杯":           { orientation: "landscape", duration: 38 },
+  "假如爱真的存在":    { orientation: "portrait",  duration: 37 },
+  "冰岛":             { orientation: "landscape", duration: 44 },
+  "双端操控":         { orientation: "portrait",  duration: 44 },
+  "国色青云座":       { orientation: "landscape", duration: 46 },
+  "带娃":             { orientation: "landscape", duration: 41 },
+  "思考者":           { orientation: "portrait",  duration: 42 },
+  "星空":             { orientation: "landscape", duration: 55 },
+  "暴躁包租婆":       { orientation: "portrait",  duration: 43 },
+  "沙发怎么选1":      { orientation: "portrait",  duration: 38 },
+  "沙发怎么选2":      { orientation: "portrait",  duration: 41 },
+  "炫酷产品种草":     { orientation: "portrait",  duration: 44 },
+  "蒙娜丽莎的微笑":   { orientation: "portrait",  duration: 50 },
+  "运动精神":         { orientation: "landscape", duration: 39 },
+  "这班谁爱上谁上":   { orientation: "portrait",  duration: 42 },
+  "青苔的触感":       { orientation: "landscape", duration: 37 },
+};
 
-export const CASES: CaseItem[] = rawNames.map((title, i) => {
+export const CASES: CaseItem[] = rawNames.map((title) => {
   const slug = slugMap[title];
   const encoded = encodeURIComponent(title); // 中文文件名编码
+  const meta = metaMap[title];
   return {
     id: slug,                                // URL slug (英文)
     title,
     creator: "Ling",
     category: "品牌广告",
-    hue: hueFor(i),
+    hue: 220,                                // 已弃用 (有 poster)
     videoUrl: `/case/${encoded}.mp4`,        // 实际文件名是中文
     posterUrl: `/case/poster/${encoded}.jpg`,
-    description: `${title} — 15s 品牌视频样片, 客厅场景 + AI 视频生成.`,
+    description: `${title} — ${meta.orientation === "portrait" ? "9:16 竖屏" : "16:9 横屏"} 品牌视频样片.`,
+    orientation: meta.orientation,
+    duration: meta.duration,
   };
 });
+
+// 分组工具
+export const LANDSCAPE_CASES = CASES.filter((c) => c.orientation === "landscape");
+export const PORTRAIT_CASES = CASES.filter((c) => c.orientation === "portrait");
 
 // 详情页用 lookup
 export const CASES_BY_ID: Record<string, CaseItem> = Object.fromEntries(

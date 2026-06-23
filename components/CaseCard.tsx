@@ -20,11 +20,11 @@ export default function CaseCard({ c }: { c: CaseItemType }) {
         transition: "transform 0.2s",
       }}
     >
-      {/* 上半 — 真实视频海报图 (16:9, 圆角) */}
+      {/* 上半 — 真实视频海报图 (按视频原方向: 横 16:9 / 竖 9:16) */}
       <div
         className="case-card-thumb"
         style={{
-          aspectRatio: "16/9",
+          aspectRatio: c.orientation === "portrait" ? "9/16" : "16/9",
           borderRadius: 12,
           overflow: "hidden",
           background: `linear-gradient(135deg, hsl(${c.hue}, 18%, 32%), hsl(${c.hue + 12}, 16%, 22%))`,
@@ -91,6 +91,17 @@ export default function CaseCard({ c }: { c: CaseItemType }) {
             }}
           >
             {creator || "匿名"}
+          </span>
+          {/* 时长徽标 (右下) */}
+          <span
+            style={{
+              fontSize: "0.625rem",
+              color: "var(--text-tertiary)",
+              fontVariantNumeric: "tabular-nums",
+              flexShrink: 0,
+            }}
+          >
+            {Math.floor(c.duration / 60)}:{(c.duration % 60).toString().padStart(2, "0")}
           </span>
         </div>
 

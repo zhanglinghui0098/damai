@@ -1,14 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import CaseCard from "@/components/CaseCard";
 import { CASES, CATEGORIES } from "@/lib/cases";
 
-// v4.4: 接 17 个真实视频 (Ling 上传)
+// 9 个 tab (跟首页 FeaturedCases 同步)
 const TABS = CATEGORIES;
-
 const SORT = ["最新", "最热", "编辑推荐"] as const;
+
+function SectionHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        justifyContent: "space-between",
+        marginTop: "2.5rem",
+        marginBottom: "1.25rem",
+      }}
+    >
+      <h2
+        style={{
+          fontSize: "1.25rem",
+          fontWeight: 600,
+          color: "var(--text)",
+          margin: 0,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {label}
+        <span
+          style={{
+            marginLeft: 10,
+            fontSize: "0.875rem",
+            color: "var(--text-tertiary)",
+            fontWeight: 400,
+          }}
+        >
+          {count}
+        </span>
+      </h2>
+    </div>
+  );
+}
 
 export default function CaseLibraryPage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("全部");
@@ -19,11 +53,12 @@ export default function CaseLibraryPage() {
     const matchTab = activeTab === "全部" || c.category === activeTab;
     const q = query.trim().toLowerCase();
     const matchQuery =
-      !q ||
-      c.title.toLowerCase().includes(q) ||
-      c.creator.toLowerCase().includes(q);
+      !q || c.title.toLowerCase().includes(q) || c.creator.toLowerCase().includes(q);
     return matchTab && matchQuery;
   });
+
+  const landscape = filtered.filter((c) => c.orientation === "landscape");
+  const portrait = filtered.filter((c) => c.orientation === "portrait");
 
   return (
     <section className="section">
@@ -42,13 +77,12 @@ export default function CaseLibraryPage() {
             display: "flex",
             alignItems: "center",
             gap: "1rem",
-            marginBottom: "1.5rem",
+            marginBottom: "0.5rem",
             flexWrap: "wrap",
             borderBottom: "1px solid var(--border-light)",
             paddingBottom: "0.25rem",
           }}
         >
-          {/* 9 个 tab */}
           <div
             style={{
               display: "flex",
@@ -150,29 +184,53 @@ export default function CaseLibraryPage() {
           </div>
         </div>
 
-        {/* 案例网格 — 完整 12 条全展示 (不像首页只 8 条) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: "1.25rem",
-          }}
-        >
-          {filtered.length === 0 ? (
+        {/* 横屏区 — 3 列 */}
+        {landscape.length > 0 && (
+          <>
+            <SectionHeader label="横屏精选" count={landscape.length} />
             <div
               style={{
-                gridColumn: "1 / -1",
-                textAlign: "center",
-                color: "var(--text-secondary)",
-                padding: "3rem 0",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: "1.5rem",
               }}
             >
-              没找到匹配的样片, 试试其他关键词?
+              {landscape.map((c) => (
+                <CaseCard key={c.id} c={c} />
+              ))}
             </div>
-          ) : (
-            filtered.map((c) => <CaseCard key={c.id} c={c} />)
-          )}
-        </div>
+          </>
+        )}
+
+        {/* 竖屏区 — 5 列 (每张瘦高卡片) */}
+        {portrait.length > 0 && (
+          <>
+            <SectionHeader label="竖屏爆款" count={portrait.length} />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: "1.25rem",
+              }}
+            >
+              {portrait.map((c) => (
+                <CaseCard key={c.id} c={c} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {landscape.length === 0 && portrait.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              color: "var(--text-secondary)",
+              padding: "3rem 0",
+            }}
+          >
+            没找到匹配的样片, 试试其他关键词?
+          </div>
+        )}
       </div>
     </section>
   );
