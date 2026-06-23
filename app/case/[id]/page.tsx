@@ -3,25 +3,37 @@
 import { useState } from "react";
 import Link from "next/link";
 import CanvasViewer, { DEMO_NODES, DEMO_EDGES } from "./CanvasViewer";
+import { CASES_BY_ID } from "@/lib/cases";
 
-const CASES: Record<string, {
-  title: string; brand: string; category: string; hue: number; views: string;
-  description: string; model: string; generatedAt: string;
-}> = {
-  c1: {
-    title: "现代极简三人沙发 30s 场景",
-    brand: "顾家",
-    category: "沙发",
-    hue: 22,
-    views: "12.4w",
-    description: "30s 客厅场景, 现代极简风格, 主打奶油色三人位沙发的氛围感.",
-    model: "Seedance 2.0 + 可灵 TTS",
-    generatedAt: "2026-06-12",
-  },
+// 兼容旧 mock id (c1 ~ c12 走老 fallback)
+const FALLBACK = {
+  title: "现代极简三人沙发 30s 场景",
+  brand: "顾家",
+  category: "沙发",
+  hue: 22,
+  views: "12.4w",
+  description: "30s 客厅场景, 现代极简风格, 主打奶油色三人位沙发的氛围感.",
+  model: "Seedance 2.0 + 可灵 TTS",
+  generatedAt: "2026-06-12",
 };
 
 export default function CaseDetailPage({ params }: { params: { id: string } }) {
-  const c = CASES[params.id] || CASES.c1;
+  const real = CASES_BY_ID[params.id];
+  const c = real
+    ? {
+        title: real.title,
+        brand: "Ling",
+        category: real.category,
+        hue: real.hue,
+        views: "—",
+        description: real.description,
+        model: "Seedance 2.0",
+        generatedAt: "2026-06-24",
+        posterUrl: real.posterUrl,
+        videoUrl: real.videoUrl,
+      }
+    : { ...FALLBACK, posterUrl: undefined as string | undefined, videoUrl: undefined as string | undefined };
+
   const [tab, setTab] = useState<"video" | "process" | "copy">("video");
 
   return (
@@ -88,22 +100,51 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                 borderRadius: 20,
                 position: "relative",
                 marginBottom: "1.5rem",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer",
+                overflow: "hidden",
               }}
             >
-              <div
-                style={{
-                  width: 80, height: 80, borderRadius: "50%",
-                  background: "rgba(255,255,255,0.95)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "2rem", color: "var(--text)",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                }}
-              >
-                ▶
-              </div>
-              <span className="watermark">AI 生成</span>
+              {c.videoUrl ? (
+                <video
+                  key={c.videoUrl}
+                  src={c.videoUrl}
+                  poster={c.posterUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "block",
+                    borderRadius: 20,
+                  }}
+                />
+              ) : (
+                <>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 80, height: 80, borderRadius: "50%",
+                        background: "rgba(255,255,255,0.95)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "2rem", color: "var(--text)",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                      }}
+                    >
+                      ▶
+                    </div>
+                  </div>
+                  <span className="watermark">AI 生成</span>
+                </>
+              )}
             </div>
             <p className="t-body" style={{ color: "var(--text-secondary)" }}>{c.description}</p>
           </div>

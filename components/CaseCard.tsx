@@ -1,15 +1,9 @@
 import Link from "next/link";
+import type { CaseItem as CaseItemType } from "../lib/cases";
 
-export type CaseItem = {
-  id: string;
-  title: string;
-  creator: string;
-  category: string;
-  hue: number;
-};
+export type { CaseItemType as CaseItem };
 
-export default function CaseCard({ c }: { c: CaseItem }) {
-  // 取末字做 avatar fallback (兼容 creator 缺失)
+export default function CaseCard({ c }: { c: CaseItemType }) {
   const creator = c.creator ?? "";
   const initial = creator.length > 0
     ? creator.charAt(creator.length - 1)
@@ -26,7 +20,7 @@ export default function CaseCard({ c }: { c: CaseItem }) {
         transition: "transform 0.2s",
       }}
     >
-      {/* 上半 — 独立圆角长方形 (filled bg) */}
+      {/* 上半 — 真实视频海报图 (16:9, 圆角) */}
       <div
         className="case-card-thumb"
         style={{
@@ -38,6 +32,22 @@ export default function CaseCard({ c }: { c: CaseItem }) {
           transition: "box-shadow 0.2s",
         }}
       >
+        {/* 真实视频: 用 poster 图作 thumbnail (有 videoUrl 时) */}
+        {c.posterUrl && (
+          <img
+            src={c.posterUrl}
+            alt={c.title}
+            loading="lazy"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        )}
         <span className="watermark">AI 生成</span>
       </div>
 

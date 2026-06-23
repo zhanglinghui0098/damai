@@ -2,44 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import CaseCard, { type CaseItem } from "./CaseCard";
+import CaseCard from "./CaseCard";
+import { CASES, CATEGORIES } from "../lib/cases";
 
 // v4.3: 9 个新 tab (保留"全部" + 重新编排品牌导向分类)
-const TABS = [
-  "全部",
-  "品牌广告",
-  "AI品牌激励计划",
-  "流量破圈",
-  "信任转化",
-  "获客引流",
-  "电商投放",
-  "人设打造",
-  "大脉工具箱",
-] as const;
-
+// v4.4: 接 17 个真实视频 (Ling 上传), 只在"全部" + "品牌广告" 有数据
+const TABS = CATEGORIES;
 type Tab = (typeof TABS)[number];
 
-// v4.3: 12 个 case 重分布到 8 个新分类, hue 全部调蓝紫科技风
-const MOCK_CASES: CaseItem[] = [
-  { id: "c1", creator: "Muertu木二土", title: "嗶比的悲催时刻", category: "流量破圈", hue: 220 },
-  { id: "c2", creator: "巫师光.", title: "意外发现了这个迷宫?", category: "流量破圈", hue: 260 },
-  { id: "c3", creator: "Orange.", title: "石枕", category: "AI品牌激励计划", hue: 245 },
-  { id: "c4", creator: "YOUNG", title: "《铁兵小队》一键出片工作流 + 角色裂变", category: "大脉工具箱", hue: 200 },
-  { id: "c5", creator: "大太太太太", title: "雨中暗一桌人【在超市后门吞云吐雾的二人-真人版】", category: "信任转化", hue: 280 },
-  { id: "c6", creator: "咕噜咕噜大王", title: "超级末日女友 哐哐哐就是咔咔咔咔", category: "信任转化", hue: 215 },
-  { id: "c7", creator: "三千问Atelier", title: "Vlog风格TVC | 室内设计 | 旧房改造", category: "品牌广告", hue: 240 },
-  { id: "c8", creator: "油条", title: "世界杯主题TVC - 流动狂欢城", category: "品牌广告", hue: 270 },
-  { id: "c9", creator: "茶茶酱", title: "城市夜归人 30 秒纪录片", category: "人设打造", hue: 235 },
-  { id: "c10", creator: "Light Studio", title: "高端美妆 15 秒质感大片", category: "电商投放", hue: 255 },
-  { id: "c11", creator: "小白熊", title: "小学科学小实验系列", category: "获客引流", hue: 210 },
-  { id: "c12", creator: "野草设计", title: "小红书爆款封面生成器", category: "大脉工具箱", hue: 285 },
-];
+const ALL_CASES = CASES;
 
 export default function FeaturedCases() {
   const [activeTab, setActiveTab] = useState<Tab>("全部");
   const [query, setQuery] = useState("");
 
-  const filtered = MOCK_CASES.filter((c) => {
+  const filtered = ALL_CASES.filter((c) => {
     const matchTab = activeTab === "全部" || c.category === activeTab;
     const q = query.trim().toLowerCase();
     const matchQuery =
