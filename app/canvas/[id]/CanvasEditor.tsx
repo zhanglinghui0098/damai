@@ -1,7 +1,8 @@
 ﻿"use client";
 const WS_RE = /\s/;
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 // =====================================================================
@@ -76,7 +77,7 @@ const NODE_SPECS: Record<NodeType, NodeSpec> = {
     // 2026-06-25 04:xx: 加 input 端口 (接上游 image 节点的 outputUrl 当参考图)
     inputs: [{ id: "in", label: "素材", type: "image" }],
     outputs: [{ id: "out", label: "image", type: "image" }],
-    defaultData: { model: "doubao-seedream-5-0-260128", aspect: "16:9", quality: "4K", quantity: 4, prompt: "", voiceInput: false },
+    defaultData: { model: "doubao-seedream-5-0-260128", aspect: "16:9", quality: "4K", quantity: 4, prompt: "", voiceInput: false, uploadedUrls: [] as string[], webSearch: false },
   },
   "video-gen": {
     label: "视频",
@@ -153,6 +154,16 @@ const DAMAI_KEYFRAMES = `
   0%   { transform: scale(1);    box-shadow: 0 4px 12px rgba(110,140,214,0.4); }
   50%  { transform: scale(1.18); box-shadow: 0 4px 20px rgba(110,140,214,0.85); }
   100% { transform: scale(1);    box-shadow: 0 4px 12px rgba(110,140,214,0.4); }
+}
+/* 06-26: 上传栏入场 — 操作框从上方滑入 (translateY -16px → 0, opacity 0 → 1) */
+@keyframes damaiUploadBarIn {
+  0%   { opacity: 0; transform: translateY(-16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* 06-26: 上传按钮入场 — 从下方弹入 (translateY 10px → 0, scale 0.85 → 1), 跟操作框形成上下对向动画 */
+@keyframes damaiUploadBtnIn {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.85); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 `;
 
@@ -342,6 +353,15 @@ export default function CanvasEditor({
       }
     }
   }, [projectId, template]);
+
+  // 06-26: 初始滚动到画布中心, 四周都有 4000px+ 平移空间
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const PAD = 4000;
+    c.scrollLeft = (2400 + 2 * PAD - c.clientWidth) / 2;
+    c.scrollTop  = (1600 + 2 * PAD - c.clientHeight) / 2;
+  }, []);
 
   // ---------- 自动保存 (500ms debounce) ----------
   useEffect(() => {
@@ -563,15 +583,23 @@ export default function CanvasEditor({
         // 收集 upstream image referenceUrls (上游 image 节点的输出图 → 图生图)
         const refEdges = currentEdges.filter((e) => e.toNode === nodeId);
         const referenceUrls: string[] = [];
+        // 06-26: 相对路径转绝对 URL (origin + path), 让服务端 fetch + Ark 都能拉到图
+        // 之前传 `/canvas-output/xxx.jpeg` 是相对路径, Node fetch() 解析不了, 静默 fallback 后 Ark 也拿不到
+        // ⚠️ 必须提到 refEdges loop 外 — line 599 的 uploadedUrls 分支也要用
+        const toAbs = (u?: string) =>
+          !u ? null : u.startsWith("/") ? `${window.location.origin}${u}` : u;
         for (const e of refEdges) {
           const fromNode = currentNodes.find((n) => n.id === e.fromNode);
           // 优先用用户在 overlay 选中的图, 而不是默认 outputUrl
-          // 06-26: 相对路径转绝对 URL (origin + path), 让服务端 fetch + Ark 都能拉到图
-          // 之前传 `/canvas-output/xxx.jpeg` 是相对路径, Node fetch() 解析不了, 静默 fallback 后 Ark 也拿不到
-          const toAbs = (u?: string) =>
-            !u ? null : u.startsWith("/") ? `${window.location.origin}${u}` : u;
           const outUrl = toAbs(fromNode?.data?.selectedOutputUrl || fromNode?.data?.outputUrl);
           if (outUrl) referenceUrls.push(outUrl);
+        }
+        // 06-26: 也加入用户上传的本地参考图 (node.data.uploadedUrls)
+        if (target.data.uploadedUrls?.length) {
+          for (const u of target.data.uploadedUrls) {
+            const abs = toAbs(u);
+            if (abs) referenceUrls.push(abs);
+          }
         }
         console.log("[damai] image node", nodeId, "referenceUrls:", referenceUrls);
 
@@ -636,19 +664,19 @@ export default function CanvasEditor({
 
   // 06-26: 修复 upstreamNodes — 原来被硬编码为空数组 (TEST stub)，导致 @引用和图生图反馈全部失效
   // 根据 edges 找到当前选中节点的所有上游节点（供 PropertiesPanel 的 @提及 + 图生图参考图展示）
-  const upstreamNodes: { id: string; label: string; type: string; refUrl?: string } = useMemo(() => {
+  const upstreamNodes: { id: string; label: string; type: NodeType; refUrl?: string }[] = useMemo(() => {
     if (!selectedId) return [];
     const incomingEdges = edges.filter((e) => e.toNode === selectedId);
     return incomingEdges
       .map((e) => {
         const fromNode = nodes.find((n) => n.id === e.fromNode);
         if (!fromNode) return null;
-        const spec = NODE_SPECS[fromNode.type];
+        const spec = NODE_SPECS[fromNode.type as NodeType];
         // 携带上游节点的输出图 URL（用于图生图预览）
         const refUrl = fromNode?.data?.selectedOutputUrl || fromNode?.data?.outputUrl;
-        return { id: fromNode.id, label: `${spec.label} #${fromNode.id.slice(0, 4)}`, type: fromNode.type, refUrl };
+        return { id: fromNode.id, label: `${spec.label} #${fromNode.id.slice(0, 4)}`, type: fromNode.type as NodeType, refUrl };
       })
-      .filter(Boolean) as any[];
+      .filter(Boolean) as { id: string; label: string; type: NodeType; refUrl?: string }[];
   }, [selectedId, nodes, edges]);
 
   return (
@@ -659,7 +687,7 @@ export default function CanvasEditor({
           position: "fixed",
           top: 0, left: 0, right: 0, bottom: 0,
           background: "#0a0a0a",
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.10) 1px, transparent 1px)",
           backgroundSize: "20px 20px",
           overflow: "hidden",
         }}
@@ -743,6 +771,7 @@ export default function CanvasEditor({
             position: "relative",
             width: 2400,
             height: 1600,
+            margin: "4000px",  // 06-26: 给画布 4000px 各方向平移空间 → 解决"往上/左拖卡死", 看起来像无限画布
             transform: `scale(${zoom})`,
             transformOrigin: "0 0",
           }}
@@ -962,7 +991,6 @@ function TopBar({
           style={{
             width: 32, height: 32,
             background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.08)",
             border: "none",
             borderRadius: "50%",
             color: "#fff",
@@ -1278,6 +1306,93 @@ function NodeView({
         </div>
       )}
 
+      {/* 06-26: image 节点顶部上传按钮栏 — 始终占位 32px, 避免选中时图片抖动 */}
+      {isImage && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 32,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              visibility: selected ? "visible" : "hidden",
+              animation: selected ? "damaiUploadBarIn 0.22s ease-out forwards" : "none",
+            }}
+          >
+            <label
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 12px",
+                borderRadius: 999,
+                fontSize: "0.6875rem",
+                color: "rgba(255,255,255,0.45)",
+                cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.03)",
+                animation: "damaiUploadBtnIn 0.25s 0.06s ease-out forwards",
+                opacity: 0,
+              }}
+          >
+            <span style={{ fontSize: "0.875rem" }}>⬆</span>
+            <span>上传</span>
+            {((node.data.uploadedUrls as string[])?.length || 0) > 0 && (
+              <span
+                style={{
+                  marginLeft: 2,
+                  padding: "0px 5px",
+                  borderRadius: 999,
+                  background: "rgba(110,140,214,0.15)",
+                  color: "#6e8cd6",
+                  fontSize: "0.625rem",
+                  fontWeight: 600,
+                }}
+              >
+                {(node.data.uploadedUrls as string[]).length}
+              </span>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={async (ev) => {
+                const files = ev.currentTarget.files;
+                if (!files || files.length === 0) return;
+                const newUrls: string[] = [...(node.data.uploadedUrls || [])];
+                for (let i = 0; i < files.length; i++) {
+                  const f = files[i];
+                  const fd = new FormData();
+                  fd.append("file", f);
+                  try {
+                    const res = await fetch("/api/canvas/upload", { method: "POST", body: fd });
+                    const json = await res.json();
+                    if (json.ok) newUrls.push(json.url);
+                    else console.warn("[upload] 上传失败:", json.error);
+                  } catch (err) {
+                    console.warn("[upload] 网络错误:", err);
+                  }
+                }
+                onUpdate?.({ uploadedUrls: newUrls });
+                ev.currentTarget.value = "";
+              }}
+            />
+          </label>
+          </div>
+        </div>
+      )}
+
       {/* 中间区域: image 节点显示真实生成图, 其他显示 icon */}
       <div
         style={{
@@ -1288,8 +1403,8 @@ function NodeView({
         }}
       >
         {isImage && imgs.length > 0 ? (
-          // 2026-06-25 04:xx: image 节点裸图 (出图后), 主图 = data.selectedIdx || 0
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          // 主图容器: position relative + zIndex 2, 确保在背景堆叠层上面
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 2 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imgs[Number(node.data.selectedIdx) || 0]}
@@ -1311,7 +1426,7 @@ function NodeView({
               width: NODE_W - 4,
               height: 200,
               margin: 2,
-              border: "2px dashed rgba(255,255,255,0.15)",
+              border: "2px solid rgba(255,255,255,0.15)",
               borderRadius: 12,
               display: "flex",
               flexDirection: "column",
@@ -1339,24 +1454,30 @@ function NodeView({
           </div>
         )}
 
-        {/* 2026-06-25 09:xx: hover 多张时下方堆叠"土碟" (在主图下面, 角度小, 尺寸按 aspect)
-            - z-index: 0 (主图 z 自然高, 视觉上土碟在图下)
-            - 角度: ±3° (比之前 ±4-10° 小)
-            - 尺寸: 按 node.data.aspect (16:9 / 9:16 / 1:1 ...) */}
-        {isImage && hovered && imgs.length >= 2 && (() => {
-          // 按 image aspect 计算土碟尺寸
+        {/* 06-26: 多图半透明错开堆叠效果 — 真实图片内容作为背景图, 半透明叠放在主图后面
+            参考效果: 像 iPhone 选图界面的叠纸牌风格, 每张往右下错位 + 轻微旋转 + 半透明
+            - 常显 (不需要 hover), 生成多张后立即可见
+            - 用真实图片 (不是色块), 增强内容感
+            - 越往后越透明, 最多显示 3 张背景图  */}
+        {isImage && imgs.length >= 2 && (() => {
           const aspect = node.data.aspect || "16:9";
           const [aw, ah] = aspect.split(":").map(Number);
-          const tileH = 200;  // 主图 maxHeight
+          // 背景图尺寸略小于主图 (主图 maxHeight 220, 背景图 210)
+          const tileH = 210;
           const tileW = Math.round(tileH * (aw / ah));
+          const selectedIdx = Number(node.data.selectedIdx) || 0;
+          // 收集除主图外的其他图片 (最多3张背景层)
+          const bgImgs = imgs
+            .map((url, i) => ({ url, i }))
+            .filter(({ i }) => i !== selectedIdx)
+            .slice(0, 3)
+            .reverse(); // 最深层先渲染, 浅层后渲染压在上面, 主图最顶
+
           return (
             <div
               style={{
                 position: "absolute",
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
+                left: 0, right: 0, top: 0, bottom: 0,
                 pointerEvents: "none",
                 overflow: "visible",
                 display: "flex",
@@ -1364,15 +1485,14 @@ function NodeView({
                 justifyContent: "center",
               }}
             >
-              {/* 土碟渲染在主图下面 (z=0), 主图 z 自然高 (默认后渲染) */}
-              {Array.from({ length: Math.min(imgs.length - 1, 4) }).map((_, i) => {
-                const idx = i + 1; // 1..N
-                // 角度 ±3° 内 (一左一右交替, 避免单调)
-                const angle = (idx % 2 === 0 ? -1 : 1) * (2 + idx * 1.2);
-                // 错落: 向右下偏移 (土碟在主图右下角堆叠)
-                const offX = idx * 14;
-                const offY = idx * 4;
-                const opacity = Math.max(0.35 - i * 0.08, 0.12);
+              {bgImgs.map(({ url, i }, renderIdx) => {
+                // reverse 后 renderIdx 0 = 最深层, 所以 depthIdx = bgImgs.length-1-renderIdx
+                // depthIdx 0 = 离主图最近 (旋转最小, 最清晰)
+                const depthIdx = bgImgs.length - 1 - renderIdx;
+                // 参考图效果: 扇形展开 — 绕底部中心旋转, 每层固定步进角度
+                const step = 4; // 每层旋转步进 4°
+                const angle = (depthIdx + 1) * step; // 4° / 8° / 12°，统一向右倾斜
+                const opacity = ([0.60, 0.38, 0.22] as number[])[depthIdx] ?? 0.15;
                 return (
                   <div
                     key={i}
@@ -1380,15 +1500,32 @@ function NodeView({
                       position: "absolute",
                       width: tileW,
                       height: tileH,
-                      borderRadius: 6,
-                      // 06-25 16:xx: 蓝紫渐变 → 中性灰渐变 (更接近截图设计)
-                      background: `linear-gradient(135deg, rgba(60,60,68,${opacity * 0.9}), rgba(40,40,48,${opacity * 0.7}))`,
-                      border: `1px solid rgba(255,255,255,${opacity * 0.6})`,
-                      boxShadow: `0 4px 14px rgba(0,0,0,${opacity * 1.2})`,
-                      transform: `translate(${offX}px, ${offY}px) rotate(${angle}deg)`,
-                      zIndex: 0, // 在主图下面
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      // 绕底部中心点旋转 (transform-origin: center bottom)
+                      transform: `rotate(${angle}deg)`,
+                      transformOrigin: "center bottom",
+                      opacity,
+                      zIndex: 0,
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                     }}
-                  />
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                        pointerEvents: "none",
+                        userSelect: "none",
+                      }}
+                    />
+                  </div>
                 );
               })}
             </div>
@@ -1461,17 +1598,14 @@ function NodeView({
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
         {node.inputs.map((p) => {
           const hl = dragTargetInput?.nodeId === node.id && dragTargetInput?.portId === p.id;
-          // 06-26: image 节点的输入端口常显（图生图核心交互入口），不再仅限 hover
-          // 其他节点 + image 输出端口保持 hover 显示
-          const isImageInput = isImage && p.type === "image";
-          const portVisible = hovered || isImageInput;
+          // 统一 hover 才显示端口, 包括 image 节点的输入端口
           return (
             <PortDot
               key={p.id}
               port={p}
               node={node}
               isInput
-              visible={portVisible}
+              visible={hovered}
               highlighted={hl}
               onMouseDown={(e) => onPortMouseDown(e, p, true)}
             />
@@ -1842,8 +1976,9 @@ function TextToolbar({
   // 计算位置: 节点正上方居中
   const nh = nodeHeight(node);
   const panelWidth = 480;
-  const left = (node.x + NODE_W / 2) * zoom + scroll.left - panelWidth / 2;
-  const top = (node.y) * zoom + scroll.top - 60;
+  // 06-26 修复: position:fixed 是 viewport 相对, 需减去 scroll + 加 INNER_MARGIN(4000) + CANVAS_TOP(56)
+  const left = (node.x + NODE_W / 2) * zoom - scroll.left + 4000 - panelWidth / 2;
+  const top = node.y * zoom - scroll.top + 4056 - 60;
 
   return (
     <div
@@ -2061,7 +2196,7 @@ function PropertiesPanel({
   node: CanvasNode;
   zoom: number;
   scroll: { left: number; top: number };
-  upstreamNodes: { id: string; label: string; type: string; refUrl?: string }[];
+  upstreamNodes: { id: string; label: string; type: NodeType; refUrl?: string }[];
   onChange: (data: Record<string, any>) => void;
   onRun: () => void;
   onOptimizePrompt: () => void;
@@ -2075,9 +2210,40 @@ function PropertiesPanel({
     atPos: number;
     cursor: number;
     taRect: { left: number; bottom: number };
-    filtered: { id: string; label: string; type: string }[];
+    filtered: { id: string; label: string; type: NodeType }[];
     activeIdx: number;
   } | null>(null);
+
+  // 06-26: 比例/画质/联网搜索 合并弹窗状态
+  const [imageSettingsOpen, setImageSettingsOpen] = useState(false);
+  const imageSettingsButtonRef = useRef<HTMLButtonElement>(null);
+  const [imageButtonRect, setImageButtonRect] = useState<DOMRect | null>(null);
+  const toggleImageSettings = () => {
+    if (!imageSettingsOpen && imageSettingsButtonRef.current) {
+      setImageButtonRect(imageSettingsButtonRef.current.getBoundingClientRect());
+    }
+    setImageSettingsOpen(v => !v);
+  };
+  // 点外面 / Esc 关弹窗
+  useEffect(() => {
+    if (!imageSettingsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (imageSettingsButtonRef.current?.contains(t)) return;
+      const popup = document.querySelector("[data-image-settings-popup]");
+      if (popup?.contains(t)) return;
+      setImageSettingsOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setImageSettingsOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [imageSettingsOpen]);
+  // 换节点关弹窗
+  useEffect(() => { setImageSettingsOpen(false); }, [node.id]);
 
   // 从光标往前找 @ 提及,只有 @ 前是空白或开头才算
   function detectMention(value: string, cursor: number): { atPos: number; query: string } | null {
@@ -2164,8 +2330,9 @@ function PropertiesPanel({
   // 位置: 节点正下方居中
   const nh = nodeHeight(node);
   const panelWidth = 720;
-  const left = (node.x + NODE_W / 2) * zoom + scroll.left - panelWidth / 2;
-  const top = (node.y + nh + 24) * zoom + scroll.top + 56; // 56 = 顶部状态条高度
+  // 06-26 修复: position:fixed 是 viewport 相对, 需减去 scroll + 加 INNER_MARGIN(4000) + CANVAS_TOP(56)
+  const left = (node.x + NODE_W / 2) * zoom - scroll.left + 4000 - panelWidth / 2;
+  const top = (node.y + nh) * zoom - scroll.top + 4056 + 24;
 
   // 当前模型
   const currentModel = d.model || (spec.models[0]?.id ?? "");
@@ -2332,7 +2499,7 @@ function PropertiesPanel({
                     }}
                   >
                     <span style={{ fontSize: "1rem", opacity: 0.7, minWidth: 22, textAlign: "center" }}>
-                      {spec?.icon || "📎"}
+                      {spec?.iconChar || "📎"}
                     </span>
                     <span style={{ flex: 1 }}>{n.label}</span>
                     <span style={{ opacity: 0.35, fontSize: "0.6875rem" }}>
@@ -2345,10 +2512,18 @@ function PropertiesPanel({
           )}
 
           {/* 06-26: 图生图参考图展示 — 当 image 节点有上游连线时显示 */}
-          {node.type === "image" && upstreamNodes.length > 0 && (() => {
-            // 过滤出有输出图的参考源
+          {(node.type === "image" && (upstreamNodes.length > 0 || (node.data.uploadedUrls as string[])?.length > 0)) && (() => {
+            // 过滤出有输出图的参考源 (上游节点)
             const refThumbnails = upstreamNodes.filter((u) => u.refUrl);
-            if (refThumbnails.length === 0) return null;
+            // 用户上传的本地参考图
+            const uploadedRefs: { id: string; label: string; url: string }[] =
+              ((node.data.uploadedUrls as string[]) || []).map((u, i) => ({
+                id: `upload_${i}`,
+                label: `上传 ${(u.split("/").pop() || "").slice(0, 10)}`,
+                url: u,
+              }));
+            const allRefs = [...refThumbnails.map(r => ({ id: r.id, label: r.label, url: r.refUrl } as const)), ...uploadedRefs];
+            if (allRefs.length === 0) return null;
             return (
               <div
                 data-properties-panel="1"
@@ -2363,18 +2538,18 @@ function PropertiesPanel({
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <span style={{ fontSize: "0.75rem", color: "#6e8cd6", fontWeight: 600 }}>🔗 图生图模式</span>
                   <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.4)" }}>
-                    已关联 {refThumbnails.length} 个参考源 · 生成时将参考上游图片特征
+                    已关联 {allRefs.length} 个参考源 · 生成时将参考上游图片特征
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {refThumbnails.map((ref) => (
+                  {allRefs.map((ref) => (
                     <div
                       key={ref.id}
                       style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={ref.refUrl}
+                        src={ref.url}
                         alt={ref.label}
                         draggable={false}
                         style={{
@@ -2405,7 +2580,7 @@ function PropertiesPanel({
                 marginTop: 8,
                 padding: "6px 10px",
                 background: "rgba(255,255,255,0.04)",
-                border: "1px dashed rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.15)",
                 borderRadius: 8,
                 color: "rgba(255,255,255,0.6)",
                 fontSize: "0.75rem",
@@ -2451,8 +2626,29 @@ function PropertiesPanel({
             />
           )}
 
-          {/* 比例 */}
-          {spec.aspects && (
+          {/* 06-26: image 节点用新弹窗 (比例 + 清晰度 + 联网搜索 合并) */}
+          {node.type === "image" && spec.aspects && spec.qualities && (
+            <button
+              ref={imageSettingsButtonRef}
+              data-properties-panel="1"
+              onClick={(e) => { e.stopPropagation(); toggleImageSettings(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 12px",
+                background: imageSettingsOpen ? "rgba(110,140,214,0.12)" : "rgba(255,255,255,0.06)",
+                border: imageSettingsOpen ? "1px solid rgba(110,140,214,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 999,
+                fontSize: "0.8125rem",
+                color: "#fff", cursor: "pointer", whiteSpace: "nowrap",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span style={{ opacity: 0.6 }}>▭</span>
+              <span>{(d.aspect || "16:9")} · {d.quality || spec.qualities[0]}</span>
+            </button>
+          )}
+          {/* video-gen / audio-gen 等保持原 ChipDropdown */}
+          {node.type !== "image" && spec.aspects && (
             <ChipDropdown
               options={mode === "首尾帧" ? ["自适应"] : spec.aspects}
               value={d.aspect || "自适应"}
@@ -2460,14 +2656,26 @@ function PropertiesPanel({
               prefix="▭"
             />
           )}
-
-          {/* 清晰度 */}
-          {spec.qualities && (
+          {node.type !== "image" && spec.qualities && (
             <ChipDropdown
               options={spec.qualities}
               value={d.quality || spec.qualities[0]}
               onChange={(v) => setField("quality", v)}
               prefix="◉"
+            />
+          )}
+          {/* 弹窗 (position:fixed 跳出 panel overflow:hidden) */}
+          {imageSettingsOpen && imageButtonRect && (
+            <ImageSettingsPopup
+              anchorRect={imageButtonRect}
+              aspect={d.aspect || "16:9"}
+              quality={d.quality || spec.qualities?.[0]}
+              qualities={spec.qualities}
+              onAspectChange={(v) => setField("aspect", v)}
+              onQualityChange={(v) => setField("quality", v)}
+              webSearch={!!d.webSearch}
+              onWebSearchChange={(v) => setField("webSearch", v)}
+              onClose={() => setImageSettingsOpen(false)}
             />
           )}
 
@@ -2596,6 +2804,152 @@ function PropertiesPanel({
         )}
       </div>
     </div>
+  );
+}
+
+// =====================================================================
+// 06-26: 图片生成设置弹窗 (画质 + 比例 + 联网搜索, 参考 TapNow 设计)
+// =====================================================================
+const RATIO_OPTIONS: { v: string; w?: number; h?: number; isAdaptive?: boolean }[] = [
+  { v: "自适应", isAdaptive: true },
+  { v: "1:1", w: 1, h: 1 }, { v: "9:16", w: 9, h: 16 }, { v: "16:9", w: 16, h: 9 },
+  { v: "3:4", w: 3, h: 4 }, { v: "4:3", w: 4, h: 3 },
+  { v: "3:2", w: 3, h: 2 }, { v: "2:3", w: 2, h: 3 },
+  { v: "5:4", w: 5, h: 4 }, { v: "4:5", w: 4, h: 5 }, { v: "21:9", w: 21, h: 9 },
+];
+
+function ImageSettingsPopup({
+  anchorRect, aspect, quality, qualities,
+  onAspectChange, onQualityChange,
+  webSearch, onWebSearchChange, onClose,
+}: {
+  anchorRect: DOMRect;
+  aspect: string;
+  quality: string;
+  qualities?: string[];
+  onAspectChange: (v: string) => void;
+  onQualityChange: (v: string) => void;
+  webSearch: boolean;
+  onWebSearchChange: (v: boolean) => void;
+  onClose: () => void;
+}) {
+  // 06-26: 用 portal 挂到 body — 逃出 panel 的 backdrop-filter containing block
+  // (panel 有 backdropFilter:blur, 会让内部 position:fixed 子元素相对 panel 定位)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  // 06-26: 智能 flip — 按钮靠视口底部时, 弹窗翻到按钮下方避免被裁
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<"above" | "below">("above");
+  useLayoutEffect(() => {
+    if (!popupRef.current) return;
+    const h = popupRef.current.offsetHeight;
+    const spaceAbove = anchorRect.top - 8;
+    const spaceBelow = window.innerHeight - anchorRect.bottom - 8;
+    if (spaceAbove >= h) setPlacement("above");
+    else if (spaceBelow >= h) setPlacement("below");
+    else setPlacement(spaceAbove > spaceBelow ? "above" : "below");
+  }, [anchorRect.top, anchorRect.bottom]);
+  const popTop = placement === "above" ? anchorRect.top : anchorRect.bottom;
+  const popTransform = placement === "above"
+    ? "translateY(calc(-100% - 8px))"
+    : "translateY(8px)";
+  if (!mounted) return null;
+  const popup = (
+    <div
+      ref={popupRef}
+      data-image-settings-popup="1"
+      style={{
+        position: "fixed",
+        left: Math.max(8, anchorRect.left),
+        top: popTop,
+        width: 320,
+        transform: popTransform,
+        background: "rgba(20,20,22,0.96)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 16,
+        padding: 16,
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+        zIndex: 100,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <PopupSectionLabel>画质</PopupSectionLabel>
+      <PillGroup options={qualities} value={quality}
+        onChange={(v) => { onQualityChange(v); onClose(); }} />
+
+      <PopupSectionLabel style={{ marginTop: 16 }}>比例</PopupSectionLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4 }}>
+        {RATIO_OPTIONS.map((r) => (
+          <RatioButton key={r.v} ratio={r} active={aspect === r.v}
+            onClick={() => { onAspectChange(r.v); onClose(); }} />
+        ))}
+      </div>
+
+      <PopupSectionLabel style={{ marginTop: 16 }}>联网搜索</PopupSectionLabel>
+      <PillGroup options={["ON", "OFF"]} value={webSearch ? "ON" : "OFF"}
+        onChange={(v) => { onWebSearchChange(v === "ON"); onClose(); }} />
+    </div>
+  );
+  return createPortal(popup, document.body);
+}
+
+function PopupSectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.55)", marginBottom: 8, ...style }}>{children}</div>;
+}
+
+function PillGroup({ options = [], value, onChange }: { options?: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: 999, padding: 4 }}>
+      {options.map((o) => {
+        const active = o === value;
+        return (
+          <button key={o} data-properties-panel="1" onClick={() => onChange(o)} style={{
+            flex: 1, padding: "6px 0", border: "none", borderRadius: 999,
+            background: active ? "rgba(255,255,255,0.12)" : "transparent",
+            color: active ? "#fff" : "rgba(255,255,255,0.55)",
+            fontSize: "0.8125rem", fontWeight: active ? 500 : 400,
+            cursor: "pointer", transition: "all 0.15s ease",
+          }}>{o}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RatioButton({ ratio, active, onClick }: {
+  ratio: { v: string; w?: number; h?: number; isAdaptive?: boolean };
+  active: boolean; onClick: () => void;
+}) {
+  const MAX = 22;
+  let iconW = MAX, iconH = MAX;
+  if (!ratio.isAdaptive && ratio.w && ratio.h) {
+    if (ratio.w >= ratio.h) { iconW = MAX; iconH = MAX * ratio.h / ratio.w; }
+    else { iconH = MAX; iconW = MAX * ratio.w / ratio.h; }
+  }
+  return (
+    <button data-properties-panel="1" onClick={onClick} style={{
+      padding: "8px 0", border: "none", borderRadius: 8,
+      background: active ? "rgba(110,140,214,0.2)" : "transparent",
+      color: active ? "#fff" : "rgba(255,255,255,0.7)",
+      cursor: "pointer",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      transition: "all 0.15s ease",
+    }}>
+      <div style={{ height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {ratio.isAdaptive ? (
+          <span style={{ fontSize: 16, lineHeight: 1 }}>⛶</span>
+        ) : (
+          <div style={{
+            width: iconW, height: iconH,
+            border: `1.5px solid ${active ? "#fff" : "currentColor"}`,
+            borderRadius: 2,
+          }} />
+        )}
+      </div>
+      <div style={{ fontSize: "0.6875rem" }}>{ratio.v}</div>
+    </button>
   );
 }
 
