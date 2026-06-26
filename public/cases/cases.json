@@ -1,0 +1,24 @@
+{
+  "_instructions": "把你 12 个视频的元数据填进去, video 字段填 /cases/xxx.mp4, thumbnail 填 /cases/thumbnails/xxx.jpg (可选, 不填就用视频第一帧). creator 填你店铺名/真名都行.",
+  "_naming": "视频文件命名建议: c01-标题关键词.mp4 / c02-标题关键词.mp4 ... 顺序按展示顺序来.",
+  "cases": [
+    {
+      "id": "c1",
+      "creator": "即客传媒 · 天禧派",
+      "title": "案例 1 标题",
+      "category": "品牌广告",
+      "hue": 220,
+      "video": "/cases/c01-xxx.mp4",
+      "thumbnail": ""
+    },
+    {
+      "id": "c2",
+      "creator": "即客传媒 · 天禧派",
+      "title": "案例 2 标题",
+      "category": "流量破圈",
+      "hue": 260,
+      "video": "/cases/c02-xxx.mp4",
+      "thumbnail": ""
+    }
+  ]
+}

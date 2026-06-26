@@ -127,8 +127,10 @@ export default function SiteNav() {
         top: 0,
         zIndex: 100,
         background: "var(--overlay)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        // v6: 删 backdrop-filter 修椭圆 bug (Chrome/Blink 合成 bug —
+        // backdrop-filter 祖先 + 子元素 overflow:hidden + border-radius
+        // 会产生椭圆伪影。背景已经 var(--overlay) 半透明深色,
+        // 视觉上仍像玻璃, 只失去背后模糊。)
         borderBottom: "1px solid var(--border-light)",
       }}
     >

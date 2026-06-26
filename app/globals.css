@@ -80,6 +80,10 @@ img, svg, video { display: block; max-width: 100%; }
 
 /* ---------- 容器 ---------- */
 .container { max-width: var(--max-w); margin: 0 auto; padding: 0 var(--section-px); }
+/* v5 修复: 首页 3 屏对齐 — Hero/StartCreating/FeaturedCases 统一 1280px 居中
+   (2026-06-24 反馈 v5.1: 1200px 容器卡片视觉占比偏小,
+    恢复 1280px 跟原 v4 比例一致 — 1280px 视口下基本不留白, 仅 0px padding) */
+.container-narrow { max-width: 1280px; margin: 0 auto; padding: 0 var(--section-px); }
 .section { padding: var(--section-py) 0; background: var(--bg); }
 .section--gray { background: var(--bg-gray); }
 
@@ -104,8 +108,6 @@ img, svg, video { display: block; max-width: 100%; }
   letter-spacing: 0.02em;
   padding: 3px 9px;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   pointer-events: none;
 }
 

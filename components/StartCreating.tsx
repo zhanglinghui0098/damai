@@ -50,7 +50,7 @@ export default function StartCreating() {
 
   return (
     <section className="section" style={{ paddingTop: "0.5rem", paddingBottom: "2rem" }}>
-      <div className="container">
+      <div className="container-narrow">
         <div className="tiles-grid-5">
           {tiles.map((t, i) => (
             <Link

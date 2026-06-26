@@ -46,12 +46,29 @@ export async function POST(req: Request) {
   const setCookie = await createVerifyCookie(phone, result.code);
   const real = process.env.DAMI_SMS_REAL === "true";
 
+  // v5.11: 用 res.cookies.set 标准 API, 不再 res.headers.append("Set-Cookie", ...)
+  // 原因: Next.js 14 dev mode 下 res.headers.append 写 Set-Cookie 在浏览器 fetch response 里失效
+  //       → 浏览器 cookieStore 拿不到 cookie → 登录后 middleware 永远拿不到 session → 跳回 /login
+  // 解析 createVerifyCookie 返回的 Set-Cookie 字符串成 (name, value, options)
+  const m = setCookie.match(/^([^=]+)=([^;]*)(?:;\s*Path=([^;]+))?(?:;\s*HttpOnly)?(?:;\s*SameSite=([^;]+))?(?:;\s*Max-Age=(\d+))?/i);
+  const cookieName = m?.[1] || "damai.verify";
+  const cookieValue = m?.[2] || setCookie.split(';')[0].split('=').slice(1).join('=');
+  const cookiePath = m?.[3] || "/";
+  const cookieSameSite = (m?.[4]?.toLowerCase() || "lax") as "lax" | "strict" | "none";
+  const cookieMaxAge = parseInt(m?.[5] || "300", 10);
+
   const res = NextResponse.json({
     ok: true,
     provider: result.provider,
     // stub 模式返验证码给前端 (生产不返)
     devCode: real ? undefined : result.code,
   });
-  res.headers.append("Set-Cookie", setCookie);
+  res.cookies.set(cookieName, cookieValue, {
+    httpOnly: true,
+    sameSite: cookieSameSite,
+    secure: false, // dev mode: 不强制 Secure (http)
+    path: cookiePath,
+    maxAge: cookieMaxAge,
+  });
   return res;
 }

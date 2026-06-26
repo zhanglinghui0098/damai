@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Suspense } from "react";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import LoginModal from "@/components/LoginModal";
@@ -22,8 +23,10 @@ export default function RootLayout({
         <SiteNav />
         <main style={{ minHeight: "calc(100vh - 200px)" }}>{children}</main>
         <SiteFooter />
-        {/* 全局登录 modal — SiteNav 等派发 'damai:auth:open' 事件触发 */}
-        <LoginModal />
+        {/* 全局登录 modal — SiteNav 等派发 'damai:auth:open' 事件触发; Suspense 包裹因 LoginModal 用了 useSearchParams (Next.js 14 SSG 要求) */}
+        <Suspense fallback={null}>
+          <LoginModal />
+        </Suspense>
       </body>
     </html>
   );

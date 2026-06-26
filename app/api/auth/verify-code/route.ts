@@ -28,9 +28,18 @@ export async function POST(req: Request) {
 
   const v = await consumeVerify(phone, code, req.headers);
   if (!v.ok) {
+    // v5.11: 解析 clearCookie 字符串 + 用 res.cookies.set 标准 API
+    const m = v.clearCookie.match(/^([^=]+)=([^;]*)(?:;\s*Path=([^;]+))?(?:;\s*HttpOnly)?(?:;\s*SameSite=([^;]+))?(?:;\s*Max-Age=(\d+))?/i);
     const res = NextResponse.json({ error: v.reason }, { status: 400 });
-    // 失败也清 cookie
-    res.headers.append("Set-Cookie", v.clearCookie);
+    if (m) {
+      res.cookies.set(m[1], m[2] || "", {
+        httpOnly: true,
+        sameSite: (m[4]?.toLowerCase() || "lax") as "lax" | "strict" | "none",
+        secure: false,
+        path: m[3] || "/",
+        maxAge: parseInt(m[5] || "0", 10),
+      });
+    }
     return res;
   }
 
@@ -41,18 +50,28 @@ export async function POST(req: Request) {
   const from = (body.from ?? "").trim();
   const safeFrom = from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
 
+  // v5.11: 解析 clearCookie + 用 res.cookies.set 标准 API
+  const m = v.clearCookie.match(/^([^=]+)=([^;]*)(?:;\s*Path=([^;]+))?(?:;\s*HttpOnly)?(?:;\s*SameSite=([^;]+))?(?:;\s*Max-Age=(\d+))?/i);
   const res = NextResponse.json({
     ok: true,
     phone,
     tenantId,
     redirect: safeFrom,
   });
-  // 清 verify cookie + 写 session cookie
-  res.headers.append("Set-Cookie", v.clearCookie);
+  if (m) {
+    res.cookies.set(m[1], m[2] || "", {
+      httpOnly: true,
+      sameSite: (m[4]?.toLowerCase() || "lax") as "lax" | "strict" | "none",
+      secure: false,
+      path: m[3] || "/",
+      maxAge: parseInt(m[5] || "0", 10),
+    });
+  }
+  // 写 session cookie (标准 API)
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false, // dev mode
     path: "/",
     maxAge: 30 * 24 * 3600,
   });

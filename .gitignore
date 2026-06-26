@@ -8,11 +8,29 @@ node_modules
 # public/case/*.mp4
 # public/case/poster/*.jpg
 
+# 备份/历史文件 (不入 git, 已备份到 /volume1/10T/Hermes/backups/)
+*.bak-*
+*.ok-*
+*.v3-corrupted
+test*.txt
+
+# Codex CLI 装位置 (不是项目代码)
+codex-cli/
+
+# Canvas 生成的图 (不入 git, 公开访问走 cloudflared)
+public/canvas-output/
+
+# 编译产物
+.open-next/
+.vercel/
+
 # OS
 .DS_Store
 Thumbs.db
 
 # IDE
 .vscode
-.ideapublic/case/
+.idea
+public/case/
 public/case/poster/
+state/案例/  # case study 视频 (不入 git, 走 NAS 本地存档)

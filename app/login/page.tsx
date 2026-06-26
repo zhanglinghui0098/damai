@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // /login 全屏深色版 — middleware 拦截未登录访问时跳转过来
@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 type Mode = "phone" | "wechat";
 type Stage = "phone" | "code";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const from = search.get("from") || "/dashboard";
@@ -281,7 +281,14 @@ export default function LoginPage() {
                     改号
                   </button>
                 </p>
-                <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                    gap: 8,
+                    width: "100%",
+                  }}
+                >
                   {code.map((d, i) => (
                     <input
                       key={i}
@@ -297,7 +304,7 @@ export default function LoginPage() {
                       onPaste={onCodePaste}
                       disabled={verifying}
                       style={{
-                        flex: 1,
+                        minWidth: 0, /* v5.9: 防 6 个格子撑出登录卡 (grid 6 等分) */
                         height: 56,
                         textAlign: "center",
                         fontSize: "1.5rem",
@@ -472,5 +479,22 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// 外层 LoginPage — Suspense 包裹 LoginForm 因其用了 useSearchParams (Next.js 14 SSG 要求)
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "calc(100vh - 200px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: "#fff", fontSize: "0.875rem",
+      }}>
+        加载中…
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

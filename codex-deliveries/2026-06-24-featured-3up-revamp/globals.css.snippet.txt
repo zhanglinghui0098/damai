@@ -1,0 +1,173 @@
+/* ============================================================
+   v8: 三联屏 3D 视觉 (精选推荐重构)
+   - 纯黑背景, 无标题栏
+   - 整体场景 rotateX(6deg) 俯视 + 6s 上下漂浮
+   - 三块 16:9 卡, 中间前凸 translateZ(60px) scale(1.04)
+   - 左右屏 rotateY(±28deg) 向中心收拢, translateZ(-50px) scale(0.86)
+   - hover (任意屏): 该屏向前推 30px, 左右屏旋转角减到 22deg, 0.7s ease
+   - 底部蒙版: 透明 → 65% 黑 (侧卡) / 透明 → 20% 黑 (中间卡, 黑标题要可读)
+   - 文字: 青蓝色小标签 + 白色加粗标题 (中间屏标题为黑色)
+   ============================================================ */
+
+.featured-3d-scene {
+  position: relative;
+  background: #000;
+  padding: 80px 0 100px;
+  overflow: hidden;
+}
+
+.featured-3d-stage {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  margin: 0 auto;
+  perspective: 1600px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  animation: featured3d-float 6s ease-in-out infinite;
+}
+
+@keyframes featured3d-float {
+  0%, 100% { transform: rotateX(6deg) translateY(0); }
+  50%      { transform: rotateX(6deg) translateY(-10px); }
+}
+
+.featured-3d-card {
+  position: absolute;
+  top: 50%;
+  width: 36%;
+  max-width: 520px;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  color: #fff;
+  text-decoration: none;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  transition: transform 0.7s ease;
+  will-change: transform;
+}
+
+.featured-3d-center {
+  left: 32%;
+  margin-top: -160px;
+  z-index: 3;
+  transform: translateZ(60px) scale(1.04);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.featured-3d-left {
+  left: 6%;
+  margin-top: -160px;
+  z-index: 1;
+  transform: translateX(-12%) rotateY(28deg) translateZ(-50px) scale(0.86);
+}
+
+.featured-3d-right {
+  left: 58%;
+  margin-top: -160px;
+  z-index: 1;
+  transform: translateX(12%) rotateY(-28deg) translateZ(-50px) scale(0.86);
+}
+
+/* 底部蒙版: 侧卡 65% 黑, 中间卡 20% 黑 (黑标题要可读) */
+.featured-3d-left::after,
+.featured-3d-right::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.featured-3d-center::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.20) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 文字层 (左下角, 浮在蒙版之上) */
+.featured-3d-text {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 2;
+}
+
+.featured-3d-tag {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #5dd5fc;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.featured-3d-center .featured-3d-tag {
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+}
+
+.featured-3d-title {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  max-width: 90%;
+}
+
+/* 中间屏标题为黑色 (浅色背景) */
+.featured-3d-center .featured-3d-title {
+  color: #000;
+  text-shadow: none;
+}
+
+/* === Hover 交互: 任意屏 hover → 该屏前推 30px, 左右屏旋转角减到 22deg === */
+.featured-3d-stage:has(.featured-3d-left:hover) .featured-3d-left {
+  transform: translateX(-12%) rotateY(22deg) translateZ(-20px) scale(0.86);
+}
+.featured-3d-stage:has(.featured-3d-left:hover) .featured-3d-right {
+  transform: translateX(12%) rotateY(-22deg) translateZ(-50px) scale(0.86);
+}
+
+.featured-3d-stage:has(.featured-3d-right:hover) .featured-3d-right {
+  transform: translateX(12%) rotateY(-22deg) translateZ(-20px) scale(0.86);
+}
+.featured-3d-stage:has(.featured-3d-right:hover) .featured-3d-left {
+  transform: translateX(-12%) rotateY(22deg) translateZ(-50px) scale(0.86);
+}
+
+.featured-3d-stage:has(.featured-3d-center:hover) .featured-3d-center {
+  transform: translateZ(90px) scale(1.04);
+}
+.featured-3d-stage:has(.featured-3d-center:hover) .featured-3d-left {
+  transform: translateX(-12%) rotateY(22deg) translateZ(-50px) scale(0.86);
+}
+.featured-3d-stage:has(.featured-3d-center:hover) .featured-3d-right {
+  transform: translateX(12%) rotateY(-22deg) translateZ(-50px) scale(0.86);
+}
+
+/* Reduced motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .featured-3d-stage { animation: none; }
+  .featured-3d-card { transition: none; }
+}
+
+/* 移动端简化 */
+@media (max-width: 1024px) {
+  .featured-3d-stage { height: 240px; }
+  .featured-3d-card { width: 50%; max-width: 320px; }
+  .featured-3d-left, .featured-3d-center, .featured-3d-right { margin-top: -72px; }
+  .featured-3d-left   { left: 0%;  transform: translateX(0) rotateY(15deg) translateZ(-30px) scale(0.82); }
+  .featured-3d-center { left: 25%; transform: translateZ(20px) scale(1); }
+  .featured-3d-right  { left: 50%; transform: translateX(0) rotateY(-15deg) translateZ(-30px) scale(0.82); }
+  .featured-3d-scene  { padding: 40px 0 60px; }
+}

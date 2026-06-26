@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import HeroAgent from "./HeroAgent";
 import StartCreating from "./StartCreating";
 import FeaturedCases from "./FeaturedCases";
@@ -14,7 +15,7 @@ export default function Hero() {
           textAlign: "center",
         }}
       >
-        <div className="container">
+        <div className="container-narrow">
           <h1
             style={{
               fontSize: "clamp(2.25rem, 5vw, 3.5rem)",
@@ -27,7 +28,10 @@ export default function Hero() {
           >
             今天准备好大脉了吗?
           </h1>
-          <HeroAgent />
+          {/* Suspense 包裹因 HeroAgent 用了 useSearchParams (Next.js 14 SSG 要求); fallback=null 让标题先显示, agent 流式注入 */}
+          <Suspense fallback={null}>
+            <HeroAgent />
+          </Suspense>
         </div>
       </section>
 

@@ -65,16 +65,18 @@ const NODE_SPECS: Record<NodeType, NodeSpec> = {
     label: "图片",
     iconChar: "▣",
     color: "#a1a1aa",
+    // 2026-06-25: 只留 1 个 Ark 真实可用的模型 (UI 显示名 = Ark 模型名, 不做映射)
+    // 之前 ["即梦", "Nano Banana Pro"] 都是 UI 别名, Ark 端 404
     models: [
-      { id: "即梦", cost: 8 },
-      { id: "Nano Banana Pro", cost: 12 },
+      { id: "doubao-seedream-5-0-260128", cost: 12 },
     ],
     aspects: ["自适应", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"],
     qualities: ["1K", "2K", "4K"],
     hasVoiceInput: true,
-    inputs: [],
+    // 2026-06-25 04:xx: 加 input 端口 (接上游 image 节点的 outputUrl 当参考图)
+    inputs: [{ id: "in", label: "素材", type: "image" }],
     outputs: [{ id: "out", label: "image", type: "image" }],
-    defaultData: { model: "Nano Banana Pro", aspect: "16:9", quality: "4K", quantity: 4, prompt: "", voiceInput: false },
+    defaultData: { model: "doubao-seedream-5-0-260128", aspect: "16:9", quality: "4K", quantity: 4, prompt: "", voiceInput: false },
   },
   "video-gen": {
     label: "视频",
@@ -146,6 +148,12 @@ const DAMAI_KEYFRAMES = `
   0%   { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* 2026-06-25 09:xx: 运行按钮蓝色脉冲闪烁 (node.status === "running") */
+@keyframes damaiRunPulse {
+  0%   { transform: scale(1);    box-shadow: 0 4px 12px rgba(110,140,214,0.4); }
+  50%  { transform: scale(1.18); box-shadow: 0 4px 20px rgba(110,140,214,0.85); }
+  100% { transform: scale(1);    box-shadow: 0 4px 12px rgba(110,140,214,0.4); }
+}
 `;
 
 // 节点尺寸常量 (TapNow 风格: 圆角卡片 + 居中大图标)
@@ -183,6 +191,7 @@ function _mkEdge(id: string, from: string, fromPort: string, to: string, toPort:
   return { id, fromNode: from, fromPort, toNode: to, toPort };
 }
 const _tOut: Port[] = [{ id: "out", label: "text", type: "text" }];
+const _iIn: Port[] = [{ id: "in", label: "素材", type: "image" }];
 const _iOut: Port[] = [{ id: "out", label: "image", type: "image" }];
 const _vgIn: Port[] = [
   { id: "in", label: "素材", type: "image" },
@@ -208,7 +217,8 @@ function templateStarter(id: string): { nodes: CanvasNode[]; edges: Edge[] } | n
       return {
         nodes: [
           _mkNode("c1", "text", 80, 160, { ...NODE_SPECS.text.defaultData, prompt: "客户证言文案" }, [], _tOut),
-          _mkNode("c2", "image", 80, 360, { ...NODE_SPECS.image.defaultData, prompt: "客户家实景照片" }, [], _iOut),
+          // 06-26: 修复 image 节点 inputs=[] 导致无法接收上游连线（图生图断路）
+          _mkNode("c2", "image", 80, 360, { ...NODE_SPECS.image.defaultData, prompt: "客户家实景照片" }, _iIn, _iOut),
           _mkNode("c3", "video-gen", 440, 240, { ...NODE_SPECS["video-gen"].defaultData, mode: "参考图片", duration: 8 }, _vgIn, _vgOut),
           _mkNode("c4", "audio-gen", 440, 460, { ...NODE_SPECS["audio-gen"].defaultData, prompt: "客户讲述购买体验" }, [], _agOut),
           _mkNode("c5", "merge", 800, 320, { ...NODE_SPECS.merge.defaultData }, _mgIn, _mgOut),
@@ -216,6 +226,8 @@ function templateStarter(id: string): { nodes: CanvasNode[]; edges: Edge[] } | n
         ],
         edges: [
           _mkEdge("ce1", "c1", "out", "c3", "in"),
+          // 06-26: 补上 image→video-gen 连线（图生图/图生视频）
+          _mkEdge("ce2", "c2", "out", "c3", "in"),
           _mkEdge("ce3", "c3", "out", "c5", "in"),
           _mkEdge("ce5", "c5", "out", "c6", "in"),
         ],
@@ -242,12 +254,15 @@ function templateStarter(id: string): { nodes: CanvasNode[]; edges: Edge[] } | n
       return {
         nodes: [
           _mkNode("d1", "text", 80, 160, { ...NODE_SPECS.text.defaultData, prompt: "产品文案" }, [], _tOut),
-          _mkNode("d2", "image", 80, 360, { ...NODE_SPECS.image.defaultData, prompt: "产品图" }, [], _iOut),
+          // 06-26: 修复 image 节点 inputs=[] 导致无法接收上游连线（图生图断路）
+          _mkNode("d2", "image", 80, 360, { ...NODE_SPECS.image.defaultData, prompt: "产品图" }, _iIn, _iOut),
           _mkNode("d3", "video-gen", 440, 240, { ...NODE_SPECS["video-gen"].defaultData, mode: "参考图片", duration: 10 }, _vgIn, _vgOut),
           _mkNode("d4", "output", 800, 240, { ...NODE_SPECS.output.defaultData }, _opIn, []),
         ],
         edges: [
           _mkEdge("de1", "d1", "out", "d3", "in"),
+          // 06-26: 补上 image→video-gen 连线（图生图/图生视频）
+          _mkEdge("de2", "d2", "out", "d3", "in"),
         ],
       };
     default:
@@ -266,31 +281,20 @@ export default function CanvasEditor({
   template?: string;
 }) {
   // ---------- state ----------
-  const [nodes, setNodes] = useState<CanvasNode[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem(`damai.canvas.${projectId}`);
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    if (template) {
-      const tpl = templateStarter(template);
-      if (tpl) return tpl.nodes;
-    }
-    return [];
-  });
+  // ⚠️ 不能在 useState lazy initializer 里读 localStorage / 应用 template:
+  //    SSR 时 typeof window === "undefined" → return []
+  //    Client hydration 时读 localStorage → 返回保存的 nodes
+  //    两边不一致 → React hydration failed error
+  //    修复: 初始值统一 [], mount 后用 useEffect 加载 (见下方自动保存之前)
+  const [nodes, setNodes] = useState<CanvasNode[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
-  const [edges, setEdges] = useState<Edge[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem(`damai.canvas.${projectId}.edges`);
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    if (template) {
-      const tpl = templateStarter(template);
-      if (tpl) return tpl.edges;
-    }
-    return [];
-  });
+  // 06-26: ref 保持 nodes/edges 最新值，避免 runOneNode 等异步函数读取 stale closure
+  const nodesRef = useRef<CanvasNode[]>(nodes);
+  const edgesRef = useRef<Edge[]>(edges);
+  // 每次 render 同步 ref（不触发重渲染，但保证 async 回调读到最新）
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, setPending] = useState<{ fromNode: string; fromPort: string; mouseX: number; mouseY: number } | null>(null);
@@ -310,6 +314,34 @@ export default function CanvasEditor({
   const router = useRouter();
   const goHome = () => router.push("/");
   const goAgent = () => router.push("/?focus=agent");
+
+  // ---------- mount: 从 localStorage 加载 / 应用 template (避免 hydration 不匹配) ----------
+  useEffect(() => {
+    // 优先从 localStorage 恢复 (避免 useState lazy initializer 在 client 与 SSR 不一致)
+    let loaded = false;
+    try {
+      const rawN = localStorage.getItem(`damai.canvas.${projectId}`);
+      if (rawN) {
+        setNodes(JSON.parse(rawN));
+        loaded = true;
+      }
+    } catch {}
+    try {
+      const rawE = localStorage.getItem(`damai.canvas.${projectId}.edges`);
+      if (rawE) {
+        setEdges(JSON.parse(rawE));
+        loaded = true;
+      }
+    } catch {}
+    // localStorage 没数据 + 有 template → 应用模板启动
+    if (!loaded && template) {
+      const tpl = templateStarter(template);
+      if (tpl) {
+        setNodes(tpl.nodes);
+        setEdges(tpl.edges);
+      }
+    }
+  }, [projectId, template]);
 
   // ---------- 自动保存 (500ms debounce) ----------
   useEffect(() => {
@@ -511,25 +543,113 @@ export default function CanvasEditor({
     setPending(null);
   }
 
-  // ---------- 单节点运行 (mock) ----------
-  function runOneNode(nodeId: string) {
+  // ---------- 单节点运行 ----------
+  // image 节点 → POST /api/canvas/run-image (真实 Ark 调用)
+  // 其他 type (text/video-gen/audio-gen/merge/output) → mock
+  // 2026-06-25: 补回 API 调用 + 错误处理 (Canvas 06-23 误覆盖回 v3 后恢复)
+  async function runOneNode(nodeId: string) {
+    // 06-26: 用 ref 读最新值，避免异步 fetch 期间 state 已过期的 stale closure 问题
+    const currentNodes = nodesRef.current;
+    const currentEdges = edgesRef.current;
+    const target = currentNodes.find((n) => n.id === nodeId);
+    if (!target) return;
+
     setNodes((arr) =>
       arr.map((n) => (n.id === nodeId ? { ...n, status: "running" as NodeStatus } : n))
     );
-    setTimeout(() => {
+
+    try {
+      if (target.type === "image") {
+        // 收集 upstream image referenceUrls (上游 image 节点的输出图 → 图生图)
+        const refEdges = currentEdges.filter((e) => e.toNode === nodeId);
+        const referenceUrls: string[] = [];
+        for (const e of refEdges) {
+          const fromNode = currentNodes.find((n) => n.id === e.fromNode);
+          // 优先用用户在 overlay 选中的图, 而不是默认 outputUrl
+          // 06-26: 相对路径转绝对 URL (origin + path), 让服务端 fetch + Ark 都能拉到图
+          // 之前传 `/canvas-output/xxx.jpeg` 是相对路径, Node fetch() 解析不了, 静默 fallback 后 Ark 也拿不到
+          const toAbs = (u?: string) =>
+            !u ? null : u.startsWith("/") ? `${window.location.origin}${u}` : u;
+          const outUrl = toAbs(fromNode?.data?.selectedOutputUrl || fromNode?.data?.outputUrl);
+          if (outUrl) referenceUrls.push(outUrl);
+        }
+        console.log("[damai] image node", nodeId, "referenceUrls:", referenceUrls);
+
+        const res = await fetch("/api/canvas/run-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: target.data.prompt || "",
+            model: target.data.model,
+            aspect: target.data.aspect,
+            quality: target.data.quality,
+            quantity: target.data.quantity ?? 1,
+            referenceUrls: referenceUrls.length ? referenceUrls : undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "生成失败");
+
+        setNodes((arr) =>
+          arr.map((n) => (n.id === nodeId ? {
+            ...n,
+            status: "done" as NodeStatus,
+            data: {
+              ...n.data,
+              outputUrl: data.outputUrl,
+              outputUrls: data.outputUrls || [data.outputUrl],
+              selectedOutputUrl: data.outputUrl, // 默认选第一张
+              errorMsg: undefined,               // 清掉旧错误
+              // 06-26: 记录本次是否使用了参考图（供 UI 展示图生图标识）
+              refCount: referenceUrls.length,
+            },
+          } : n))
+        );
+        return;
+      }
+
+      // 其他 type: 保持 mock (1500ms 后 done)
+      await new Promise<void>((r) => setTimeout(r, 1500));
       setNodes((arr) =>
         arr.map((n) => (n.id === nodeId ? { ...n, status: "done" as NodeStatus } : n))
       );
-    }, 1500);
+    } catch (e: any) {
+      console.error("[runOneNode]", nodeId, e);
+      setNodes((arr) =>
+        arr.map((n) => (n.id === nodeId ? {
+          ...n,
+          status: "error" as NodeStatus,
+          data: { ...n.data, errorMsg: e?.message || "生成失败" },
+        } : n))
+      );
+    }
   }
 
   // ---------- 提示词优化 (mock) ----------
-  // function optimizePrompt TEMPORARILY DISABLED for syntax debugging
+  // 2026-06-25: 加回 stub (HEAD 里被 TEMPORARILY DISABLED 注释掉, 但 onOptimizePrompt 还在调)
+  async function optimizePrompt(_nodeId: string, currentPrompt: string) {
+    // TODO: 接真实 LLM 优化 (当前是占位)
+    return currentPrompt;
+  }
 
   const selected = nodes.find((n) => n.id === selectedId) || null;
 
-  // TEST: upstreamNodes replaced with empty for now
-  const upstreamNodes: any[] = [];
+  // 06-26: 修复 upstreamNodes — 原来被硬编码为空数组 (TEST stub)，导致 @引用和图生图反馈全部失效
+  // 根据 edges 找到当前选中节点的所有上游节点（供 PropertiesPanel 的 @提及 + 图生图参考图展示）
+  const upstreamNodes: { id: string; label: string; type: string; refUrl?: string } = useMemo(() => {
+    if (!selectedId) return [];
+    const incomingEdges = edges.filter((e) => e.toNode === selectedId);
+    return incomingEdges
+      .map((e) => {
+        const fromNode = nodes.find((n) => n.id === e.fromNode);
+        if (!fromNode) return null;
+        const spec = NODE_SPECS[fromNode.type];
+        // 携带上游节点的输出图 URL（用于图生图预览）
+        const refUrl = fromNode?.data?.selectedOutputUrl || fromNode?.data?.outputUrl;
+        return { id: fromNode.id, label: `${spec.label} #${fromNode.id.slice(0, 4)}`, type: fromNode.type, refUrl };
+      })
+      .filter(Boolean) as any[];
+  }, [selectedId, nodes, edges]);
 
   return (
     <>
@@ -650,20 +770,41 @@ export default function CanvasEditor({
             })()}
           </svg>
 
-          {nodes.map((n) => (
+          {nodes.map((n) => {
+            // 06-26: 计算每个节点的入边数量（用于图生图 badge 显示）
+            const incomingCount = edges.filter((e) => e.toNode === n.id).length;
+            return (
             <NodeView
               key={n.id}
               node={n}
               selected={selectedId === n.id}
               hovered={hoveredNodeId === n.id}
               dragTargetInput={dragTargetInput}
+              incomingCount={incomingCount}
               onMouseDown={(e) => startDrag(e, n)}
               onMouseEnter={() => setHoveredNodeId(n.id)}
               onMouseLeave={() => setHoveredNodeId((id) => (id === n.id ? null : id))}
               onPortMouseDown={(e, p, isInput) => onPortMouseDown(e, p, isInput, n)}
               onRun={() => runOneNode(n.id)}
+              onUpdate={(data) => setNodes((arr) => arr.map((nn) => (nn.id === n.id ? { ...nn, data } : nn)))}
+              onPickImage={(idx) => {
+                const urls: string[] = n.data.outputUrls?.length
+                  ? n.data.outputUrls
+                  : n.data.outputUrl
+                    ? [n.data.outputUrl]
+                    : [];
+                const url = urls[idx] || n.data.outputUrl;
+                setNodes((arr) => arr.map((nn) => {
+                  if (nn.id !== n.id) return nn;
+                  return {
+                    ...nn,
+                    data: { ...nn.data, selectedIdx: idx, outputUrl: url, selectedOutputUrl: url },
+                  };
+                }));
+              }}
             />
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1041,25 +1182,43 @@ function NodeView({
   selected,
   hovered,
   dragTargetInput,
+  incomingCount = 0,
   onMouseDown,
   onMouseEnter,
   onMouseLeave,
   onPortMouseDown,
   onRun,
+  onUpdate,
+  onPickImage,
 }: {
   node: CanvasNode;
   selected: boolean;
   hovered: boolean;
   dragTargetInput: { nodeId: string; portId: string } | null;
+  incomingCount?: number;  // 06-26: 上游连线数量（图生图 badge）
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   onPortMouseDown: (e: React.MouseEvent, p: Port, isInput: boolean) => void;
   onRun?: () => void;
+  onUpdate?: (data: Record<string, any>) => void;
+  // 2026-06-25 04:xx: 选图回调 (image 节点点 overlay 中某图触发)
+  onPickImage?: (idx: number) => void;
 }) {
   const spec = NODE_SPECS[node.type];
   const h = nodeHeight(node);
   const isAI = node.type !== "merge" && node.type !== "output";
+  // 2026-06-25 04:xx: image 节点走"裸图无外框" TapNow 风格
+  const isImage = node.type === "image";
+  // 选图 overlay 状态 (image 节点本地 state)
+  const [picking, setPicking] = useState(false);
+  const imgs: string[] =
+    node.data.outputUrls?.length
+      ? node.data.outputUrls
+      : node.data.outputUrl
+        ? [node.data.outputUrl]
+        : [];
+  const qty = Number(node.data.quantity) || 1;
 
   return (
     <div
@@ -1073,14 +1232,20 @@ function NodeView({
         top: node.y,
         width: NODE_W,
         height: h,
-        background: "#18181b",
-        border: selected
-          ? "1.5px solid rgba(110,140,214,0.7)"
-          : "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 16,
-        boxShadow: selected
-          ? "0 0 0 1px rgba(110,140,214,0.2), 0 8px 32px rgba(0,0,0,0.5)"
-          : "0 2px 8px rgba(0,0,0,0.3)",
+        // 2026-06-25 04:xx: image 节点走"裸图无外框" TapNow 风格
+        // 其他节点保持原深色圆角卡片 (06-25 16:xx: 底色 → #1A1A1A 中性灰)
+        background: isImage ? "transparent" : "#1A1A1A",
+        border: isImage
+          ? "none"
+          : selected
+            ? "1.5px solid rgba(110,140,214,0.7)"
+            : "1px solid rgba(255,255,255,0.08)",
+        borderRadius: isImage ? 0 : 16,
+        boxShadow: isImage
+          ? "none"
+          : selected
+            ? "0 0 0 1px rgba(110,140,214,0.2), 0 8px 32px rgba(0,0,0,0.5)"
+            : "0 2px 8px rgba(0,0,0,0.3)",
         cursor: "grab",
         userSelect: "none",
         display: "flex",
@@ -1088,54 +1253,225 @@ function NodeView({
         overflow: "visible",
       }}
     >
-      {/* 顶部 label */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          height: NODE_HEADER_H,
-          padding: "0 12px",
-          fontSize: "0.75rem",
-          fontWeight: 500,
-          color: "rgba(255,255,255,0.55)",
-          letterSpacing: "0.02em",
-          position: "relative",
-        }}
-      >
-        <span style={{ fontSize: "0.875rem", opacity: 0.7 }}>{spec.iconChar}</span>
-        <span>{spec.label}</span>
-        {node.status === "running" && <StatusPill color="#0071e3">运行中</StatusPill>}
-        {node.status === "done" && <StatusPill color="#10b981">完成</StatusPill>}
-        {node.status === "error" && <StatusPill color="#c75d2c">错误</StatusPill>}
-      </div>
+      {/* 顶部 label: image 节点不渲染 (TapNow 风格: 裸图无 header) */}
+      {!isImage && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            height: NODE_HEADER_H,
+            padding: "0 12px",
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            color: "rgba(255,255,255,0.55)",
+            letterSpacing: "0.02em",
+            position: "relative",
+          }}
+        >
+          <span style={{ fontSize: "0.875rem", opacity: 0.7 }}>{spec.iconChar}</span>
+          <span>{spec.label}</span>
+          {node.status === "running" && <StatusPill color="#0071e3">运行中</StatusPill>}
+          {node.status === "done" && <StatusPill color="#10b981">完成</StatusPill>}
+          {node.status === "error" && <StatusPill color="#c75d2c">错误</StatusPill>}
+        </div>
+      )}
 
-      {/* 中间区域 (大图标占位) */}
+      {/* 中间区域: image 节点显示真实生成图, 其他显示 icon */}
       <div
         style={{
           flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           position: "relative",
-          padding: 12,
+          padding: isImage ? 0 : 8,
+          overflow: "hidden",
         }}
       >
-        <NodeIconPlaceholder type={node.type} />
+        {isImage && imgs.length > 0 ? (
+          // 2026-06-25 04:xx: image 节点裸图 (出图后), 主图 = data.selectedIdx || 0
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imgs[Number(node.data.selectedIdx) || 0]}
+              alt="output"
+              draggable={false}
+              style={{
+                maxHeight: 220,
+                maxWidth: "100%",
+                objectFit: "contain",
+                borderRadius: 4,
+                display: "block",
+              }}
+            />
+          </div>
+        ) : isImage ? (
+          // 2026-06-25 09:xx: 没出图前 — 占位虚线方框 + 大图 icon + 等待文字
+          <div
+            style={{
+              width: NODE_W - 4,
+              height: 200,
+              margin: 2,
+              border: "2px dashed rgba(255,255,255,0.15)",
+              borderRadius: 12,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "rgba(255,255,255,0.4)",
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <ImageIcon />
+            <div style={{ marginTop: 8, fontSize: "0.75rem", color: "rgba(255,255,255,0.45)" }}>
+              {node.status === "running" ? "生成中..." : "等待生成"}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <NodeIconPlaceholder type={node.type} />
+          </div>
+        )}
+
+        {/* 2026-06-25 09:xx: hover 多张时下方堆叠"土碟" (在主图下面, 角度小, 尺寸按 aspect)
+            - z-index: 0 (主图 z 自然高, 视觉上土碟在图下)
+            - 角度: ±3° (比之前 ±4-10° 小)
+            - 尺寸: 按 node.data.aspect (16:9 / 9:16 / 1:1 ...) */}
+        {isImage && hovered && imgs.length >= 2 && (() => {
+          // 按 image aspect 计算土碟尺寸
+          const aspect = node.data.aspect || "16:9";
+          const [aw, ah] = aspect.split(":").map(Number);
+          const tileH = 200;  // 主图 maxHeight
+          const tileW = Math.round(tileH * (aw / ah));
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                pointerEvents: "none",
+                overflow: "visible",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {/* 土碟渲染在主图下面 (z=0), 主图 z 自然高 (默认后渲染) */}
+              {Array.from({ length: Math.min(imgs.length - 1, 4) }).map((_, i) => {
+                const idx = i + 1; // 1..N
+                // 角度 ±3° 内 (一左一右交替, 避免单调)
+                const angle = (idx % 2 === 0 ? -1 : 1) * (2 + idx * 1.2);
+                // 错落: 向右下偏移 (土碟在主图右下角堆叠)
+                const offX = idx * 14;
+                const offY = idx * 4;
+                const opacity = Math.max(0.35 - i * 0.08, 0.12);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      width: tileW,
+                      height: tileH,
+                      borderRadius: 6,
+                      // 06-25 16:xx: 蓝紫渐变 → 中性灰渐变 (更接近截图设计)
+                      background: `linear-gradient(135deg, rgba(60,60,68,${opacity * 0.9}), rgba(40,40,48,${opacity * 0.7}))`,
+                      border: `1px solid rgba(255,255,255,${opacity * 0.6})`,
+                      boxShadow: `0 4px 14px rgba(0,0,0,${opacity * 1.2})`,
+                      transform: `translate(${offX}px, ${offY}px) rotate(${angle}deg)`,
+                      zIndex: 0, // 在主图下面
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* 2026-06-25 04:xx: image 节点多张时右上角 "× N" 浮 chip, 点 chip 弹全屏 overlay 选图 */}
+        {isImage && qty > 1 && imgs.length > 1 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setPicking(true);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="选图"
+            style={{
+              position: "absolute",
+              top: 4,
+              right: 4,
+              zIndex: 5,
+              padding: "2px 8px",
+              background: "rgba(0,0,0,0.7)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 999,
+              color: "#fff",
+              fontSize: "0.6875rem",
+              fontWeight: 500,
+              cursor: "pointer",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          >
+            × {qty}
+          </button>
+        )}
+
+        {/* 06-26: 图生图 badge — image 节点有上游连线时左上角显示 */}
+        {isImage && incomingCount > 0 && (
+          <div
+            title={`已连接 ${incomingCount} 个上游参考源 · 运行后将启用图生图模式`}
+            style={{
+              position: "absolute",
+              top: 4,
+              left: 4,
+              zIndex: 5,
+              padding: "2px 8px",
+              background: "rgba(110,140,214,0.2)",
+              border: "1px solid rgba(110,140,214,0.35)",
+              borderRadius: 999,
+              color: "#6e8cd6",
+              fontSize: "0.625rem",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            <span>🔗</span>
+            <span>图生图</span>
+            {incomingCount > 1 && <span style={{ opacity: 0.7 }}>×{incomingCount}</span>}
+          </div>
+        )}
       </div>
 
       {/* 端口层 (绝对定位在卡片边缘) */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
         {node.inputs.map((p) => {
           const hl = dragTargetInput?.nodeId === node.id && dragTargetInput?.portId === p.id;
+          // 06-26: image 节点的输入端口常显（图生图核心交互入口），不再仅限 hover
+          // 其他节点 + image 输出端口保持 hover 显示
+          const isImageInput = isImage && p.type === "image";
+          const portVisible = hovered || isImageInput;
           return (
             <PortDot
               key={p.id}
               port={p}
               node={node}
               isInput
-              visible={hovered}
+              visible={portVisible}
               highlighted={hl}
               onMouseDown={(e) => onPortMouseDown(e, p, true)}
             />
@@ -1147,6 +1483,7 @@ function NodeView({
             port={p}
             node={node}
             isInput={false}
+            // 2026-06-25 09:xx: 撤回永远显示, 改回 hover 才显示
             visible={hovered}
             highlighted={false}
             onMouseDown={(e) => onPortMouseDown(e, p, false)}
@@ -1154,8 +1491,9 @@ function NodeView({
         ))}
       </div>
 
-      {/* 右下角运行按钮 (AI 节点) */}
-      {onRun && isAI && (
+      {/* 右下角运行按钮 (AI 节点)
+          2026-06-25 09:xx: image 节点永远显示 (不只 hover), running 时蓝色闪烁, 出图后消失 */}
+      {onRun && isAI && !(isImage && imgs.length > 0) && (
         <button
           data-run-node="1"
           onClick={(e) => { e.stopPropagation(); onRun(); }}
@@ -1177,10 +1515,109 @@ function NodeView({
             alignItems: "center",
             justifyContent: "center",
             boxShadow: "0 4px 12px rgba(110,140,214,0.4)",
+            // 2026-06-25 09:xx: image 节点永远显示; running 时蓝色脉冲闪烁
+            opacity: isImage || node.status === "running" ? 1 : (hovered ? 1 : 0),
+            animation: node.status === "running" ? "damaiRunPulse 1.1s ease-in-out infinite" : "none",
           }}
         >
           ▶
         </button>
+      )}
+
+      {/* 2026-06-25 04:xx: image 节点多张时全屏选图 overlay (点 chip 触发) */}
+      {isImage && picking && imgs.length > 1 && (
+        <div
+          onClick={(e) => {
+            // 点空白处关闭
+            if (e.target === e.currentTarget) setPicking(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 20,
+            cursor: "pointer",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 16,
+              padding: 24,
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+            }}
+          >
+            {imgs.map((url, idx) => {
+              const isSel = Number(node.data.selectedIdx) === idx;
+              return (
+                <div
+                  key={url + idx}
+                  onClick={() => {
+                    onPickImage?.(idx);
+                    setPicking(false);
+                  }}
+                  style={{
+                    position: "relative",
+                    cursor: "pointer",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    border: isSel
+                      ? "3px solid #6e8cd6"
+                      : "1px solid rgba(255,255,255,0.15)",
+                    boxShadow: isSel
+                      ? "0 0 0 2px rgba(110,140,214,0.4)"
+                      : "0 4px 16px rgba(0,0,0,0.5)",
+                    transition: "all 0.15s",
+                    background: "#000",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`选图 ${idx + 1}`}
+                    draggable={false}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      maxHeight: "70vh",
+                      objectFit: "contain",
+                      display: "block",
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          {/* 关闭按钮 */}
+          <button
+            onClick={() => setPicking(false)}
+            style={{
+              position: "absolute",
+              top: 24,
+              right: 24,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
+              fontSize: "1.25rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            title="关闭"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
@@ -1223,6 +1660,73 @@ function NodeIconPlaceholder({ type }: { type: NodeType }) {
     default:
       return null;
   }
+}
+
+// 节点内图片网格: 1 张大图 / 2 张 1×2 / 3-4 张 2×2
+// 2026-06-25: image 节点跑完后, 中间区域显示真实生成图, 多张时点击选图
+function NodeImageGrid({
+  urls,
+  selectedUrl,
+  onSelect,
+}: {
+  urls: string[];
+  selectedUrl?: string;
+  onSelect: (url: string) => void;
+}) {
+  if (urls.length === 0) return null;
+  // 1 张: 1 列; 2-4 张: 2 列 (2 张 → 1×2, 3-4 张 → 2×2)
+  const cols = urls.length === 1 ? 1 : 2;
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gap: 4,
+        width: "100%",
+        height: "100%",
+      }}
+    >
+      {urls.map((url, i) => {
+        const isSelected = url === selectedUrl;
+        return (
+          <div
+            key={url + i}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(url);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              cursor: "pointer",
+              borderRadius: 6,
+              overflow: "hidden",
+              border: isSelected
+                ? "2px solid #6e8cd6"
+                : "1px solid rgba(255,255,255,0.08)",
+              boxShadow: isSelected ? "0 0 0 1px rgba(110,140,214,0.3)" : "none",
+              transition: "all 0.15s",
+              background: "#000",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt={`output ${i + 1}`}
+              loading="lazy"
+              draggable={false}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function ImageIcon() {
@@ -1291,19 +1795,19 @@ function PortDot({
         borderRadius: "50%",
         background: highlighted
           ? "rgba(110,140,214,0.95)"
-          : "#0a0a0a",
+          : "#1A1A1A",
         border: highlighted
           ? "1.5px solid rgba(140,220,160,1)"
-          : "1.5px solid rgba(255,255,255,0.45)",
+          : "1.5px solid rgba(255,255,255,0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: highlighted ? "#fff" : "rgba(255,255,255,0.72)",
-        fontSize: "0.875rem",
+        color: highlighted ? "#fff" : "rgba(255,255,255,0.9)",
+        fontSize: "1rem",
+        fontWeight: 200,
         cursor: baseCursor,
         pointerEvents: "auto",
         lineHeight: 1,
-        fontWeight: 300,
         zIndex: 3,
         opacity: visible || highlighted ? 1 : 0,
         transform: highlighted
@@ -1313,7 +1817,7 @@ function PortDot({
         animation: visible && !highlighted ? "damaiPortBreath 1.6s ease-in-out infinite alternate" : "none",
         boxShadow: highlighted
           ? "0 0 0 5px rgba(140,220,160,0.18), 0 0 16px rgba(140,220,160,0.55)"
-          : visible ? "0 0 0 3px rgba(110,140,214,0.12)" : "none",
+          : visible ? "0 0 0 3px rgba(255,255,255,0.06)" : "none",
       }}
     >
       +
@@ -1557,7 +2061,7 @@ function PropertiesPanel({
   node: CanvasNode;
   zoom: number;
   scroll: { left: number; top: number };
-  upstreamNodes: { id: string; label: string; type: string }[];
+  upstreamNodes: { id: string; label: string; type: string; refUrl?: string }[];
   onChange: (data: Record<string, any>) => void;
   onRun: () => void;
   onOptimizePrompt: () => void;
@@ -1839,6 +2343,58 @@ function PropertiesPanel({
               })}
             </div>
           )}
+
+          {/* 06-26: 图生图参考图展示 — 当 image 节点有上游连线时显示 */}
+          {node.type === "image" && upstreamNodes.length > 0 && (() => {
+            // 过滤出有输出图的参考源
+            const refThumbnails = upstreamNodes.filter((u) => u.refUrl);
+            if (refThumbnails.length === 0) return null;
+            return (
+              <div
+                data-properties-panel="1"
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  background: "rgba(110,140,214,0.08)",
+                  border: "1px solid rgba(110,140,214,0.18)",
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <span style={{ fontSize: "0.75rem", color: "#6e8cd6", fontWeight: 600 }}>🔗 图生图模式</span>
+                  <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.4)" }}>
+                    已关联 {refThumbnails.length} 个参考源 · 生成时将参考上游图片特征
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {refThumbnails.map((ref) => (
+                    <div
+                      key={ref.id}
+                      style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={ref.refUrl}
+                        alt={ref.label}
+                        draggable={false}
+                        style={{
+                          width: 72,
+                          height: 72 * (node.data.aspect === "9:16" ? 1.5 : node.data.aspect === "16:9" ? 0.56 : 0.75),
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          opacity: 0.85,
+                        }}
+                      />
+                      <span style={{ fontSize: "0.625rem", color: "rgba(255,255,255,0.35)", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {ref.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 翻译/优化提示词按钮 */}
           {(node.type === "image" || node.type === "video-gen" || node.type === "audio-gen") && (

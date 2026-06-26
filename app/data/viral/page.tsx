@@ -4,6 +4,8 @@ import CaseCard from "@/components/CaseCard";
 const PERIODS = ["7 天", "30 天", "90 天", "全部"];
 const TYPES = ["全部类型", "沙发", "床", "灯具", "餐桌", "衣柜"];
 
+// viral 排行榜用 mock data (无真实视频/海报), brand/score/views 是榜单字段不属于 CaseItem
+// spread 补全 CaseItem 必传字段: creator/videoUrl/posterUrl/description/orientation/duration
 const VIRAL = [
   { id: "v1", title: "现代极简三人沙发 30s", brand: "顾家", category: "沙发", hue: 22, score: 98, views: "132w" },
   { id: "v2", title: "奶油风 1.8m 软包床", brand: "慕思", category: "床", hue: 18, score: 95, views: "108w" },
@@ -14,7 +16,15 @@ const VIRAL = [
   { id: "v7", title: "推拉门衣柜收纳", brand: "索菲亚", category: "衣柜", hue: 28, score: 86, views: "68w" },
   { id: "v8", title: "奶油风茶几搭配", brand: "林氏木业", category: "沙发", hue: 32, score: 85, views: "65w" },
   { id: "v9", title: "落地灯三色温", brand: "雷士照明", category: "灯具", hue: 40, score: 82, views: "58w" },
-];
+].map((v) => ({
+  ...v,
+  creator: "热榜用户",
+  videoUrl: "",
+  posterUrl: "",
+  description: `${v.brand} · ${v.category} · 热度 ${v.score} · ${v.views} 播放`,
+  orientation: "landscape" as const,
+  duration: 30,
+}));
 
 export default function ViralPage() {
   return (

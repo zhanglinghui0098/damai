@@ -1,0 +1,77 @@
+
+
+/* ============================================================
+   v6: 精选推荐 3 屏大卡 (替代 v5 的 3D carousel)
+   - 横向 3 列等高, 16:9 aspect-ratio
+   - 卡上叠 tag (左上) + title (左下), 底部暗角保证可读
+   - hover: 上移 4px + 暗角加深
+   - 1024px 以下: 3 卡堆叠为 1 列
+   ============================================================ */
+.featured-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.featured-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 1.5rem;
+  color: #fff;
+  text-decoration: none;
+  isolation: isolate;
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+/* 底部暗角 — 保证白字可读 */
+.featured-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.45) 100%);
+  z-index: 0;
+  pointer-events: none;
+  transition: background 0.28s ease;
+}
+
+/* tag + title 浮在暗角之上 */
+.featured-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.featured-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.featured-card:hover::after {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 20%, rgba(0,0,0,0.6) 100%);
+}
+
+.featured-card-tag {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.featured-card-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  max-width: 85%;
+}
+
+@media (max-width: 1024px) {
+  .featured-grid-3 { grid-template-columns: 1fr; }
+}

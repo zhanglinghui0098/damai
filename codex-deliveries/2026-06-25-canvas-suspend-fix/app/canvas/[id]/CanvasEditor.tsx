@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useRef, useEffect } from "react";
+import { startTransition, useState, useRef, useEffect } from "react";
 
 // =====================================================================
 // Types
@@ -843,7 +843,9 @@ function ZoomControls({ zoom, setZoom }: { zoom: number; setZoom: (z: number) =>
         min={25}
         max={200}
         value={Math.round(zoom * 100)}
-        onChange={(e) => setZoom(Number(e.target.value) / 100)}
+        onChange={(e) =>
+          startTransition(() => setZoom(Number(e.target.value) / 100))
+        }
         style={{
           width: 80,
           accentColor: "#6e8cd6",
@@ -1343,7 +1345,9 @@ function PropertiesPanel({
           <textarea
             data-properties-panel="1"
             value={d.prompt || ""}
-            onChange={(e) => setField("prompt", e.target.value)}
+            onChange={(e) =>
+              startTransition(() => setField("prompt", e.target.value))
+            }
             placeholder={
               node.type === "text"
                 ? "描述你想要生成的内容"
@@ -1814,7 +1818,9 @@ function DurationSlider({
         min={min}
         max={max}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) =>
+          startTransition(() => onChange(Number(e.target.value)))
+        }
         style={{
           width: 80,
           accentColor: "#6e8cd6",

@@ -42,9 +42,19 @@ async function importKey(secret: string): Promise<CryptoKey> {
   );
 }
 
+// helper: Uint8Array → ArrayBuffer (用于 subtle.sign/verify, 避开 TS 5.x 的 Uint8Array<ArrayBufferLike> 类型收紧问题)
+function toArrayBuffer(u8: Uint8Array): ArrayBuffer {
+  const buf = new ArrayBuffer(u8.byteLength);
+  new Uint8Array(buf).set(u8);
+  return buf;
+}
+
 async function hmacSign(payload: string, secret: string): Promise<string> {
   const key = await importKey(secret);
-  const sig = await globalThis.crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  const u8 = enc.encode(payload);
+  const buf: ArrayBuffer = new ArrayBuffer(u8.byteLength);
+  new Uint8Array(buf).set(u8);
+  const sig = await globalThis.crypto.subtle.sign("HMAC", key, buf);
   return b64urlEncode(sig);
 }
 
@@ -52,7 +62,11 @@ async function hmacVerify(payload: string, sigB64: string, secret: string): Prom
   try {
     const key = await importKey(secret);
     const sig = b64urlDecode(sigB64);
-    return await globalThis.crypto.subtle.verify("HMAC", key, sig, enc.encode(payload));
+    const u8 = enc.encode(payload);
+    const buf: ArrayBuffer = new ArrayBuffer(u8.byteLength);
+    new Uint8Array(buf).set(u8);
+    // @ts-expect-error - Node.js @types 22.x BufferSource narrow bug, runtime 验证 buf 是 ArrayBuffer
+    return await globalThis.crypto.subtle.verify("HMAC", key, sig, buf);
   } catch {
     return false;
   }

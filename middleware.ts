@@ -28,6 +28,7 @@ const PUBLIC_PREFIXES = [
   "/_next",
   "/api/agent",
   "/api/auth", // 登录流程自己不放行怎么登录
+  "/api/canvas", // 画布运行 API (image/video/audio 生成)
   "/favicon",
   "/case",
   "/create",
@@ -46,8 +47,9 @@ export async function middleware(req: NextRequest) {
 
   // 2) 私域: 验真 session (Edge runtime 用 Web Crypto,支持 async)
   const token = req.cookies.get("damai.session")?.value;
+  console.log(`[MIDDLEWARE] pathname=${pathname} token=${token ? token.slice(0,30)+'...' : 'NONE'}`);
   const session = await verifySession(token);
-
+  console.log(`[MIDDLEWARE] verifySession result=${session ? JSON.stringify(session) : 'null (FAILED)'}`);
   if (!session) {
     // 未登录 → 跳 /login?from=...
     const url = req.nextUrl.clone();

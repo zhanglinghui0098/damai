@@ -8,7 +8,7 @@ import { getTemplateById, type Template } from "@/lib/templates";
 export default function CreatePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const tpl = getTemplateById(params.id);
+  const tpl = getTemplateById(params.id)!;  // 已有 line 13 early return 守卫, 此处 narrow 为非空
 
   if (!tpl) {
     return (

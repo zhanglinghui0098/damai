@@ -14,6 +14,7 @@ type Payload = {
 
 function getSecret(): string {
   const s = process.env.DAMI_SESSION_SECRET;
+  console.log(`[AUTH-DEBUG] getSecret env=${JSON.stringify(process.env.DAMI_SESSION_SECRET)} final=${s ? s.slice(0,30)+"..." : "FALLBACK"}`);
   if (!s) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("DAMI_SESSION_SECRET must be set in production");
@@ -21,6 +22,13 @@ function getSecret(): string {
     return "dev-stub-secret-rotate-in-prod";
   }
   return s;
+}
+
+// helper: Uint8Array → ArrayBuffer (Edge+Node 双 runtime 兼容; 用于 subtle.sign/verify 避开 TS 5.x 的 Uint8Array<ArrayBufferLike> 类型收紧问题)
+function toArrayBuffer(u8: Uint8Array): ArrayBuffer {
+  const buf = new ArrayBuffer(u8.byteLength);
+  new Uint8Array(buf).set(u8);
+  return buf;
 }
 
 function b64urlEncode(buf: ArrayBuffer | Uint8Array | string): string {
@@ -61,7 +69,11 @@ async function importKey(secret: string): Promise<CryptoKey> {
 
 async function hmacSign(payload: string, secret: string): Promise<string> {
   const key = await importKey(secret);
-  const sig = await globalThis.crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  const u8 = enc.encode(payload);
+  // Edge runtime polyfill: new ArrayBuffer() 会返回 SharedArrayBuffer, subtle.sign 拒收
+  // → 强制 slice 一份真 ArrayBuffer
+  const buf = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+  const sig = await globalThis.crypto.subtle.sign("HMAC", key, buf);
   return b64urlEncode(sig);
 }
 
@@ -69,7 +81,10 @@ async function hmacVerify(payload: string, sigB64: string, secret: string): Prom
   try {
     const key = await importKey(secret);
     const sig = b64urlDecode(sigB64);
-    return await globalThis.crypto.subtle.verify("HMAC", key, sig, enc.encode(payload));
+    const u8 = enc.encode(payload);
+    const buf = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    // @ts-expect-error - TS 5.x 把 Uint8Array.buffer 标成 ArrayBufferLike 包含 SharedArrayBuffer
+    return await globalThis.crypto.subtle.verify("HMAC", key, sig, buf);
   } catch {
     return false;
   }
