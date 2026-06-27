@@ -5,31 +5,27 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 
-// 顶部导航线条图标 (内联 SVG, 不引外部依赖, 与现有风格一致)
+// 顶部导航图标 — Material Symbols Outlined 风格 (内联 SVG, 无需 CDN)
+// 路径来自 Material Symbols Outlined SVG spec (24px grid, fill=currentColor)
 const Icon = {
   Home: ({ size = 14 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 10.5L12 3l9 7.5V20a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9.5z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 19h3v-6h6v6h3v-9l-6-4.5L6 10v9zm-2 2V9l8-6 8 6v12h-7v-6h-2v6H4zm8-8.75Z" />
     </svg>
   ),
   Workspace: ({ size = 14 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="18" height="7" rx="1.5" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 19V7q0-.825.588-1.413T4 5h16q.825 0 1.413.588T22 7v12q0 .825-.588 1.413T20 21H4q-.825 0-1.413-.588T2 19Zm2 0h16V7H4v12Zm3-2h2v-2H7v2Zm0-4h2v-2H7v2Zm0-4h2V7H7v2Zm4 8h6v-2h-6v2Zm0-4h6v-2h-6v2Zm0-4h6V7h-6v2Z" />
     </svg>
   ),
   TV: ({ size = 14 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="13" rx="2" />
-      <path d="M17 3l-5 4l-5-4" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M10 16.5v-9l6 4.5-6 4.5ZM8 20q-.825 0-1.413-.588T6 18V6q0-.825.588-1.413T8 4h12q.825 0 1.413.588T22 6v12q0 .825-.588 1.413T20 20H8Zm0-2h12V6H8v12Zm-5 2q-.425 0-.713-.288T2 19V7h2v12h13v2H3Z" />
     </svg>
   ),
   Data: ({ size = 14 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3v18h18" />
-      <rect x="7" y="13" width="3" height="5" rx="0.5" />
-      <rect x="12" y="9" width="3" height="9" rx="0.5" />
-      <rect x="17" y="5" width="3" height="13" rx="0.5" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 21q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.588 1.413T19 21H5Zm0-2h14V5H5v14Zm2-2h2v-4H7v4Zm4 0h2v-8h-2v8Zm4 0h2v-6h-2v6Z" />
     </svg>
   ),
 };
