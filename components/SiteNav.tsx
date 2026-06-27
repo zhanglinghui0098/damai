@@ -5,11 +5,40 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 
+// 顶部导航线条图标 (内联 SVG, 不引外部依赖, 与现有风格一致)
+const Icon = {
+  Home: ({ size = 14 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5L12 3l9 7.5V20a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9.5z" />
+    </svg>
+  ),
+  Workspace: ({ size = 14 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="18" height="7" rx="1.5" />
+    </svg>
+  ),
+  TV: ({ size = 14 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="13" rx="2" />
+      <path d="M17 3l-5 4l-5-4" />
+    </svg>
+  ),
+  Data: ({ size = 14 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <rect x="7" y="13" width="3" height="5" rx="0.5" />
+      <rect x="12" y="9" width="3" height="9" rx="0.5" />
+      <rect x="17" y="5" width="3" height="13" rx="0.5" />
+    </svg>
+  ),
+};
+
 const NAV = [
-  { href: "/", label: "首页" },
-  { href: "/workbench", label: "爆款仓库" },
-  { href: "/case", label: "案例库" },
-  { href: "/dashboard", label: "数据中心" },
+  { href: "/", label: "主页", icon: Icon.Home },
+  { href: "/workbench", label: "工作空间", icon: Icon.Workspace },
+  { href: "/case", label: "大脉TV", icon: Icon.TV },
+  { href: "/dashboard", label: "数据中台", icon: Icon.Data },
 ];
 
 export default function SiteNav() {
@@ -39,6 +68,12 @@ export default function SiteNav() {
       document.body.style.overflow = "";
     };
   }, [openMobile]);
+
+  // 路由匹配: "/" 只在首页激活, 其余走前缀匹配 (覆盖 /case/[id] 等子路由)
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return !!pathname && pathname.startsWith(href);
+  };
 
   const drawer = (
     <>
@@ -77,24 +112,32 @@ export default function SiteNav() {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpenMobile(false)}
-              style={{
-                display: "block",
-                padding: "0.85rem 0.75rem",
-                fontSize: "1.0625rem",
-                color: "var(--text)",
-                fontWeight: 500,
-                borderBottom: "1px solid var(--border-light)",
-                textDecoration: "none",
-              }}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const IconComp = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpenMobile(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "0.85rem 0.75rem",
+                  fontSize: "1.0625rem",
+                  fontWeight: active ? 600 : 500,
+                  color: "var(--text)",
+                  background: active ? "var(--bg-elevated)" : "transparent",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                }}
+              >
+                <IconComp size={18} />
+                {item.label}
+              </Link>
+            );
+          })}
           <div style={{ height: 1, background: "var(--border-light)", margin: "0.5rem 0" }} />
           <button
             onClick={() => {
@@ -157,29 +200,56 @@ export default function SiteNav() {
         <ul
           className="nav-desktop"
           style={{
-            gap: "1.75rem",
+            gap: "0.35rem",
             listStyle: "none",
             margin: 0,
             padding: 0,
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          {NAV.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--text)",
-                  opacity: 0.88,
-                  transition: "opacity 0.18s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.88")}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {NAV.map((item) => {
+            const IconComp = item.icon;
+            const active = isActive(item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    height: 30,
+                    padding: "0 0.75rem",
+                    borderRadius: 999,
+                    fontSize: "0.8125rem",
+                    fontWeight: active ? 600 : 500,
+                    color: active ? "var(--text)" : "var(--text-secondary)",
+                    background: active ? "var(--bg-elevated)" : "transparent",
+                    border: active ? "1px solid var(--border)" : "1px solid transparent",
+                    textDecoration: "none",
+                    transition: "all 0.18s ease",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                      e.currentTarget.style.color = "var(--text)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--text-secondary)";
+                    }
+                  }}
+                >
+                  <IconComp size={14} />
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
