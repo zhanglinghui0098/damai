@@ -342,3 +342,75 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 | Storage | ECS 磁盘 `/public/canvas-output/` | 阿里云 OSS ✅ |
 | Public URL | 相对 `/canvas-output/xxx.jpg` 需 toAbs | 完整 https 直接用 ✅ |
 | i2i | ✅ dev log 验证通过 | ✅ 生产全链路 + OSS 落图 |
+
+---
+
+## ✅ 2026-06-27 9:50 — 项目连贯性备份 (commit + push master)
+
+### 背景
+6:50-8:10 session (149 条) 完成 OSS 接入 + i2i 端到端 + AK rotate + 收口。8:10-9:50 1h40m, user 手动重写 SiteNav.tsx, 并要求做项目连贯性备份抗失忆 (类似 06-26 流程)。9:41 开新 session, 我错算时间戳拼"阶段 1 收口"剧本, user 9:50 提醒"你得直接到 9:50"后修正 (session_search 拿 LLM summary 不是 transcript, 看不到 1h40m 内 user 手动操作)。
+
+### 9:50 真实状态
+- **8:10-9:50 user 1h40m 手动改的就 1 个文件**: `components/SiteNav.tsx` (286→355, +70)
+  - 加 4 个 SVG Icon 组件 (Home/Workspace/TV/Data)
+  - 菜单重命名: 主页 / 工作空间 / 大脉TV / 数据中台
+  - 子菜单: 欢迎页 / 我的项目 / 数据复盘 / 数据分析
+  - 新增"登录 / 切换"按钮 → `window.dispatchEvent(new Event("damai:auth:open"))`
+- 其他 24 个 M 文件 `git diff --numstat` 全 0 (mtime 变了, 编辑器 buffer 留的, 内容没真改)
+- 凌晨 2 点 NAS backup cron 失败 (NAS_BACKUP_HOST 还是 placeholder)
+
+### 备份 commit (本次 9:50)
+- **`b214eee` feat(oss): 06-27 阿里云 OSS 接入** (7 文件, 763+ / 49-)
+  - lib/oss.ts (新) + lib/ark-image.ts downloadImageToOss
+  - app/api/canvas/{run-image,upload}/route.ts: OSS 优先
+  - next.config.mjs: typescript.ignoreBuildErrors
+  - package.json + package-lock.json: ali-oss ^6.23.0
+  - scripts/{backup-to-nas,alert-resources}.sh (新)
+  - .env.local.example + state/STATUS.md + state/BACKLOG.md
+  - state/ALIYUN-DEPLOY-LESSONS.md + docs/08-OSS-部署与备份-2026-06-27.md (新)
+- **`68df2b5` feat(nav): 06-27 9:25 导航 UI 重构** (1 文件, 355+ / 285-)
+  - components/SiteNav.tsx (user 手动)
+- **`(即将)` docs(state): 06-27 9:50 项目连贯性收口** (1 文件)
+  - state/STATUS.md 加本段
+
+### 阶段 0 完成对照 (user 9:50 复盘)
+- ✅ **0.1** OSS Bucket `damai-zlh-prod` 公共读 + BPA 关 + RAM AccessKey
+  - 主账号 AK `LTAI5t6k3vqta8v3GYSmDbCx` (06-27 08:54 rotate 收口)
+  - 旧 AK `LTAI5t8tJCnfeNh4ys7dg9tj` 已销毁 (06-27 09:10, 回收站 + 列表都查不到)
+- ✅ **0.2** lib/ark-image.ts:244 downloadImageToOss (OSS 优先, 本地 fallback)
+- ✅ **0.3** app/api/canvas/upload/route.ts OSS 优先
+- ✅ **0.4** 验证: POST /api/canvas/upload → `{storage:"oss", url:"https://damai-zlh-prod..."}` + i2i 端到端 (06-27 07:42 user 实跑 refUsed:1)
+
+### 阶段 1 阻塞 (9:50 仍待 user)
+- ⚠️ **1.1** NAS backup cron 凌晨 2 点失败: 本地 `NAS_HOST=192.168.2.10` (LAN1 10Gbps) 已改, 但 ECS 上没同步 (sshpass 临时密码没继承, SSH 进不去)
+- ⚠️ **1.2** 飞书告警 webhook URL 缺失, 告警脚本只本地 log
+- ❌ **1.3** 飞书 Bitable 用户表 (代码 0 处引用, App 权限已开但没接)
+- ⏳ **1.4** 待 user 验证
+
+### 阶段 2 / 3 (未启动)
+- ❌ 2.1-2.5 飞书接项目表 + 节点表 + canvas 改飞书 + workbench 真数据 (5-7 天工作日, 2 周内)
+- ❌ 3.1 ECS 升级 2C/4G (¥80/月)
+- ❌ 3.2 CDN 接 OSS (¥20/月)
+- ❌ 3.3 飞书生成任务表
+- ❌ 3.4 dashboard 真数据
+- ❌ 3.5 Sentry
+
+### 关键里程碑
+- ✅ 6:50-8:10 OSS 接入 + i2i 全通
+- ✅ 8:10-9:50 SiteNav UI 重构 (user 手动)
+- ✅ 9:50 项目连贯性备份 (3 commit + push master)
+- ⏳ 下周 1.3 飞书用户表
+- ⏳ 2 周内 2.x canvas + project 接飞书
+- ⏳ 1 月 3.x CDN + 升级 + Sentry
+
+### 阻塞 ask user (清单)
+1. **飞书告警 webhook URL** (1.2) — 飞书群 → 设置 → 群机器人 → 添加机器人 → 自定义机器人 → 复制 URL
+2. **NAS 备份 SSH user + 认证方式** (1.1) — memory 写 SSH 用手机号 `15925670098`, 之前 placeholder 是 `zhanglh`, **未确认**
+3. **ECS 47.96.128.172 root 密码** (推 1.1 脚本用) — 上 session sshpass 临时密码没继承, Permission denied
+
+### 教训 (06-27 9:50)
+- **错算时间戳**: 6:50 session 实际 06:50-08:10 (79.6 min), 我误算成 6:50-9:25, user 提醒后修正
+- **session_search 限制**: 拿 LLM summary 拿不到原始 transcript, 必须 `git diff --numstat HEAD` + 文件 mtime 反查 user 实际改了什么
+- **"项目备份" 抗失忆**: 3 commit 推 master + STATUS 收口段 (本 commit C)
+- **mtime 假阳性**: 35 个文件 `git status` M 但 `git diff --numstat` 0 0, 实际没改 (编辑器 buffer 留的)
+- **commit 范围**: 必须 `--diff-filter=M` + `numstat > 0` 过滤, 不能 `git add -A` 误 commit 假阳性
