@@ -1,23 +1,49 @@
 {
-  "version": "2.6.0",
-  "last_updated": "2026-06-24T05:30:00+08:00",
-  "current_phase": "P0 鉴权+多租户完成, 待用户验收",
-  "phase_status": "auth_tenant_done_awaiting_user_verify",
+  "version": "2.7.0",
+  "last_updated": "2026-06-27T10:00:00+08:00",
+  "current_phase": "阶段 0 完成 + 阶段 1 部分阻塞 + 备案在审",
+  "phase_status": "phase_0_done_phase_1_partial_blocked",
   "deployment": {
-    "public_url": "https://trustees-organisations-pleasant-humanity.trycloudflare.com",
-    "public_url_note": "2026-06-24 05:21 重启 cloudflared (PID 8330, --protocol http2). 老 3 个 defunct 已清,新 URL 上线",
+    "public_url": "https://damai.net.cn",
+    "public_url_note": "06-26 切阿里云 ECS (47.96.128.172), nginx + certbot + PM2",
+    "dev_url": "https://trustees-organisations-pleasant-humanity.trycloudflare.com",
+    "dev_url_note": "06-24 05:21 重启 cloudflared (PID 8330, --protocol http2), NAS dev",
     "internal_url": "http://127.0.0.1:3000",
-    "tunnel_type": "cloudflared quick-tunnel (临时)",
-    "tunnel_note": "URL 每次重启 cloudflared 会变。稳定需要 named tunnel (需 Cloudflare 账号 + 域名)。⚠️ 必须用 --protocol http2, QUIC 在 NAS 容器不通。启动必须 setsid",
+    "tunnel_type": "cloudflared quick-tunnel (临时, 容器重启 URL 变)",
+    "tunnel_note": "稳定需要 named tunnel (需 Cloudflare 账号 + 域名). ⚠️ 必须用 --protocol http2, QUIC 在 NAS 容器不通. 启动必须 setsid",
     "dev_server_pid": 8109,
     "cloudflared_pid": 8330
   },
   "tasks": {
+    "P0_阶段0_OSS接入": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-27T08:10:00+08:00",
+      "notes": "149 条 session 收口: lib/oss.ts (新) + downloadImageToOss + upload/route.ts 改 OSS 优先 + next.config.ignoreBuildErrors + scripts/{backup-to-nas,alert-resources}.sh (新) + .env.local.example (新) + 7 modified + 7 untracked 一次 commit 推 master. 验证: POST /api/canvas/upload storage='oss' (100% 走 OSS, 磁盘零增长) + i2i 端到端 refUsed:1 (2560x2560 输出)"
+    },
+    "P0_画布_i2i_fix": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-26T06:42:00+08:00",
+      "notes": "Canvas i2i (图生图) 修复 3 件套: ① computeArkSize MIN_PIXELS=3,686,400 clamp ② 上游 outputUrl 转绝对路径 (Node fetch 解析不了相对) ③ image 节点必传 _iIn 不可 []. 验证 log: [ark-image] i2i: inline N ref(s) as data URL. user 实测 Image A → Image B 视觉关联"
+    },
+    "P0_阶段0.5_项目连贯性备份": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-27T09:50:00+08:00",
+      "notes": "3 commit 推 master (006f92e..6c7bcf0): b214eee feat(oss) 7 文件 + 68df2b5 feat(nav) 1 文件 (user 手动 SiteNav 286→355) + 6c7bcf0 docs(state) STATUS 9:50 收口段. 抗失忆机制: 新 session 读 git log + state/STATUS.md 末尾能恢复 9:50 全貌"
+    },
+    "P0_ECS_生产部署": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-26T00:00:00+08:00",
+      "notes": "06-26 切阿里云 ECS (47.96.128.172): 0.9GiB + 2GB swap + 30GB 磁盘 + nginx + certbot (Let's Encrypt 90天自动续期) + PM2 daemon. 域名 damai.net.cn 解析到 ECS 公网 IP"
+    },
     "P0_鉴权_多租户": {
       "status": "completed",
       "progress": 100,
       "completed_at": "2026-06-24T05:30:00+08:00",
-      "notes": "手机号 + 阿里云短信验证码 (用户选手机号,不要飞书). 8 个文件: ① lib/auth.ts (HMAC session, Web Crypto Edge+Node 双 runtime 兼容) ② lib/hmac.ts (通用 sign/verify 工具) ③ lib/sms.ts (阿里云 SMS stub + 真实双模式) ④ lib/verify-store.ts (验证码存 cookie, 限流 1m/1h/IP 三维度) ⑤ middleware.ts (公域白名单 + 私域验真 + 注入 x-tenant-id/x-user-phone) ⑥ app/api/auth/send-code/route.ts ⑦ app/api/auth/verify-code/route.ts ⑧ app/api/auth/logout/route.ts ⑨ app/login/page.tsx (手机号 + 6 位验证码 + 60s 倒计时) ⑩ app/dashboard/page.tsx 拆 server/client, 显示真实手机号 + tenantId ⑪ .env.local + .env.example 加 4 个 SMS env. 模式: DAMI_SMS_REAL=false (默认 stub, 验证码直接返回). 待用户去阿里云申请签名/模板/AK"
+      "notes": "手机号 + 阿里云短信验证码 (user 选手机号, 不要飞书). 8 个文件: ① lib/auth.ts (HMAC session, Web Crypto Edge+Node 双 runtime 兼容) ② lib/hmac.ts (通用 sign/verify 工具) ③ lib/sms.ts (阿里云 SMS stub + 真实双模式) ④ lib/verify-store.ts (验证码存 cookie, 限流 1m/1h/IP 三维度) ⑤ middleware.ts (公域白名单 + 私域验真 + 注入 x-tenant-id/x-user-phone) ⑥ app/api/auth/send-code/route.ts ⑦ app/api/auth/verify-code/route.ts ⑧ app/api/auth/logout/route.ts ⑨ app/login/page.tsx (手机号 + 6 位验证码 + 60s 倒计时) ⑩ app/dashboard/page.tsx 拆 server/client, 显示真实手机号 + tenantId ⑪ .env.local + .env.example 加 4 个 SMS env. 模式: DAMI_SMS_REAL=false (默认 stub, 验证码直接返回). 待 user 去阿里云申请签名/模板/AK"
     },
     "P0_核心功能": {
       "status": "completed",
@@ -51,10 +77,101 @@
       "completed_at": "2026-06-23T17:02:00+08:00",
       "notes": "DataCenterSection (138 行) + WorkbenchSection (131 行) + app/dashboard/[id]/page.tsx + report/page.tsx 全在. /dashboard 4 Tab (项目/AI推荐/周月复盘/数据管理) + 4 mock 项目"
     },
+    "P1_NAS备份_cron": {
+      "status": "in_progress",
+      "progress": 50,
+      "blocked_on": "ECS 47.96.128.172 root 密码 (上 session sshpass 临时密码没继承) + NAS 备份 SSH user 确认",
+      "notes": "本地脚本 NAS_HOST=192.168.2.10 (LAN1 10Gbps) 已改, 但 ECS 上没同步. crontab 0 2 * * * 已挂但跑会失败 (NAS 不可达 placeholder 192.168.1.x)"
+    },
+    "P1_飞书告警_cron": {
+      "status": "in_progress",
+      "progress": 50,
+      "blocked_on": "飞书告警 webhook URL (user 还没给)",
+      "notes": "alert-resources.sh 写好, crontab */5 * * * * 已挂. 监控 4 项: 磁盘>80% / 内存>80% / PM2 异常 / damai.net.cn 非 200. webhook URL 没填时只本地 log"
+    },
+    "P1_Bitable_用户表": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "1.1/1.2 收口",
+      "next_actions": [
+        "lib/auth.ts 加 user upsert → Bitable user 表 (手机号/tenantId/创建时间)",
+        "send-code/route.ts 改: 调真实 Bitable upsert",
+        "verify-code/route.ts 改: 调真实 Bitable 查重",
+        "test: 2 个手机号登录 → 飞书 Bitable 能看到 2 条 user 记录"
+      ]
+    },
+    "P1_用户验证": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P1_Bitable_用户表 完成"
+    },
+    "P2_飞书_项目表": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P1_Bitable_用户表",
+      "estimate_days": 1
+    },
+    "P2_飞书_节点表": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P2_飞书_项目表",
+      "estimate_days": 1
+    },
+    "P2_canvas改飞书": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P2_飞书_节点表",
+      "estimate_days": 1
+    },
+    "P2_workbench真数据": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P2_canvas改飞书",
+      "estimate_days": 0.5
+    },
+    "P3_ECS_升级2C4G": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P2 收口",
+      "notes": "¥80/月, ECS 控制台 → 实例 → 升降配"
+    },
+    "P3_CDN接OSS": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P3_ECS_升级2C4G",
+      "notes": "¥20/月, OSS Bucket 配 CDN 域名替换资源 URL"
+    },
+    "P3_飞书_生成任务表": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P3_CDN接OSS"
+    },
+    "P3_dashboard真数据": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P3_飞书_生成任务表"
+    },
+    "P3_Sentry错误上报": {
+      "status": "pending",
+      "progress": 0,
+      "blocked_on": "P3_dashboard真数据"
+    },
+    "08_v3首页改版": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-19T02:20:00+08:00",
+      "notes": "user 6/19 02:00 提供 2 张对标截图, 4 项要求全部实现: ① 字号缩小 ② 4 屏→3 屏 ③ 样片板块 TV Show 风格 ④ 删所有'家居'"
+    },
+    "SiteNav_用户手动重构": {
+      "status": "completed",
+      "progress": 100,
+      "completed_at": "2026-06-27T09:25:00+08:00",
+      "notes": "user 8:10-9:50 手动重写 1h40m. 286→355 行 (+70): 4 个 SVG Icon (Home/Workspace/TV/Data) + 菜单重命名 (主页/工作空间/大脉TV/数据中台) + 子菜单 (欢迎页/我的项目/数据复盘/数据分析) + '登录/切换' 按钮 → window.dispatchEvent('damai:auth:open')"
+    },
     "02_模型接入": {
       "status": "pending",
       "progress": 0,
-      "blocked_on": "用户需提供 API keys (火山方舟 Seedance 2.0 / 即梦 / 可灵 / Vidu)"
+      "blocked_on": "user 需提供 API keys (火山方舟 Seedance 2.0 / 即梦 / 可灵 / Vidu)"
     },
     "03_AI水印": {
       "status": "pending",
@@ -81,14 +198,8 @@
       "progress": 30,
       "next_actions": [
         "AI 标识 (第十二条) — 等 03_AI水印 完成",
-        "算法备案 (第十七条) — 待网信办 (010)82990520 电话确认是否必须"
+        "算法备案 (第十七条) — 待网信办 (010)82990520 电话确认是否必须 (user 6/18 后没回拨)"
       ]
-    },
-    "08_v3首页改版": {
-      "status": "completed",
-      "progress": 100,
-      "completed_at": "2026-06-19T02:20:00+08:00",
-      "notes": "用户 6/19 02:00 提供 2 张对标截图, 4 项要求全部实现: ① 字号缩小 ② 4 屏→3 屏 ③ 样片板块 TV Show 风格 ④ 删所有'家居'"
     }
   },
   "build_history": {
@@ -101,7 +212,10 @@
     "v3_2026-06-22_1850": "P1 画布持久化 (localStorage 500ms debounce + 5 模板预置)",
     "v3_2026-06-22_1950": "P1 画布 UX 升级 (双击 + 空画布模板卡)",
     "v3_2026-06-23_1702": "P1 画布 TapNow 重做 (1755→2306 行) + 数据工作台 v2 (4 屏 + 4 mock 项目)",
-    "v4_2026-06-24_0530": "P0 鉴权+多租户 (手机号 + 阿里云 SMS stub) + cloudflared 重启 (新 URL trustees-organisations-pleasant-humanity)"
+    "v4_2026-06-24_0530": "P0 鉴权+多租户 (手机号 + 阿里云 SMS stub) + cloudflared 重启 (新 URL trustees-organisations-pleasant-humanity)",
+    "v5_2026-06-26_0642": "Canvas i2i 修复 (3 件套, dev 验证通过)",
+    "v6_2026-06-27_0810": "阿里云 OSS 接入 + ECS 切生产 (damai.net.cn) + i2i 端到端 + AK rotate + 公共读 + 防盗链",
+    "v7_2026-06-27_0950": "项目连贯性备份 (3 commit 推 master) + PROJECT/ROADMAP/DECISIONS/state.json 4 文件 06-27 化"
   },
-  "next_priority": "用户去阿里云申请 SMS 签名/模板/AccessKey → 切真实短信 → 联调"
+  "next_priority": "等 user 给 3 件事: ① 飞书告警 webhook URL ② NAS 备份 SSH user 确认 ③ ECS root 密码 → 推 1.1/1.2 收口 → 1.3 Bitable 用户表"
 }

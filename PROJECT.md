@@ -3,8 +3,8 @@
 > **这是什么**：Hermes Agent 的"项目外脑"。所有重要决策 / 进度 / 任务都写在这里，**不依赖 context window 记忆**。
 > **何时读**：每个 session 第一件事 / context 截断后 / 你（用户）问"现在进度到哪"时。
 > **维护人**：Hermes Agent
-> **最后更新**：2026-06-18 18:00 |
-> **当前状态**: 🟢 **合规对齐完成 + 私域过渡启动** — 备案在审（10-20 工作日），同步 NAS 跑 Next.js
+> **最后更新**：2026-06-27 10:00
+> **当前状态**: 🟢 **阶段 0 完成 + 阶段 1 部分阻塞 + 备案在审** — ECS 生产 (damai.net.cn) 跑通, AK rotate 收口, 每天 22:00 自动 handoff 备份 (新)
 
 ---
 
@@ -136,3 +136,41 @@
 | NAS 备份 | `/volume1/10T/Hermes/backups/hermes_backup_20260616.tar.gz` |
 | 12 张 Bitable schema | `/opt/data/output/tianxipai_ai_marketing_system/` |
 | 老 PROJECT_STATE | `/opt/data/projects/damai/PROJECT_STATE.md` （已升级，保留作历史） |
+| ECS 生产 | `47.96.128.172` / `/opt/damai/` (PM2 跑, nginx + certbot) |
+| ECS 域名 | https://damai.net.cn (Let's Encrypt 90天自动续期) |
+| 阿里云 OSS | Bucket `damai-zlh-prod` (oss-cn-hangzhou, 公共读+BPA关) |
+| NAS LAN | LAN1 `192.168.2.10` (10Gbps) / LAN2 `192.168.31.198` (2.5Gbps) |
+| 部署踩坑 | `state/ALIYUN-DEPLOY-LESSONS.md` + `docs/08-OSS-部署与备份-2026-06-27.md` |
+| 运维脚本 | `scripts/backup-to-nas.sh` + `scripts/alert-resources.sh` (cron 跑) |
+| OSS 封装 | `lib/oss.ts` (新, ali-oss 6.x 封装) |
+| 项目连贯性备份 | `state/HANDOFF-YYYY-MM-DD.md` (cron 每天 22:00 自动生成) |
+| 备份 commit | GitHub `master` 分支, `git push origin master` (3 commit/收口) |
+
+---
+
+## 9. 06-26 / 06-27 关键事件 (新)
+
+| 日期 | 事件 | 影响 |
+|---|---|---|
+| 06-26 | Canvas i2i 修复 (dev 验证通过) | 图生图链路 3 件套: `computeArkSize` MIN_PIXELS=3,686,400 clamp + 上游 outputUrl 转绝对路径 + image 节点必传 `_iIn` |
+| 06-27 06:50-08:10 | 阿里云 OSS 接入 (149 条 session) | lib/oss.ts + downloadImageToOss + upload/route.ts 改 OSS 优先, OSS 公共读 + BPA 关后 i2i 生产端到端 |
+| 06-27 08:54 | AccessKey rotate | 新主账号 AK `LTAI5...SmDbCx`, 旧 AK `LTAI5...dg9tj` 销毁 (回收站+列表都查不到) |
+| 06-27 09:11 | Bucket 防盗链 | 方案 1 (关防盗链, 任意 Referer 都 200) |
+| 06-27 08:10-09:50 | SiteNav UI 重构 (user 手动 1h40m) | 286→355 行 (+70), SVG 图标 + 菜单重命名 (主页/工作空间/大脉TV/数据中台) + "登录/切换" 按钮 |
+| 06-27 09:50 | **项目连贯性备份** (3 commit 推 master) | `b214eee` feat(oss) + `68df2b5` feat(nav) + `6c7bcf0` docs(state) 推 `006f92e..6c7bcf0` |
+
+---
+
+## 10. 阶段 0/1/2/3 进度 (user 9:50 复盘, 06-27 更新)
+
+| 阶段 | 内容 | 状态 | 阻塞 |
+|---|---|---|---|
+| **0** | OSS + AK + 公共读 + 防盗链 + i2i 端到端 | ✅ **完成** | - |
+| **1** | NAS 备份 + 飞书告警 + Bitable 用户表 | ⚠️ **部分阻塞** | 飞书 webhook URL / NAS 备份 SSH user / ECS 密码 (3 件事 user 还没给) |
+| **2** | canvas + project 接飞书 (5-7 天工作日) | ❌ 未启动 | 等阶段 1.3 Bitable 用户表收口 |
+| **3** | CDN + 升级 2C/4G (¥80/月) + Sentry | ❌ 未启动 | 等阶段 2 收口 |
+
+**当前阻塞 ask user (清单)**:
+1. 飞书告警 webhook URL — 飞书群 → 设置 → 群机器人 → 添加机器人 → 自定义机器人 → 复制 URL
+2. NAS 备份 SSH user 确认 + 是否配 key (placeholder 是 `15925670098` 待确认)
+3. ECS `47.96.128.172` root 密码 (推 1.1 脚本用, 上 session sshpass 临时密码没继承)
