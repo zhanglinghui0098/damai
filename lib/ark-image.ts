@@ -226,7 +226,8 @@ export async function generateImage(opts: GenerateImageOptions): Promise<Generat
 }
 
 /**
- * 下载 Ark 返回的图片 URL 到本地 /public/canvas-output/
+ * 旧版: 下载 Ark 图片到本地 /public/canvas-output/
+ * 保留作为 fallback — 新流程走 downloadImageToOss (OSS 优先)
  * @returns 本地可访问的 URL 路径 (e.g. "/canvas-output/abc.jpg")
  */
 export async function downloadImageToPublic(
@@ -243,4 +244,36 @@ export async function downloadImageToPublic(
   const outPath = path.join(outDir, filename);
   await fs.writeFile(outPath, buf);
   return `/canvas-output/${filename}`;
+}
+
+/**
+ * 06-27: 下载 Ark 图片 → 优先上传 OSS, 失败 fallback 本地
+ * @returns 完整 https URL (OSS) 或本地路径 (/canvas-output/...)
+ *   - OSS URL: Ark i2i / 前端 / 下载都能直接用 (无需 toAbs)
+ *   - 本地路径: 旧 localStorage 兼容
+ */
+export async function downloadImageToOss(
+  remoteUrl: string,
+  filename: string
+): Promise<string> {
+  const resp = await fetch(remoteUrl, { signal: AbortSignal.timeout(60_000) });
+  if (!resp.ok) throw new Error(`下载图片失败 ${resp.status}`);
+  const buf = Buffer.from(await resp.arrayBuffer());
+
+  const ext = filename.match(/\.(jpeg|jpg|png|webp)/i)?.[1] || "jpg";
+  const mimeMap: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+  };
+  const contentType = mimeMap[ext] || "image/jpeg";
+
+  // 优先 OSS
+  try {
+    const { uploadBuffer, buildKey } = await import("./oss");
+    const key = buildKey("canvas-output", filename);
+    const ossUrl = await uploadBuffer(key, buf, contentType);
+    return ossUrl;  // 完整 https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/canvas-output/...
+  } catch (e: any) {
+    console.warn(`[ark-image] OSS 上传失败 (${e?.message || e}), fallback 到本地`);
+    return downloadImageToPublic(remoteUrl, filename);
+  }
 }

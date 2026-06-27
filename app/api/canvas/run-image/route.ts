@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateImage, downloadImageToPublic } from "@/lib/ark-image";
+import { generateImage, downloadImageToOss } from "@/lib/ark-image";
 
 /**
  * POST /api/canvas/run-image
@@ -98,15 +98,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ark 未返回图片" }, { status: 502 });
     }
 
-    // 下载到 /public/canvas-output/
+    // 下载到 OSS (fallback 本地)
     const idBase = Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
     const downloaded: string[] = [];
     for (let i = 0; i < result.images.length; i++) {
       const img = result.images[i];
       const ext = img.url.match(/\.(jpeg|jpg|png|webp)/i)?.[1] || "jpg";
       const filename = `${idBase}_${i}.${ext}`;
-      const localUrl = await downloadImageToPublic(img.url, filename);
-      downloaded.push(localUrl);
+      const ossUrl = await downloadImageToOss(img.url, filename);
+      downloaded.push(ossUrl);
     }
 
     return NextResponse.json({
