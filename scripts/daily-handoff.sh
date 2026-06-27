@@ -67,9 +67,9 @@ cat > "$HANDOFF_FILE" <<HEADER
 - **详细**: \`PROJECT.md\` §1
 
 ## 2. 当前阶段 (动态)
-- **v2.7.0** phase: $(jq -r '.current_phase' state.json)
-- **phase_status**: $(jq -r '.phase_status' state.json)
-- **公网 URL**: $(jq -r '.deployment.public_url' state.json)
+- **v2.7.0** phase: $(python3 -c "import json; print(json.load(open('state.json'))['current_phase'])" 2>/dev/null || grep -oE '"current_phase": *"[^"]*"' state.json | head -1 | sed 's/.*: *"//;s/"$//')
+- **phase_status**: $(python3 -c "import json; print(json.load(open('state.json'))['phase_status'])" 2>/dev/null || grep -oE '"phase_status": *"[^"]*"' state.json | head -1 | sed 's/.*: *"//;s/"$//')
+- **公网 URL**: $(python3 -c "import json; print(json.load(open('state.json'))['deployment']['public_url'])" 2>/dev/null || grep -oE '"public_url": *"[^"]*"' state.json | head -1 | sed 's/.*: *"//;s/"$//')
 - **详细**: \`state.json\` + \`ROADMAP.md\` 任务总览
 
 ## 3. 今日完成 (自动统计)
