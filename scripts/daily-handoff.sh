@@ -42,21 +42,17 @@ TODAY_CHANGED_FILES=$(git diff --name-only HEAD@{24.hour.ago} HEAD 2>/dev/null |
 GIT_STATUS=$(git status --short 2>/dev/null | head -10 || echo "")
 
 # ---------- 2. 生成 HANDOFF-YYYY-MM-DD.md (10 节) ----------
-cat > "$HANDOFF_FILE" <<'HEADER'
-# 大脉项目 — Daily Handoff (YYYY-MM-DD)
+cat > "$HANDOFF_FILE" <<HEADER
+# 大脉项目 — Daily Handoff ($(date +%Y-%m-%d))
 
 > **用途**: 抗失忆 + 跨 session 连贯性, 每天 22:00 cron 自动生成
-> **下次 session 启动**: 读本文件 + `state/STATUS.md` + `git log --oneline -10`
+> **下次 session 启动**: 读本文件 + \`state/STATUS.md\` + \`git log --oneline -10\`
 > **维护**: scripts/daily-handoff.sh
 
 ---
 
 ## 0. 一句话 (今天做了什么)
 
-HEADER
-
-# 动态填 0 节
-cat >> "$HANDOFF_FILE" <<BODY
 - 今天 commit 数: ${TODAY_COMMIT_COUNT}
 - 改了 ${TODAY_CHANGED_FILES} 个文件
 - 最近 commit: \`${COMMIT_HASH}\` ${COMMIT_MSG}
@@ -71,14 +67,14 @@ cat >> "$HANDOFF_FILE" <<BODY
 - **详细**: \`PROJECT.md\` §1
 
 ## 2. 当前阶段 (动态)
-- **v2.7.0** phase: \$(jq -r '.current_phase' state.json)
-- **phase_status**: \$(jq -r '.phase_status' state.json)
-- **公网 URL**: \$(jq -r '.deployment.public_url' state.json)
+- **v2.7.0** phase: $(jq -r '.current_phase' state.json)
+- **phase_status**: $(jq -r '.phase_status' state.json)
+- **公网 URL**: $(jq -r '.deployment.public_url' state.json)
 - **详细**: \`state.json\` + \`ROADMAP.md\` 任务总览
 
 ## 3. 今日完成 (自动统计)
 \`\`\`
-\$(git log --since="midnight" --pretty=format:"%h %s" 2>/dev/null | head -20 || echo "no commit today")
+$(git log --since="midnight" --pretty=format:"%h %s" 2>/dev/null | head -20 || echo "no commit today")
 \`\`\`
 
 ## 4. 明日计划 (待 user 拍板 / 阻塞项)
@@ -105,11 +101,11 @@ cat >> "$HANDOFF_FILE" <<BODY
 
 ## 8. Git 状态
 - HEAD: ${COMMIT_HASH}
-- 远端: \$(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo "no upstream")
-- 落后远端: \$(git rev-list --left-only --count HEAD...@{u} 2>/dev/null || echo "?") commit
-- 未提交: \$(echo "$GIT_STATUS" | grep -c "^" || echo "0") 个文件
+- 远端: $(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo "no upstream")
+- 落后远端: $(git rev-list --left-only --count HEAD...@{u} 2>/dev/null || echo "?") commit
+- 未提交: $(echo "$GIT_STATUS" | grep -c "^" || echo "0") 个文件
 \`\`\`
-\$(echo "$GIT_STATUS" | head -20)
+$(echo "$GIT_STATUS" | head -20)
 \`\`\`
 
 ## 9. 教训 (按 06-27 update 累计)
@@ -117,7 +113,7 @@ cat >> "$HANDOFF_FILE" <<BODY
 - **session_search summary ≠ transcript**: 必须 git diff + mtime 反查
 - **commit 范围**: \`numstat > 0\` 过滤, 别 \`git add -A\`
 - **时间戳**: \`datetime.fromtimestamp(t, UTC+8)\` 换算
-BODY
+HEADER
 
 log "✅ handoff doc 写完: $HANDOFF_FILE"
 

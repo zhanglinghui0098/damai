@@ -1,4 +1,4 @@
-# 大脉项目 — Daily Handoff (YYYY-MM-DD)
+# 大脉项目 — Daily Handoff (2026-06-27)
 
 > **用途**: 抗失忆 + 跨 session 连贯性, 每天 22:00 cron 自动生成
 > **下次 session 启动**: 读本文件 + `state/STATUS.md` + `git log --oneline -10`
@@ -8,9 +8,9 @@
 
 ## 0. 一句话 (今天做了什么)
 
-- 今天 commit 数: 5
-- 改了 14 个文件
-- 最近 commit: `0994476` docs(state): 06-27 10:00 PROJECT/ROADMAP/DECISIONS/state.json 4 文件更新 + daily-handoff.sh
+- 今天 commit 数: 6
+- 改了 16 个文件
+- 最近 commit: `f57afa8` chore(handoff): 2026-06-27 daily handoff backup
 - 还在 working tree 没 commit 的: 10 个文件
 
 ## 1. 商业方案 (静态)
@@ -22,14 +22,19 @@
 - **详细**: `PROJECT.md` §1
 
 ## 2. 当前阶段 (动态)
-- **v2.7.0** phase: $(jq -r '.current_phase' state.json)
-- **phase_status**: $(jq -r '.phase_status' state.json)
-- **公网 URL**: $(jq -r '.deployment.public_url' state.json)
+- **v2.7.0** phase: 
+- **phase_status**: 
+- **公网 URL**: 
 - **详细**: `state.json` + `ROADMAP.md` 任务总览
 
 ## 3. 今日完成 (自动统计)
 ```
-$(git log --since="midnight" --pretty=format:"%h %s" 2>/dev/null | head -20 || echo "no commit today")
+f57afa8 chore(handoff): 2026-06-27 daily handoff backup
+0994476 docs(state): 06-27 10:00 PROJECT/ROADMAP/DECISIONS/state.json 4 文件更新 + daily-handoff.sh
+6c7bcf0 docs(state): 06-27 9:50 项目连贯性收口
+68df2b5 feat(nav): 06-27 9:25 导航 UI 重构 (SVG 图标 + 重命名 + 用户菜单 + 登录按钮)
+b214eee feat(oss): 06-27 阿里云 OSS 接入 (run-image + upload + lib/oss + 备份告警脚本)
+006f92e fix(canvas): 06-26 完整类型修复 + run-image 安全加固
 ```
 
 ## 4. 明日计划 (待 user 拍板 / 阻塞项)
@@ -55,21 +60,12 @@ $(git log --since="midnight" --pretty=format:"%h %s" 2>/dev/null | head -20 || e
 - "继续"= 接上一 session 末尾, 不是新事
 
 ## 8. Git 状态
-- HEAD: 0994476
-- 远端: $(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo "no upstream")
-- 落后远端: $(git rev-list --left-only --count HEAD...@{u} 2>/dev/null || echo "?") commit
-- 未提交: $(echo " M app/api/agent/route.ts
- M app/canvas/[id]/CanvasEditor.tsx
- M app/canvas/[id]/page.tsx
- M app/case/[id]/CanvasViewer.tsx
- M app/case/[id]/page.tsx
- M app/case/page.tsx
- M app/dashboard/page.tsx
- M app/data/analytics/page.tsx
- M app/data/layout.tsx
- M app/data/review/page.tsx" | grep -c "^" || echo "0") 个文件
+- HEAD: f57afa8
+- 远端: origin/master
+- 落后远端: 0 commit
+- 未提交: 10 个文件
 ```
-$(echo " M app/api/agent/route.ts
+ M app/api/agent/route.ts
  M app/canvas/[id]/CanvasEditor.tsx
  M app/canvas/[id]/page.tsx
  M app/case/[id]/CanvasViewer.tsx
@@ -78,7 +74,7 @@ $(echo " M app/api/agent/route.ts
  M app/dashboard/page.tsx
  M app/data/analytics/page.tsx
  M app/data/layout.tsx
- M app/data/review/page.tsx" | head -20)
+ M app/data/review/page.tsx
 ```
 
 ## 9. 教训 (按 06-27 update 累计)
