@@ -320,6 +320,8 @@ export default function CanvasEditor({
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [dragTargetInput, setDragTargetInput] = useState<{ nodeId: string; portId: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  // 记录鼠标在画布上的世界坐标 (FloatingTools / addNode 用) — 用 ref 避免每次 mousemove 都 re-render
+  const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ id: string; offX: number; offY: number } | null>(null);
   const panRef = useRef<{ startX: number; startY: number; startScrollLeft: number; startScrollTop: number } | null>(null);
   const router = useRouter();
@@ -480,8 +482,29 @@ export default function CanvasEditor({
   function addNode(type: NodeType, x?: number, y?: number) {
     const spec = NODE_SPECS[type];
     const id = `n${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-    const px = x ?? 240 + Math.random() * 200;
-    const py = y ?? 240 + Math.random() * 200;
+    // 定位策略: 显式坐标 > 鼠标位置 (居中放) > 视口中心 > 兜底
+    // 修复前是 Math.random() * 200 + 240 — 画布一缩放/拖动就找不到了
+    let px: number;
+    let py: number;
+    if (x != null && y != null) {
+      // 显式坐标 (双击菜单触发) — 已经过 NODE_W/2 + 30 偏移, 直接用
+      px = x;
+      py = y;
+    } else if (lastMouseRef.current) {
+      // 鼠标在画布上 — 节点直接出现在鼠标处 (居中, 留 30px 顶部空间给 header)
+      px = lastMouseRef.current.x - NODE_W / 2;
+      py = lastMouseRef.current.y - 30;
+    } else if (canvasRef.current) {
+      // 还没移动过鼠标 — 回退到当前视口中心 (总比随机数强)
+      const c = canvasRef.current;
+      const r = c.getBoundingClientRect();
+      px = (r.width / 2 - c.scrollLeft) / zoom - NODE_W / 2;
+      py = (r.height / 2 - c.scrollTop) / zoom - 30;
+    } else {
+      // 极端兜底
+      px = 240;
+      py = 240;
+    }
     setNodes((arr) => [
       ...arr,
       {
@@ -697,6 +720,15 @@ export default function CanvasEditor({
       {/* 画布 */}
       <div
         ref={canvasRef}
+        onMouseMove={(e) => {
+          const c = canvasRef.current;
+          if (!c) return;
+          const r = c.getBoundingClientRect();
+          lastMouseRef.current = {
+            x: (e.clientX - r.left + c.scrollLeft) / zoom,
+            y: (e.clientY - r.top + c.scrollTop) / zoom,
+          };
+        }}
         onScroll={() => {
           const c = canvasRef.current;
           if (!c) return;
