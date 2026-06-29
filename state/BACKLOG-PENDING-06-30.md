@@ -31,7 +31,13 @@
 
 ## 🟡 画布 Phase 3-4 (讨论后拍板)
 
-### 4. Phase 3: UI 入口切换 — **为什么 user 刷新看不到改动**
+### 4. **Phase 3.5 — chrome 1:1 恢复 (用户反馈越权)** ⚠️ 紧急
+- 详见 `state/PLAN-CHROME-RESTORE-06-30.md` (5 步方案 + 验收 checklist)
+- 恢复: TopBar / "脉" logo / FloatingTools + 4 类操作 (contextmenu / 空白 / 拖拽 / onAdd)
+- 移除: React Flow MiniMap / Controls / Dots background
+- **当前 session call 超限,下次新 session 执行** (06-30 06:55 已存档 PLAN)
+
+### 5. Phase 3: UI 入口切换 ✅ (已上线)
 - 老路由 `/canvas/[id]` → 仍然指向自研 `CanvasEditor.tsx` (120KB / 3353 行)
 - 新路由 `/canvas-v2/[id]` → 指向 React Flow `CanvasFlowEditor.tsx` (17KB / 493 行)
 - **主页按钮/链接都指向老路由**,所以 user 打开还是老版本
