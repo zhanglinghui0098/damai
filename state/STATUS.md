@@ -1,8 +1,30 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-30 01:10 CST
+最后更新: 2026-06-30 07:20 CST
 
 ## 当前在做
+- ✅ **画布 Phase 3.5 完成 (chrome 1:1 恢复) 06-30 07:20** — commit `5552265`, push master, ECS 部署
+  - 1 文件改动 +466/-39 (CanvasFlowEditor.tsx 17KB → 30KB)
+  - **加 4 件套** (1:1 移植自老 CanvasEditor.tsx line 1021-1118 + 990-1012 + 1120+):
+    - TopBar: 顶部 56px, "大脉" 标题 + "已保存到云端" 时间 + ◆credits + 社区/分享按钮
+    - "脉" logo: 右下 36x36 圆形, 蓝紫渐变 `linear-gradient(135deg, #6e8cd6, #5a7fbf)`
+    - FloatingTools: 左侧 16px, 半透明 + 按钮展开 6 节点菜单 + 📁/📋/💬/N 占位按钮
+    - ZoomControls: 右下 28x86 垂直, +/-/百分比显示 (替代 React Flow Controls)
+  - **移除** React Flow MiniMap / Controls / Background Dots
+  - **背景**: 外层 div 加 `radial-gradient(circle, rgba(255,255,255,0.10) 1px, transparent 1px) 20px 20px` (跟老画布一致)
+  - **4 类操作 1:1 移植**:
+    - `onContextMenu={e => e.preventDefault()}` 挂外层 div
+    - 双击空白: `useReactFlow().screenToFlowPosition({x: e.clientX, y: e.clientY})` 精准坐标
+    - 拖拽: React Flow 内置 (onNodesChange 自动处理, 移除自研 onNodeDragStart)
+    - FloatingTools.onAdd: `useReactFlow().screenToFlowPosition` + `setNodes(add)`
+  - 保留 Phase 2: 6 节点类型 + localStorage 持久化 + 双击创建
+  - 部署链路: `tar --exclude=./public/case` (45M, 排除 3.6G mp4) → scp ECS → `mv app app.bak-*` + 解压 → npm install --legacy-peer-deps → next build → pm2 delete+start
+  - PM2 PID 117729 online, damai.net.cn/canvas-v2/test-3-5 HTTP 200
+  - DOM 验证: data-top-bar/logo/floating-tools/zoom-controls/canvas 全在, 6 节点 + 5 边
+  - ⚠️ vision_analyze 对右下 28-36px 小元素不灵敏 (但 DOM 坐标 + 截图都对)
+- ✅ **画布 Phase 3 完成 (老路由 redirect) 06-30 06:50** — commit `991c618`
+  - `/canvas/[id]/page.tsx` 改为 redirect 到 `/canvas-v2/[id]`
+  - 主页按钮仍指 `/canvas/[id]`,打开后自动跳新画布
 - ✅ **画布 Phase 2 完成 (6 节点类型 + state + 交互) 06-30 02:50** — commit `f15df9c`, 已部署
   - `app/canvas/[id]/CanvasFlowEditor.tsx` 17KB (vs Phase 1 4KB)
   - 6 节点类型真实组件: text (textarea 编辑) / image (preview + prompt) / video-gen (player) / audio-gen (audio) / merge (N 输入) / output (成片)
