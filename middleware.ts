@@ -28,7 +28,7 @@ const PUBLIC_PREFIXES = [
   "/_next",
   "/api/agent",
   "/api/auth", // 登录流程自己不放行怎么登录
-  "/api/canvas", // 画布运行 API (image/video/audio 生成)
+  // "/api/canvas" 移除 (06-29 P0 #4): canvas API 必须 session 验证, 防止未登录上传/生成 (S3 bug 修复)
   "/favicon",
   "/case",
   "/create",

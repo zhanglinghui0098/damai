@@ -51,6 +51,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // S3+1 (P0 #4): tenant 隔离 — 没 session 拒绝
+  const tenantId = req.headers.get("x-tenant-id");
+  if (!tenantId) {
+    return NextResponse.json({ error: "missing_tenant_id", detail: "未登录或 session 失效" }, { status: 401 });
+  }
+
   let body: any;
   try {
     body = await req.json();
@@ -105,7 +111,7 @@ export async function POST(req: NextRequest) {
       const img = result.images[i];
       const ext = img.url.match(/\.(jpeg|jpg|png|webp)/i)?.[1] || "jpg";
       const filename = `${idBase}_${i}.${ext}`;
-      const ossUrl = await downloadImageToOss(img.url, filename);
+      const ossUrl = await downloadImageToOss(tenantId, img.url, filename);
       downloaded.push(ossUrl);
     }
 

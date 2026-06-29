@@ -231,6 +231,7 @@ export async function generateImage(opts: GenerateImageOptions): Promise<Generat
  * @returns 本地可访问的 URL 路径 (e.g. "/canvas-output/abc.jpg")
  */
 export async function downloadImageToPublic(
+  tenantId: string,
   remoteUrl: string,
   filename: string
 ): Promise<string> {
@@ -239,11 +240,11 @@ export async function downloadImageToPublic(
   const buf = Buffer.from(await resp.arrayBuffer());
   const fs = await import("fs/promises");
   const path = await import("path");
-  const outDir = path.join(process.cwd(), "public", "canvas-output");
+  const outDir = path.join(process.cwd(), "public", "canvas-output", tenantId);
   await fs.mkdir(outDir, { recursive: true });
   const outPath = path.join(outDir, filename);
   await fs.writeFile(outPath, buf);
-  return `/canvas-output/${filename}`;
+  return `/canvas-output/${tenantId}/${filename}`;
 }
 
 /**
@@ -253,6 +254,7 @@ export async function downloadImageToPublic(
  *   - 本地路径: 旧 localStorage 兼容
  */
 export async function downloadImageToOss(
+  tenantId: string,
   remoteUrl: string,
   filename: string
 ): Promise<string> {
@@ -266,14 +268,14 @@ export async function downloadImageToOss(
   };
   const contentType = mimeMap[ext] || "image/jpeg";
 
-  // 优先 OSS
+  // 优先 OSS (S3+1 P0 #4: tenant 隔离, OSS key 前缀 tenantId)
   try {
     const { uploadBuffer, buildKey } = await import("./oss");
-    const key = buildKey("canvas-output", filename);
+    const key = buildKey(tenantId, "canvas-output", filename);
     const ossUrl = await uploadBuffer(key, buf, contentType);
-    return ossUrl;  // 完整 https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/canvas-output/...
+    return ossUrl;  // 完整 https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/{tenantId}/canvas-output/...
   } catch (e: any) {
     console.warn(`[ark-image] OSS 上传失败 (${e?.message || e}), fallback 到本地`);
-    return downloadImageToPublic(remoteUrl, filename);
+    return downloadImageToPublic(tenantId, remoteUrl, filename);
   }
 }
