@@ -792,9 +792,30 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
   }, [nodes, edges, storageKey]);
 
   const onConnect: OnConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge({ ...connection, type: 'bezier' }, eds)),
+    (connection: Connection) => {
+      console.log('[canvas-v2] onConnect:', JSON.stringify(connection));
+      setEdges((eds) => {
+        const newEdges = addEdge({ ...connection, type: 'bezier' }, eds);
+        console.log('[canvas-v2] onConnect -> edges:', eds.length, '->', newEdges.length);
+        return newEdges;
+      });
+    },
     [setEdges]
   );
+
+  // 监听 edges 变化 (调试连接消失)
+  const handleEdgesChange = useCallback(
+    (changes: any) => {
+      console.log('[canvas-v2] onEdgesChange ALL:', JSON.stringify(changes));
+      onEdgesChange(changes);
+    },
+    [onEdgesChange]
+  );
+
+  // 调试: 每次 edges 变化时 log
+  useEffect(() => {
+    console.log('[canvas-v2] edges render:', edges.length, 'ids:', edges.map(e => e.id));
+  }, [edges]);
 
   // FloatingTools 添加节点: 用 screenToFlowPosition 精准坐标
   const handleAdd = useCallback((type: string, screenX: number, screenY: number) => {
@@ -889,11 +910,12 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onDoubleClick={onPaneDoubleClick}
           nodeTypes={nodeTypes}
           fitView
+          deleteKeyCode={['Backspace', 'Delete']}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
         />
