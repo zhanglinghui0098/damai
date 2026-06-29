@@ -490,6 +490,7 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 - **CanvasEditor.tsx 紧急恢复 ✅ 06-29 14:55** (Codex 同步覆盖 working tree, `git checkout HEAD --` 恢复; 4000px=7, outputUrl=17, NODE_SPECS=33, createPortal=2, useLayoutEffect=2, _iIn=3; 坏版本备份在 `/tmp/codex-broken-restore-2026-06-29-1450/CanvasEditor-BROKEN.tsx`)
 - **服务器部署 ✅ 06-29 16:10** (admin + sudo bash -s 模式, 走通 admin SSH key; **修复 3 大问题**: root SSH 被禁 / 30G 磁盘 100% 满 (清 .next + .open-next + 2 个 .bak + 3 个 /tmp tar + public/canvas-output = 释放 15G) / build OOM (NEXT_BUILD_WORKERS=1 + NODE_OPTIONS=1024); `damai.net.cn: HTTP 200`, pm2 online 66803)
 - **SMS 签名自动报备通过 ✅ 06-29 16:10** (send-code 现在返 `provider: aliyun` 不再 stub, 移动运营商实名制自动完结)
+- **案例视频迁移 OSS ✅ 06-29 16:20** (19 mp4 + 19 poster 上传阿里云 OSS damai-zlh-prod/case/, 释放 server 3.6G; lib/cases.ts 改用 OSS URL 模板; deploy 脚本修 `pm2 reload` → `pm2 delete + start` 强制 env refresh; 1 年 immutable 缓存; server 41% used)
 - 视频模板存模板库 (0.5 天, Codex/Workbody B线)
 - canvas 改飞书 (1 天, Codex/Workbody B线)
 

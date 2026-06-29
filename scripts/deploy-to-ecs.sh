@@ -77,8 +77,9 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o PasswordAuthentication=no "${EC
   echo "--- 6c. next build ---"
   NODE_OPTIONS=--max-old-space-size=2048 npx next build 2>&1 | tail -5
 
-  echo "--- 7. pm2 reload ---"
-  pm2 reload damai 2>&1 | tail -3
+  echo "--- 7. pm2 delete + start (env 强制 refresh, reload 不重新读 .env.local) ---"
+  pm2 delete damai 2>/dev/null
+  pm2 start npm --name damai -- run start 2>&1 | tail -3
   sleep 3
   pm2 list | tail -3
 

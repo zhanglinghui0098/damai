@@ -1,5 +1,6 @@
 // 大脉案例库 — 17 个真实视频 (来自 Ling 2026-06-24 上传)
 // 视频在 public/case/, poster 在 public/case/poster/
+// 06-29 16:15: 视频走 OSS, 不再用 server public/ (释放 3.6G server 磁盘)
 
 export type CaseItem = {
   id: string;          // URL slug, 用拼音/英文
@@ -78,6 +79,10 @@ const metaMap: Record<string, { orientation: "landscape" | "portrait"; duration:
   "赛博江湖":         { orientation: "landscape", duration: 64 },
 };
 
+// 06-29 16:15: OSS public-read URL (bucket damai-zlh-prod, region oss-cn-hangzhou)
+// 跟 lib/oss.ts 同步, hard-code 是为了 build 时不依赖 runtime env
+const OSS_BASE = "https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/case";
+
 export const CASES: CaseItem[] = rawNames.map((title) => {
   const slug = slugMap[title];
   const encoded = encodeURIComponent(title); // 中文文件名编码
@@ -88,8 +93,8 @@ export const CASES: CaseItem[] = rawNames.map((title) => {
     creator: "Ling",
     category: "品牌广告",
     hue: 220,                                // 已弃用 (有 poster)
-    videoUrl: `/case/${encoded}.mp4`,        // 实际文件名是中文
-    posterUrl: `/case/poster/${encoded}.jpg`,
+    videoUrl: `${OSS_BASE}/${encoded}.mp4`,  // 06-29: 走 OSS, 不再 /case/...
+    posterUrl: `${OSS_BASE}/poster/${encoded}.jpg`,  // 06-29: 走 OSS
     description: `${title} — ${meta.orientation === "portrait" ? "9:16 竖屏" : "16:9 横屏"} 品牌视频样片.`,
     orientation: meta.orientation,
     duration: meta.duration,
