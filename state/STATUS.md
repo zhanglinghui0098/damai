@@ -486,7 +486,10 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 - 自动化 `deploy-to-ecs.sh` 脚本 ✅ **06-29 写好** (2h, 公测 10 经销商并发时必建)
 - 阿里云轻量升 2C/4G (¥80/月, **07-10 前必做**, 否则 100 并发 OOM)
 - 阶段 2 飞书项目表 **S1+S2+S3 ✅ 06-29 14:30** (`00_项目表` 12 fields, 4 wrapper 函数 + 4 API route: `GET/POST /api/projects` + `GET/PATCH /api/projects/[id]`, 跨租户 403, **MyProjects.tsx 改用真实 API** (home page section, dashboard ProjectsTab 暂用 mock, 减法: 不重复))
-- P1 #2.1 飞书项目表 S4 (canvas 自动 createProject + dashboard ProjectsTab 改真实数据) **未做** (下 session)
+- 阶段 2 飞书项目表 S4 (canvas 自动 createProject + dashboard ProjectsTab 改真实数据) **未做** (下 session)
+- **CanvasEditor.tsx 紧急恢复 ✅ 06-29 14:55** (Codex 同步覆盖 working tree, `git checkout HEAD --` 恢复; 4000px=7, outputUrl=17, NODE_SPECS=33, createPortal=2, useLayoutEffect=2, _iIn=3; 坏版本备份在 `/tmp/codex-broken-restore-2026-06-29-1450/CanvasEditor-BROKEN.tsx`)
+- **服务器部署 ✅ 06-29 16:10** (admin + sudo bash -s 模式, 走通 admin SSH key; **修复 3 大问题**: root SSH 被禁 / 30G 磁盘 100% 满 (清 .next + .open-next + 2 个 .bak + 3 个 /tmp tar + public/canvas-output = 释放 15G) / build OOM (NEXT_BUILD_WORKERS=1 + NODE_OPTIONS=1024); `damai.net.cn: HTTP 200`, pm2 online 66803)
+- **SMS 签名自动报备通过 ✅ 06-29 16:10** (send-code 现在返 `provider: aliyun` 不再 stub, 移动运营商实名制自动完结)
 - 视频模板存模板库 (0.5 天, Codex/Workbody B线)
 - canvas 改飞书 (1 天, Codex/Workbody B线)
 
