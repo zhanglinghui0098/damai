@@ -475,7 +475,7 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 
 | # | 任务 | 时长 | 阻塞 | 状态 |
 |---|---|---|---|---|
-| 1 | **deploy 06-27+ 到阿里云轻量** (47.96.128.172) | 30-60min | 🔴 轻量 root 密码 (user 重置 + 贴) | 等密码 |
+| 1 | **deploy 06-27+ 到阿里云轻量 ✅** (47.96.128.172, commit 70d7ced 已上生产, damai.net.cn 200 OK, pm2 online) | 30min/30min | done | done (脚本 scripts/deploy-to-ecs.sh 写好) |
 | 2 | **本地 stub curl 测试 ✅** (port 3001, 5/5 通过: send-code → verify-code → Bitable upsert → 上传 401/200 → Bitable 验真 1 条) | 5min/5min | done | done |
 | 3 | **飞书 Bitable 用户表 S1+S2+S3 ✅** (00_用户档案, 11 fields, verify-code 自动 upsert + session.tenantId 来自 Bitable) | 3.5h/4h | 阶段 1.3 收口 | done |
 | 4 | **OSS+API tenant 隔离 S3+1 ✅** (OSS key 加 tenantId 前缀, middleware 强制 /api/canvas session, 2 API route 401 没 tenantId 拒绝) | 3h/3h | 阶段 2 OSS 完整隔离完成 | done |
