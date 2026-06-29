@@ -865,15 +865,22 @@ export default function CanvasEditor({
           //   所以 zoom 改变时只缩放画布 + 节点, UI 大小不变
           //   改这个 transform 时千万别移到外层 (会让 UI 也缩放)
         >
+          {/* SVG overlay: 始终覆盖整个 inner div (已应用 transform:scale, 所以路径用世界坐标) */}
+          {/* 06-29 重设计: 改用 viewport overlay, 路径用 world→screen 转换后直接绘制 */}
+          {/* TapNow/LibTV 风格: 贝塞尔曲线 + 箭头, 视觉清晰 */}
           <svg
-            // 06-29 18:00 改: SVG 10400x9600 涵盖 4000px margin 全区域 (连接线跨 margin 也能显示)
-            // 起点 top:0 left:0 = inner div 框左上 = world (0, 0)
-            // inner div 框 = (4000,4000)~(6400,5600) in parent, SVG 跟它对齐就覆盖全部可滚动空间
-            // 路径坐标仍是世界单位, 在 SVG 自己的 0-10400 坐标内
-            style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+            style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", overflow: "visible" }}
             width={10400}
             height={9600}
           >
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="rgba(220,230,245,0.7)" />
+              </marker>
+              <marker id="arrow-pending" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="rgba(160,200,255,0.85)" />
+              </marker>
+            </defs>
             {edges.map((e) => {
               const from = nodes.find((n) => n.id === e.fromNode);
               const to = nodes.find((n) => n.id === e.toNode);
@@ -881,12 +888,14 @@ export default function CanvasEditor({
               const fp = from.outputs.find((p) => p.id === e.fromPort);
               const tp = to.inputs.find((p) => p.id === e.toPort);
               if (!fp || !tp) return null;
-              return <ConnectionPath key={e.id} a={portPos(from, fp, false)} b={portPos(to, tp, true)} />;
+              // portPos 返回世界坐标, SVG 有 transform:scale(zoom) 所以直接用世界坐标即可
+              const a = portPos(from, fp, false);
+              const b = portPos(to, tp, true);
+              return <ConnectionPath key={e.id} a={a} b={b} />;
             })}
             {pending && (() => {
               const from = nodes.find((n) => n.id === pending.fromNode);
               if (!from) return null;
-              // 06-29 17:30 改: 双向 — from input 拖线时从 input 端口位置出发
               const fp = pending.fromIsInput
                 ? from.inputs.find((p) => p.id === pending.fromPort)
                 : from.outputs.find((p) => p.id === pending.fromPort);
@@ -2171,7 +2180,8 @@ function ToolbarDivider() {
 }
 
 // =====================================================================
-// 连接线 (贝塞尔)
+// 连接线 — TapNow/LibTV 风格贝塞尔曲线 + 箭头
+// 06-29 重设计: 平滑 cubic bezier (dx 至少 NODE_W*0.4, 避免水平时甩半圆) + 箭头指示方向
 // =====================================================================
 function ConnectionPath({
   a,
@@ -2182,18 +2192,28 @@ function ConnectionPath({
   b: { x: number; y: number };
   pending?: boolean;
 }) {
-  // 06-29 18:50 改: 自由 cubic bezier 飘很厉害 (dx=abs(b-a)/2, y 相同时甩半圆) → 竞品 (即梦/TapNow) 全用正交阶梯
-  // 路径: 起点 → 水平 1/2 → 垂直到目标 y → 水平到终点. 不管节点怎么放都清晰指向下一个
-  const midX = (a.x + b.x) / 2;
-  const path = `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  // 水平方向时控制点偏移量 (足够大避免圆弧效应)
+  const cp = Math.max(NODE_W * 0.4, Math.abs(dx) * 0.5, Math.abs(dy) * 0.5);
+  // Cubic bezier: 从 a 水平出发 → 拐弯 → 到 b
+  // 水平优先: 先水平再竖直 or 先竖直再水平
+  let path: string;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    // 水平主导: 水平走 cp，再竖直，再水平到终点
+    path = `M ${a.x} ${a.y} C ${a.x + cp} ${a.y}, ${b.x - cp} ${b.y}, ${b.x} ${b.y}`;
+  } else {
+    // 竖直主导: 竖直走 cp，再水平，再竖直到终点
+    path = `M ${a.x} ${a.y} C ${a.x} ${a.y + Math.sign(dy) * cp}, ${b.x} ${b.y - Math.sign(dy) * cp}, ${b.x} ${b.y}`;
+  }
   return (
     <path
       d={path}
-      stroke={pending ? "rgba(160, 200, 255, 0.85)" : "rgba(220, 230, 245, 0.6)"}
-      strokeWidth={pending ? 2 : 1.5}
+      stroke={pending ? "rgba(160, 200, 255, 0.9)" : "rgba(110, 180, 255, 0.75)"}
+      strokeWidth={pending ? 2.5 : 2}
       fill="none"
       strokeLinecap="round"
-      strokeLinejoin="round"
+      markerEnd={pending ? "url(#arrow-pending)" : "url(#arrow)"}
     />
   );
 }
