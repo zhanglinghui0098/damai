@@ -4,30 +4,35 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
   Handle,
   Position,
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
   type NodeProps,
   type NodeTypes,
   type OnConnect,
-  type OnEdgesChange,
-  type OnNodesChange,
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 
 // =====================================================================
-// Phase 2.1 — 6 节点类型真实组件
-// 06-30 02:50
+// Phase 3.5 — 画布 chrome 1:1 恢复
+// 06-30 07:00
+//
+// 把老 CanvasEditor.tsx 的 4 件套 (TopBar / "脉" logo / FloatingTools /
+// ZoomControls) + 4 类操作 (contextmenu / 空白 / 拖拽 / onAdd) 1:1
+// 移植到 React Flow 底层,保留老画布视觉/操作,只换底层架构。
+//
+// 关键差异 vs Phase 2:
+// - 移除 React Flow 自带 MiniMap / Controls / Dots Background
+// - 外层 div 加 radial-gradient 圆点 (背景 fixed 跟老画布一致)
+// - 坐标转换用 useReactFlow().screenToFlowPosition (替代自研 scrollLeft)
+// - 拖拽/pan/zoom 用 React Flow 内置 (替代自研 onMouseDown)
 // =====================================================================
 
 // 共享样式
@@ -126,6 +131,16 @@ const TYPE_LABELS: Record<string, string> = {
   output: '成片输出',
 };
 
+// FloatingTools 节点规格 (Chrome 1:1 移植自老 CanvasEditor.tsx)
+const FLOATING_NODE_SPECS: Record<string, { label: string; iconChar: string }> = {
+  text: { label: '文本', iconChar: '≡' },
+  image: { label: '图片', iconChar: '▣' },
+  'video-gen': { label: '视频', iconChar: '▶' },
+  'audio-gen': { label: '音频', iconChar: '♪' },
+  merge: { label: '合并', iconChar: '⊕' },
+  output: { label: '成片', iconChar: '◉' },
+};
+
 // ---------------------------------------------------------------------
 // 1. TextNode
 // ---------------------------------------------------------------------
@@ -208,7 +223,7 @@ function ImageNode({ data, selected }: NodeProps<Node<ImageNodeData>>) {
 }
 
 // ---------------------------------------------------------------------
-// 3. VideoGenNode (video-gen)
+// 3. VideoGenNode
 // ---------------------------------------------------------------------
 type VideoGenData = { prompt?: string; status?: 'idle' | 'generating' | 'done'; url?: string; label?: string };
 function VideoGenNode({ data, selected }: NodeProps<Node<VideoGenData>>) {
@@ -251,7 +266,7 @@ function VideoGenNode({ data, selected }: NodeProps<Node<VideoGenData>>) {
 }
 
 // ---------------------------------------------------------------------
-// 4. AudioGenNode (audio-gen)
+// 4. AudioGenNode
 // ---------------------------------------------------------------------
 type AudioGenData = { prompt?: string; status?: 'idle' | 'generating' | 'done'; url?: string; label?: string };
 function AudioGenNode({ data, selected }: NodeProps<Node<AudioGenData>>) {
@@ -400,6 +415,337 @@ const initialEdges: Edge[] = [
   { id: 'e5-6', source: '5', target: '6', type: 'bezier' },
 ];
 
+// =====================================================================
+// Chrome 4 件套 (1:1 移植自老 CanvasEditor.tsx)
+// =====================================================================
+
+// 顶部状态条
+function TopBar({
+  credits,
+  savedAt,
+  nodeCount,
+  edgeCount,
+  onTitleClick,
+}: {
+  credits: number;
+  savedAt: Date | null;
+  nodeCount: number;
+  edgeCount: number;
+  onTitleClick: () => void;
+}) {
+  const timeStr = savedAt
+    ? savedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '';
+  return (
+    <div
+      data-top-bar="1"
+      style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 20px',
+        zIndex: 50,
+        pointerEvents: 'auto',
+      }}
+    >
+      <div
+        onClick={onTitleClick}
+        title="返回首页"
+        style={{ display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer' }}
+      >
+        <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#fff' }}>
+          大脉
+        </div>
+        <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.4)' }}>
+          {savedAt ? `已保存到云端 · ${timeStr}` : '编辑中…'}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          data-top-bar="1"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 980,
+            fontSize: '0.8125rem',
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>◆</span>
+          <span>{credits.toLocaleString()}</span>
+        </div>
+        <button
+          data-top-bar="1"
+          style={{
+            padding: '6px 14px',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 980,
+            color: '#fff',
+            fontSize: '0.8125rem',
+            cursor: 'pointer',
+          }}
+        >
+          社区
+        </button>
+        <button
+          data-top-bar="1"
+          style={{
+            width: 32, height: 32,
+            background: 'rgba(255,255,255,0.06)',
+            border: 'none',
+            borderRadius: '50%',
+            color: '#fff',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          ⤴
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 左侧浮动工具栏
+function FloatingTools({ onAdd }: { onAdd: (type: string, x: number, y: number) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      data-floating-tools="1"
+      style={{
+        position: 'absolute',
+        left: 16,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        padding: 6,
+        background: 'rgba(20,20,22,0.85)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+        backdropFilter: 'blur(20px)',
+        zIndex: 40,
+        pointerEvents: 'auto',
+      }}
+    >
+      <div style={{ position: 'relative' }}>
+        <button
+          data-floating-tools="1"
+          onClick={() => setOpen(!open)}
+          style={{
+            width: 32, height: 32,
+            background: open ? 'rgba(255,255,255,0.1)' : 'transparent',
+            border: 'none',
+            borderRadius: 12,
+            color: '#fff',
+            fontSize: '1.125rem',
+            fontWeight: 300,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          +
+        </button>
+        {open && (
+          <div
+            data-floating-tools="1"
+            style={{
+              position: 'absolute',
+              left: 'calc(100% + 8px)',
+              top: 0,
+              minWidth: 180,
+              padding: 6,
+              background: 'rgba(20,20,22,0.95)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 12,
+              backdropFilter: 'blur(20px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
+            {Object.entries(FLOATING_NODE_SPECS).map(([type, spec]) => (
+              <button
+                key={type}
+                data-floating-tools="1"
+                onClick={(e) => {
+                  // 用点击位置算 Flow 坐标 (React Flow 内部坐标系)
+                  const rect = (e.currentTarget.closest('[data-canvas-region]') as HTMLElement)?.getBoundingClientRect();
+                  const screenX = e.clientX - (rect?.left || 0);
+                  const screenY = e.clientY - (rect?.top || 0);
+                  // 暂时用 screen 坐标, 实际 onAdd 内部用 useReactFlow().screenToFlowPosition 转换
+                  onAdd(type, screenX, screenY);
+                  setOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: '0.8125rem',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ width: 16, opacity: 0.6, fontSize: '0.875rem' }}>
+                  {spec.iconChar}
+                </span>
+                <span>{spec.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 占位图标按钮 (跟老画布一致) */}
+      {['📁', '📋', '💬'].map((emoji, i) => (
+        <button
+          key={i}
+          data-floating-tools="1"
+          style={{
+            width: 32, height: 32,
+            background: 'transparent',
+            border: 'none',
+            borderRadius: 12,
+            color: '#fff',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.6,
+          }}
+        >
+          {emoji}
+        </button>
+      ))}
+      <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
+      <button
+        data-floating-tools="1"
+        style={{
+          width: 32, height: 32,
+          background: 'transparent',
+          border: 'none',
+          borderRadius: 12,
+          color: '#fff',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.6,
+        }}
+      >
+        N
+      </button>
+    </div>
+  );
+}
+
+// Zoom 缩放控件 (1:1 移植, 替代 React Flow 自带 Controls)
+function ZoomControls({ zoom, onZoomIn, onZoomOut, onReset }: {
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+}) {
+  const btnStyle: React.CSSProperties = {
+    width: 28, height: 28,
+    background: 'rgba(20,20,22,0.85)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    color: '#fff',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+  return (
+    <div
+      data-zoom-controls="1"
+      style={{
+        position: 'absolute',
+        right: 16,
+        bottom: 64,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 8,
+        overflow: 'hidden',
+        zIndex: 40,
+        pointerEvents: 'auto',
+      }}
+    >
+      <button onClick={onZoomIn} style={{ ...btnStyle, borderRadius: '8px 8px 0 0' }} title="放大">+</button>
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
+      <div style={{
+        ...btnStyle,
+        width: 28, height: 28,
+        background: 'rgba(20,20,22,0.85)',
+        fontSize: '0.6875rem',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'rgba(255,255,255,0.7)',
+      }} onClick={onReset} title="重置">{Math.round(zoom * 100)}%</div>
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
+      <button onClick={onZoomOut} style={{ ...btnStyle, borderRadius: '0 0 8px 8px' }} title="缩小">−</button>
+    </div>
+  );
+}
+
+// "脉" 圆形 logo (右下角浮按钮)
+function PulseLogo({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      data-logo="1"
+      onClick={onClick}
+      title="打开大脉 AI 助手"
+      style={{
+        position: 'absolute',
+        right: 16,
+        bottom: 16,
+        width: 36, height: 36,
+        borderRadius: 18,
+        background: 'linear-gradient(135deg, #6e8cd6, #5a7fbf)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontSize: '0.875rem',
+        fontWeight: 700,
+        cursor: 'pointer',
+        zIndex: 40,
+        pointerEvents: 'auto',
+      }}
+    >
+      脉
+    </div>
+  );
+}
+
+// =====================================================================
+// 主画布 (Phase 3.5)
+// =====================================================================
 export default function CanvasFlowEditor({ projectId }: { projectId: string }) {
   return (
     <ReactFlowProvider>
@@ -409,11 +755,15 @@ export default function CanvasFlowEditor({ projectId }: { projectId: string }) {
 }
 
 function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
-  // Phase 2.3: localStorage 持久化
   const storageKey = useMemo(() => `damai:canvas-v2:${projectId}`, [projectId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [credits] = useState(1000);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getZoom } = useReactFlow();
+  const [zoom, setZoom] = useState(1);
 
   // 加载 localStorage
   useEffect(() => {
@@ -427,12 +777,13 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     }
   }, [storageKey, setNodes, setEdges]);
 
-  // 保存 localStorage (debounced via microtask)
+  // 保存 localStorage (debounced) + 更新 savedAt
   useEffect(() => {
     const t = setTimeout(() => {
       try {
         localStorage.setItem(storageKey + ':nodes', JSON.stringify(nodes));
         localStorage.setItem(storageKey + ':edges', JSON.stringify(edges));
+        setSavedAt(new Date());
       } catch (e) {
         console.warn('localStorage save failed', e);
       }
@@ -445,49 +796,125 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     [setEdges]
   );
 
-  // Phase 2.5: 双击空白创建节点
+  // FloatingTools 添加节点: 用 screenToFlowPosition 精准坐标
+  const handleAdd = useCallback((type: string, screenX: number, screenY: number) => {
+    // screenX/Y 是相对 canvas-region 的坐标, 加 canvas-region 位置拿绝对 screen 坐标
+    const region = document.querySelector('[data-canvas-region]') as HTMLElement;
+    if (!region) return;
+    const rect = region.getBoundingClientRect();
+    const pos = screenToFlowPosition({
+      x: rect.left + screenX,
+      y: rect.top + screenY,
+    });
+    const newId = `n${Date.now()}`;
+    setNodes((nds) => [
+      ...nds,
+      {
+        id: newId,
+        type,
+        position: pos,
+        data: { text: type === 'text' ? '新节点' : '' },
+      },
+    ]);
+  }, [screenToFlowPosition, setNodes]);
+
+  // 双击空白创建节点
   const onPaneDoubleClick = useCallback(
     (event: React.MouseEvent) => {
-      // 用 viewport 计算位置 — React Flow 自动处理坐标转换
-      const target = event.target as HTMLElement;
-      const rect = target.closest('.react-flow__pane')?.getBoundingClientRect();
-      if (!rect) return;
-      // 简单算法: 在 pane 中心 + 一些偏移 (Phase 3 改成精准坐标)
+      const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const newId = `n${Date.now()}`;
       setNodes((nds) => [
         ...nds,
         {
           id: newId,
           type: 'text',
-          position: { x: event.clientX - rect.left - 90, y: event.clientY - rect.top - 40 },
+          position: pos,
           data: { text: '新节点' },
         },
       ]);
     },
-    [setNodes]
+    [screenToFlowPosition, setNodes]
   );
 
+  // 阻止右键菜单 (chrome 1:1)
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
+
+  // 同步 zoom 状态 (给 ZoomControls 显示)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const z = getZoom();
+      setZoom((prev) => (Math.abs(prev - z) > 0.001 ? z : prev));
+    }, 100);
+    return () => clearInterval(interval);
+  }, [getZoom]);
+
+  const handleZoomIn = useCallback(() => zoomIn({ duration: 200 }), [zoomIn]);
+  const handleZoomOut = useCallback(() => zoomOut({ duration: 200 }), [zoomOut]);
+  const handleZoomReset = useCallback(() => setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 200 }), [setViewport]);
+
+  // 返回首页
+  const goHome = useCallback(() => {
+    if (typeof window !== 'undefined') window.location.href = '/';
+  }, []);
+
+  // AI 助手 (暂 console.log, 后续接 API)
+  const goAgent = useCallback(() => {
+    console.log('[damai] goAgent 暂未实现');
+  }, []);
+
   return (
-    <div style={{ position: 'fixed', top: 56, left: 0, right: 0, bottom: 0, background: '#0a0a0a' }} data-testid="canvas-flow-editor">
-      <div style={{ position: 'absolute', top: 8, left: 8, color: '#6e8cd6', fontSize: 12, fontFamily: 'monospace', zIndex: 10 }}>
-        CanvasFlowEditor · {projectId} · {nodes.length} nodes · {edges.length} edges · @xyflow/react v12
-      </div>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDoubleClick={onPaneDoubleClick}
-        nodeTypes={nodeTypes}
-        fitView
-        proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
+    <div
+      data-canvas="1"
+      onContextMenu={handleContextMenu}
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: '#0a0a0a',
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.10) 1px, transparent 1px)',
+        backgroundSize: '20px 20px',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 画布区域 (top:56 留 TopBar 位置) */}
+      <div
+        data-canvas-region="1"
+        style={{
+          position: 'absolute',
+          top: 56, left: 0, right: 0, bottom: 0,
+        }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} color="rgba(110, 140, 214, 0.1)" />
-        <Controls />
-        <MiniMap pannable zoomable nodeColor="#6e8cd6" maskColor="rgba(10,10,10,0.7)" />
-      </ReactFlow>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDoubleClick={onPaneDoubleClick}
+          nodeTypes={nodeTypes}
+          fitView
+          proOptions={{ hideAttribution: true }}
+          defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
+        />
+      </div>
+
+      {/* Chrome 4 件套 (1:1 移植) */}
+      <TopBar
+        credits={credits}
+        savedAt={savedAt}
+        nodeCount={nodes.length}
+        edgeCount={edges.length}
+        onTitleClick={goHome}
+      />
+      <FloatingTools onAdd={handleAdd} />
+      <ZoomControls
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onReset={handleZoomReset}
+      />
+      <PulseLogo onClick={goAgent} />
     </div>
   );
 }
