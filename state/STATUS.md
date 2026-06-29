@@ -1,9 +1,19 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-29 08:59 CST
+最后更新: 2026-06-29 18:30 CST
 
 ## 当前在做
-- 🚧 **阿里云 SMS 接入 (06-29 上午进行中)** — 签名+模板审核通过, 等运营商报备完切真实发送
+- 🚧 **画布 3 真 bug 修 ✅ 06-29 18:00 已 deploy** (commit `34f9481`)
+  - SVG 2400×1600 → 10400×9600 (跨 4000px margin 连接线也显示)
+  - 连接线 rgba 0.5 → 0.85/0.9, strokeWidth 1.5 → 2.5, 加微蓝
+  - FloatingTools onClick 用真实 click 位置算世界坐标 (不再 lastMouseRef "随机")
+- 🚧 **state/ 4T 共享盘 README 化 ✅ 06-29 18:30** (user 反馈 "其他 agent 改错")
+  - 新建 `state/README.md` (5KB, 强制所有 agent 必读, 路径速查 + 必读 4 件套 + 3 警告)
+  - 更新 `state/BACKLOG.md` (加今天 06-29 全部 session 进展, 之前停在 09:01)
+  - 标过期 `codex-deliveries/damai-codex-brief-overview.md` (6/18 老版, 指向 state/README.md)
+  - 改 `codex-deliveries/README.md` 索引 (新方式: 让 Codex 自己读 state/, 不复制 brief)
+- ✅ **P0 #5 SMS 真发收口 🚀 06-29 13:50** (签名「杭州即客传媒」运营商报备通过, 真发 1 条到 15925670098, `provider: aliyun`)
+  - ⏳ user 收验证码 + 贴 6 位数 + 我跑 verify-code 收口 P0 #5 (最后 1 步)
 - ✅ **Canvas i2i 验证通过 (06-26 06:42 CST)** — user 实测 Image A → Image B, B 节点 outputUrl 真作 i2i 参考图生成新图
   - `lib/ark-image.ts computeArkSize` MIN_PIXELS clamp: 任意 aspect × quality 都不会被 Ark 400
   - `CanvasEditor.tsx` toAbs 转换相对 URL → 绝对 URL: Node fetch + Ark 都能拉到上游 outputUrl

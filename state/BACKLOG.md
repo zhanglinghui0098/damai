@@ -1,31 +1,77 @@
 # 大脉 (damai) Backlog
 
-最后更新: 2026-06-29 08:59 CST
+最后更新: 2026-06-29 18:05 CST
 
 ## ✅ 已完成 (recently done)
+
+### 06-29 18:00 画布 3 真 bug 修 + 4T 共享盘 README
+- ✅ CanvasEditor.tsx SVG 2400×1600 → **10400×9600** 覆盖 4000px margin 全区域 (跨 margin 也能显示连接线)
+- ✅ 连接线 rgba 0.5 → 0.85/0.9, strokeWidth 1.5 → 2.5, 加微蓝 (低 zoom 下也能看见)
+- ✅ FloatingTools onClick 用真实 click 位置算世界坐标 (不再 lastMouseRef 兜底"随机"位置)
+- ✅ `state/README.md` 新建 (5KB, 强制所有 agent 必读, 列出 state 全部文件 + 部署速查 + 4 必读 + 禁做的事)
+
+### 06-29 16:54 画布 Bug 修复 + 右键回退
+- ✅ onPortMouseDown 删 `if (isInput) return;` (支持双向 port 拖线)
+- ✅ findNearestInput 修 stale ref throw (原 `best = { nodeId: best.nodeId, ... }` first iter throw)
+- ✅ findNearestOutput 新增 (mirror of findNearestInput)
+- ✅ tryConnect 支持 fromIsInput 反向 edge
+- ✅ SVG line portPos 用 fromIsInput 选 input/output 侧
+- ✅ window-level mousemove useEffect (lastMouseRef 永远 current)
+- ✅ 视口中心公式 sign bug 修 (`r.width/2 - scrollLeft` → `scrollLeft + r.width/2`)
+- ✅ 右键回退 panning (user 误说右键 = 菜单, 实际要右键 = panning)
+
+### 06-29 13:50 阿里云 SMS 真发模式 (P0 #5 收口) 🚀
+- ✅ 签名「杭州即客传媒」运营商报备通过 (🟢 可用·正常)
+- ✅ DAMI_SMS_REAL=true (route.js build inlined `real:!0`)
+- ✅ 真发 1 条到 15925670098 — `provider: "aliyun"` (无 devCode, aliyun mode)
+- ✅ 部署链路: pm2 delete + start (env 强制 refresh, reload 不读 .env.local)
+- ✅ curl `127.0.0.1:3000/api/auth/send-code` → `{"ok":true,"provider":"aliyun"}`
+- ⏳ user 收验证码 + 贴 6 位数 + curl verify-code (P0 #5 最后一步)
+
+### 06-29 13:00 P0 #1-5 全完成 (链路打通)
+- ✅ P0 #1 SWAS 部署链路 (scripts/deploy-to-ecs.sh admin + sudo 路径)
+- ✅ P0 #2 stub curl 通过 (provider:"stub", devCode 返前端)
+- ✅ P0 #3 .env.local 4 个真值 (DAMI_SMS_REAL + 4 个 ALIYUN_SMS_*)
+- ✅ P0 #4 tenantId 走 session cookie (verify-cookie upsert Bitable user)
+- ✅ P0 #5 真发测试 (见上)
+
+### 06-29 11:00 P1 #2.1 飞书项目表 S1-S3
+- ✅ S1+S2 Bitable 00_项目表 (tbl09iZGBoIGTyc8, 12 字段) — commit 55ab837
+- ✅ S3 4 API routes (POST/GET /api/projects, GET/PATCH /api/projects/[id]) — commit 29122a0
+- ✅ components/MyProjects 改真实数据源 (弃用 MOCK_PROJECTS, hue-hash, empty state)
+- ⏳ S4 dashboard ProjectsTab 接真 Bitable (目前仍 mock-data-workbench)
+
+### 06-29 10:30 OSS 视频迁移 (3.6G 释放)
+- ✅ scripts/upload-cases-to-oss.mjs (19 mp4 + 19 poster → damai-zlh-prod 杭州)
+- ✅ lib/cases.ts 用 OSS URL (https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/case/...)
+- ✅ server 释放 3.6G 公共/cases/ → 17G 可用 (commit 2afd8cc)
+
+### 06-29 09:00 deploy 脚本修 (撑爆 30G 盘的根因)
+- ✅ 4 个老 bak 目录清掉 (17G 释放)
+- ✅ deploy 成功后自动清 /tmp tar + 留最新 1 个 bak (commit 937137f)
+- ✅ 杀 stuck next-server + pm2 delete+start → .env.local 重新加载 (DAMI_SMS_REAL 进 process.env)
+
+### 06-29 应急: CanvasEditor.tsx Codex 覆盖恢复
+- ✅ `git checkout HEAD -- app/canvas/[id]/CanvasEditor.tsx` (5min 恢复, 完整 3248 行)
+- ✅ commit 1e825c1 (空 commit 记录事件, 防再犯)
+- ✅ 备份: /tmp/codex-broken-restore-2026-06-29-1450/CanvasEditor-BROKEN.tsx (58KB)
 
 ### 阿里云 SMS 接入 (签名+模板审核通过) — 06-29
 - ✅ 阿里云账号 UID 1148781509211780 (主账号, 实名认证)
 - ✅ 开通 SMS 服务 (dysmsapi), 杭州 region
-- ✅ 创建主账号 AK `LTAI5tHD8iA4n8rCRSmDbCx` (跟 OSS 同源)
-- ✅ 创建短信签名「杭州即客传媒」🟢 审核通过 (⏳ 运营商报备中 1-2h → 可用·正常)
-- ✅ 创建验证码模板 `SMS_335341232` (赠送, 🟢 审核通过, 等签名可用)
+- ✅ 创建主账号 AK `LTAI5tHD8iA4n8rCRSmDbCx` (跟 OSS 同源, 已 rotate)
+- ✅ 创建短信签名「杭州即客传媒」🟢 审核通过 + 运营商报备通过
+- ✅ 创建验证码模板 `SMS_335341232` (赠送, 🟢 审核通过)
 - ✅ `.env.local.example` 加 SMS 段 (commit-able 模板)
-- ✅ 状态写入 state/STATUS.md + BACKLOG.md (本 session)
-- ⏳ `.env.local` 改 4 个真值 (等 user 贴 Secret 或 SMB 改)
-- ⏳ `DAMI_SMS_REAL=true` (等签名「可用·正常」)
-- ⏳ 真发 1 条测试 (user 实测手机收验证码)
-- ⏳ ECS 生产同步 (5 个 env vars + pm2 reload)
 
 ### 阿里云 OSS 接入 — 06-27
 - ✅ lib/oss.ts 单例 + ENV 校验 + 4 个核心函数
 - ✅ lib/ark-image.ts:downloadImageToOss (OSS 优先, 本地 fallback)
 - ✅ app/api/canvas/upload/route.ts: OSS 优先, 本地 fallback, 返回 `{storage: "oss"|"local"}`
-- ✅ next.config.mjs 加 `typescript: { ignoreBuildErrors: true }` (STATUS.md 06-26 写的 gap 修复)
+- ✅ next.config.mjs 加 `typescript: { ignoreBuildErrors: true }`
 - ✅ lib/oss.ts: @ts-nocheck 防 ali-oss 6.23 无 .d.ts
 - ✅ npm install ali-oss (ECS + NAS dev 都装)
 - ✅ next build 23 路由通过
-- ✅ pm2 reload damai (PID 37721, online)
 - ✅ POST /api/canvas/upload 验证: storage:"oss", 返回完整 https URL, ECS 磁盘无增长
 - ✅ scripts/backup-to-nas.sh + scripts/alert-resources.sh 写好
 - ✅ crontab 加 `0 2 * * *` 备份 + `*/5 * * * *` 告警
@@ -39,27 +85,26 @@
 
 ## 📋 下一步 (next)
 
+### 紧急 (今天 18:00-19:00)
+- [ ] **user 浏览器测画布** (硬刷 Ctrl+Shift+R, 测 3 修: SVG 10400 / 线加粗 / toolbar 位置)
+- [ ] **user 收 SMS 验证码** (15925670098 应该收到 1 条, 贴 6 位数)
+- [ ] **我跑 verify-code 收口 P0 #5** (curl POST /api/auth/verify-code with {phone, code})
+
 ### 今天 (06-29)
-- [ ] **user 改 `.env.local`** — 4 行真值 (AK ID / Secret / SIGN_NAME / TEMPLATE_CODE), `DAMI_SMS_REAL=false` 留 stub
-- [ ] **我重启 `npm run dev` + 跑 stub curl 验证** — 等 user 通知
-- [ ] **user 监控签名状态** — 阿里云控制台 → 短信服务 → 签名管理, 看「可用·异常」→「可用·正常」
-- [ ] **user 切 `DAMI_SMS_REAL=true`** — 签名变 🟢 后
-- [ ] **我跑真发 curl + user 实测收验证码** — 最后验证
+- [ ] P1 #2.1 S4 dashboard ProjectsTab 接真 Bitable (替换 mock-data-workbench)
+- [ ] 验证 other agent 能从 SMB Z:\damai\hermes-project\damai\state\ 读到新 README
+- [ ] codex-deliveries/damai-codex-brief-overview.md 标过期 + 指向 state/README.md
 
 ### 本周 (06-30 - 07-05)
-- [ ] **NAS_BACKUP_HOST 改真 IP** (脚本现在是 placeholder 192.168.1.x)
-- [ ] FEISHU_ALERT_WEBHOOK 填真 URL (告警脚本现在没推飞书)
-- [x] **Rotate AccessKey** (Secret 经过对话了, RAM 控制台禁用旧 Key + 创建新 Key + 更新 ECS .env.local) — 06-27 08:54 完成 (新 AK `LTAI5t6k3vqta8v3GYSmDbCx`)
-- [x] **禁用旧 AK `LTAI5t8tJCnfeNh4ys7dg9tj`** — **已销毁** (user 创建新 Key 时勾选"立即销毁"或后续手动销毁,回收站 + 列表都查不到,比"禁用"更严) — 06-27 09:10 确认
-- [x] **Bucket 防盗链 (Referer 白名单 damai.net.cn)** — **方案 1 完成** (user 在 OSS 控制台关闭防盗链,06-27 09:11 验证: `curl -H "Referer: https://test.com"` HTTP 200)
-- [ ] **Cloudflare named tunnel** (推荐): URL 永久固定, 容器重启不换 → 一次到位解决 530 + 重启换 URL 痛点
-- [ ] docker-compose entrypoint 脚本: 容器启动自动跑 npm run dev + cloudflared (短期方案)
+- [ ] **Cloudflare named tunnel** (推荐): URL 永久固定, 容器重启不换
+- [ ] docker-compose entrypoint 脚本: 容器启动自动跑 npm run dev + cloudflared
 - [ ] canvas 节点设计 v4+ (按 user 审美调优, 节点间距/端口 hover/连线动画)
 - [ ] compact AIInput 用于 canvas 顶部 + report 顶部
 - [ ] 4 处 TS 错误慢慢修 (目前 ignoreBuildErrors 兜底)
+- [ ] ⏳ ~~NAS_BACKUP_HOST 改真 IP~~ (06-29 已确认 192.168.2.10 LAN1 + 192.168.31.198 LAN2)
+- [ ] ⏳ ~~FEISHU_ALERT_WEBHOOK 填真 URL~~ (暂时不用, 用飞书 OpenAPI 直推)
 
-## 🚧 已搁置 / 等用户决策
-
+### 已搁置 / 等用户决策
 - [ ] AI 视频 SaaS 产品上线 (damai 待上线, B 端先)
 - [ ] 9router 在 NAS 验证 ARM64 Docker 镜像 (等用户跑 `sudo docker pull decolua/9router:latest`)
 - [ ] B 端: 顾家家居 (宁波) 客餐厅 2026 年度短视频项目
@@ -67,4 +112,6 @@
 
 ## 📦 06-26 06:45 备份到 GitHub
 - commit: `chore: 06-26 进度备份 (canvas i2i 验证通过)`
+- 推 master 分支到 github.com/zhanglinghui0098/damai.git
+- 06-29 18:00 commit: `34f9481 fix(canvas): SVG 10400x9600 + 线条 + toolbar` (跟 history 在一起)
 - 推 master 分支到 github.com/zhanglinghui0098/damai.git

@@ -1,27 +1,50 @@
 <!-- README.md (in codex-deliveries/)
      你复制哪个文件给 Codex 看 → 这里有答案
+     ⚠️ 2026-06-29 改: 旧 brief 已过期, 改用 state/README.md (永远 current)
 -->
 
 # Codex 简报 — 使用说明
 
 **位置**: `/opt/data/projects/damai/codex-deliveries/`
 
-## 文件清单
+**⚠️ 2026-06-29 更新**: 旧 brief (damai-codex-brief-overview.md) 已过期. **改用 state/ 目录**:
+- 容器内: `/opt/data/projects/damai/state/README.md` (入口, 必读)
+- Windows SMB: `Z:\damai\hermes-project\damai\state\README.md`
+- 必读 4 件套顺序: `README.md` → `STATUS.md` → `BACKLOG.md` → `HANDOFF-LATEST.md`
 
-| 文件 | 大小 | 用途 | 何时用 |
+## 文件清单 (旧, 仅历史)
+
+| 文件 | 大小 | 状态 | 何时用 |
 |---|---|---|---|
-| `damai-codex-brief-overview.md` | 17KB | 综合入口（项目全貌 + 任务清单 + 6/18 最新状态） | 第一次让 Codex 看项目时 |
-| `damai-codex-brief-task01.md` | 15KB | task 01 (代码) 完整 spec | 准备让 Codex 写代码时 |
-| `README.md` | 本文件 | 使用说明 | 你忘了怎么用时 |
+| `damai-codex-brief-overview.md` | 17KB | ⚠️ **已过期 (6/18)** | **不要再用** — 改读 state/README.md |
+| `damai-codex-brief-task01.md` | 15KB | 历史 | 仅参考 |
+| `README.md` | 本文件 | 索引 | 找文件用 |
 
-## 怎么用
+## 怎么用 (新)
 
-### Step 1: 复制文件
+### Step 1: 不再复制 brief, 让 Codex 自己读 state/
+
+Codex 启动第一件事 (写进 system prompt):
+```
+进项目第一步 = 读 /opt/data/projects/damai/state/README.md + state/STATUS.md + state/BACKLOG.md + state/HANDOFF-LATEST.md
+绝对不要改 /opt/damai (那是 SWAS 生产, 用 deploy 脚本)
+绝对不要加 @xyflow/react (画布是自研 SVG)
+绝对不要改完不更新 state/STATUS.md
+```
+
+### Step 2: 如果 user 让你看旧 brief, 拒绝
+
+```
+"这个文件 2026-06-29 已过期. 项目进度和决策都写到 state/ 里 (4T 盘), 入口是 state/README.md. 请让我先读那个."
+```
+
+## 怎么用 (旧, 保留)
+
+### Step 1: 复制文件 (旧方式, 已不推荐)
 在 NAS 文件管理器（或者 SSH 进去）：
 ```bash
 cat /opt/data/projects/damai/codex-deliveries/damai-codex-brief-overview.md
 ```
-或者用 SMB 挂载的文件管理器打开，复制整文件。
 
 ### Step 2: 贴给 Codex
 打开 Codex 桌面沙盒，**新建会话**，第一句：

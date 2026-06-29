@@ -1,5 +1,11 @@
 <!-- damai-codex-brief-overview.md
-     生成时间: 2026-06-18T23:07:23+08:00
+     ⚠️ 2026-06-29 已过期
+     不要再用这个 brief! 改读 state/README.md (4T 盘, Windows Z:\damai\hermes-project\damai\state\)
+     state/README.md 永远 current, 每次 session 必读
+     保留这个文件仅作历史, 不再分发
+     — Hermes Agent
+     ============================
+     原: 2026-06-18T23:07:23+08:00
      用途: 让 Codex 了解大脉项目全部工作进度 + 当前状态
      用法: 你复制整个文件 → 贴给 Codex → 它就知道项目全貌
      大小目标: 10-15KB
@@ -8,7 +14,22 @@
      稳定 URL 需要 named tunnel (Codex 不要假设 URL 不变)
 -->
 
-# Dami Codex Brief — 项目总览 (6/18 v2.1)
+# ⚠️ 此 brief 已过期 (6/18 → 6/29), 改读 state/README.md
+
+**正确入口**:
+- 容器内: `/opt/data/projects/damai/state/README.md`
+- Windows SMB: `Z:\damai\hermes-project\damai\state\README.md`
+- 必读 4 件套: `README.md` → `STATUS.md` (32KB) → `BACKLOG.md` → `HANDOFF-LATEST.md`
+
+**为什么这个 brief 过期了**:
+- 6/18 之后: 阿里云 OSS 接入 (06-27) + 阿里云 SMS 真发 (06-29) + 画布 3 轮修 (06-29) + 部署脚本修 (06-29) + 飞书项目表 API (06-29) + state/ 完整化 (06-29)
+- 总计 50+ commit, 6+ 关键决策, 5+ 部署修复
+- 旧 brief 没覆盖这些, 会误导
+
+**如果 user 让你看这个 brief, 礼貌拒绝并指向 state/README.md**:
+> "这个文件 2026-06-29 已过期. 项目进度和决策都写到 state/ 里 (4T 盘), 入口是 state/README.md. 请让我先读那个."
+
+# Dami Codex Brief — 项目总览 (6/18 v2.1, ⚠️ 已过期, 改读 state/README.md)
 
 ## Part 1: PROJECT.md (项目入口, 6.4KB)
 
