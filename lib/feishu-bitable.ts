@@ -167,4 +167,98 @@ export async function listUsers(): Promise<UserRecord[]> {
   return items.map((r) => ({ record_id: r.record_id, ...r.fields }));
 }
 
-export { BASE, APP_TOKEN, USER_TABLE_ID };
+// ====== 项目表 (00_项目表, 06-29 14:00 创建, 12 fields) ======
+const PROJECT_TABLE_ID = "tbl09iZGBoIGTyc8";
+
+export interface ProjectRecord {
+  record_id?: string;
+  项目名: string;
+  描述?: string;
+  租户ID: string;
+  拥有者手机号: string;
+  状态?: "草稿" | "进行中" | "已发布" | "已归档";
+  类型?: "模板" | "画布";
+  缩略图URL?: string;
+  创建时间?: number;
+  最后修改时间?: number;
+  标签?: string;
+  备注?: string;
+  AI提示词次数?: number;
+}
+
+/**
+ * 按租户列项目 (S2 简化: GET all + client 端 filter; 100+ 项目再换 search)
+ */
+export async function listProjects(tenantId: string): Promise<ProjectRecord[]> {
+  const resp = await feishuApi(
+    "GET",
+    `/bitable/v1/apps/${APP_TOKEN}/tables/${PROJECT_TABLE_ID}/records?page_size=100`,
+  );
+  if (resp.code !== 0) throw new Error(`listProjects failed: ${resp.msg}`);
+  const items: any[] = resp.data?.items ?? [];
+  return items
+    .filter((r) => r.fields?.租户ID === tenantId)
+    .map((r) => ({ record_id: r.record_id, ...r.fields }));
+}
+
+/**
+ * 按 record_id 取单个项目
+ */
+export async function getProjectById(recordId: string): Promise<ProjectRecord | null> {
+  const resp = await feishuApi(
+    "GET",
+    `/bitable/v1/apps/${APP_TOKEN}/tables/${PROJECT_TABLE_ID}/records/${recordId}`,
+  );
+  if (resp.code === 0) return { record_id: recordId, ...(resp.data?.record?.fields ?? {}) };
+  if (resp.code === 1254045) return null;  // not found
+  throw new Error(`getProjectById failed: ${resp.msg}`);
+}
+
+/**
+ * 创建项目 (auto-fill: 租户ID, 拥有者手机号, 状态=草稿, 时间戳, AI提示词次数=0)
+ */
+export async function createProject(
+  tenantId: string,
+  ownerPhone: string,
+  fields: Partial<ProjectRecord>,
+): Promise<{ record_id: string }> {
+  const newRecord: ProjectRecord = {
+    项目名: fields.项目名 || "未命名项目",
+    租户ID: tenantId,
+    拥有者手机号: ownerPhone,
+    状态: "草稿",
+    类型: fields.类型 || "画布",
+    创建时间: Date.now(),
+    最后修改时间: Date.now(),
+    AI提示词次数: 0,
+    ...fields,
+  };
+  const resp = await feishuApi(
+    "POST",
+    `/bitable/v1/apps/${APP_TOKEN}/tables/${PROJECT_TABLE_ID}/records`,
+    { fields: newRecord },
+  );
+  if (resp.code !== 0) throw new Error(`createProject failed: ${resp.msg}`);
+  return { record_id: resp.data?.record?.record_id ?? "" };
+}
+
+/**
+ * 更新项目 by record_id (auto-bump 最后修改时间)
+ */
+export async function updateProject(
+  recordId: string,
+  fields: Partial<ProjectRecord>,
+): Promise<void> {
+  const updateFields: Partial<ProjectRecord> = {
+    ...fields,
+    最后修改时间: Date.now(),
+  };
+  const resp = await feishuApi(
+    "PUT",
+    `/bitable/v1/apps/${APP_TOKEN}/tables/${PROJECT_TABLE_ID}/records/${recordId}`,
+    { fields: updateFields },
+  );
+  if (resp.code !== 0) throw new Error(`updateProject failed: ${resp.msg}`);
+}
+
+export { BASE, APP_TOKEN, USER_TABLE_ID, PROJECT_TABLE_ID };
