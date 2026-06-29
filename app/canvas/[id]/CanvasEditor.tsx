@@ -308,7 +308,9 @@ export default function CanvasEditor({
   edgesRef.current = edges;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ fromNode: string; fromPort: string; mouseX: number; mouseY: number } | null>(null);
+  const [pending, setPending] = useState<{
+    fromNode: string; fromPort: string; fromIsInput: boolean; mouseX: number; mouseY: number;
+  } | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [zoom, setZoom] = useState(1);
   const [credits] = useState(3532);
@@ -317,10 +319,15 @@ export default function CanvasEditor({
   const [doubleClickMenu, setDoubleClickMenu] = useState<{
     screenX: number; screenY: number; canvasX: number; canvasY: number;
   } | null>(null);
+  // 06-29 17:30 改: 右键菜单 (跟双击菜单同结构, 用户说"右键生成节点")
+  const [rightClickMenu, setRightClickMenu] = useState<{
+    screenX: number; screenY: number; canvasX: number; canvasY: number;
+  } | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [dragTargetInput, setDragTargetInput] = useState<{ nodeId: string; portId: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  // 记录鼠标在画布上的世界坐标 (FloatingTools / addNode 用) — 用 ref 避免每次 mousemove 都 re-render
+  // 记录鼠标在画布上的世界坐标 (toolbar 触发 addNode 用) — 用 ref 避免每次 mousemove 都 re-render
+  // 06-29 17:30 改: window-level 监听 (不只是 canvas div), 保证 lastMouseRef 永远 current
   const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ id: string; offX: number; offY: number } | null>(null);
   const panRef = useRef<{ startX: number; startY: number; startScrollLeft: number; startScrollTop: number } | null>(null);
@@ -329,6 +336,21 @@ export default function CanvasEditor({
   const goAgent = () => router.push("/?focus=agent");
 
   // ---------- mount: 从 localStorage 加载 / 应用 template (避免 hydration 不匹配) ----------
+  useEffect(() => {
+    // 06-29 17:30 加: window-level mousemove 监听, 让 lastMouseRef 永远 current
+    //   (之前只 canvas div 监听, 鼠标在 toolbar / panel 时 lastMouseRef 不更新)
+    function onWinMouseMove(e: MouseEvent) {
+      const c = canvasRef.current;
+      if (!c) return;
+      const r = c.getBoundingClientRect();
+      lastMouseRef.current = {
+        x: (e.clientX - r.left + c.scrollLeft) / zoom,
+        y: (e.clientY - r.top + c.scrollTop) / zoom,
+      };
+    }
+    window.addEventListener("mousemove", onWinMouseMove);
+    return () => window.removeEventListener("mousemove", onWinMouseMove);
+  }, [zoom]);
   useEffect(() => {
     // 优先从 localStorage 恢复 (避免 useState lazy initializer 在 client 与 SSR 不一致)
     let loaded = false;
@@ -425,8 +447,10 @@ export default function CanvasEditor({
         const mx = (e.clientX - r.left + c.scrollLeft) / zoom;
         const my = (e.clientY - r.top + c.scrollTop) / zoom;
         setPending({ ...pending, mouseX: mx, mouseY: my });
-        // 计算最近的输入端口 (高亮提示)
-        const nearest = findNearestInput(mx, my, pending.fromNode);
+        // 06-29 17:30 改: 双向连接 — 从 output 拖找最近 input, 从 input 拖找最近 output
+        const nearest = pending.fromIsInput
+          ? findNearestOutput(mx, my, pending.fromNode)
+          : findNearestInput(mx, my, pending.fromNode);
         setDragTargetInput((prev) => {
           if (!prev && !nearest) return null;
           if (prev && nearest && prev.nodeId === nearest.nodeId && prev.portId === nearest.portId) return prev;
@@ -482,23 +506,27 @@ export default function CanvasEditor({
   function addNode(type: NodeType, x?: number, y?: number) {
     const spec = NODE_SPECS[type];
     const id = `n${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-    // 定位策略 (06-29 17:00 改):
-    //   1. 显式坐标 (双击空白) → 用 x,y
-    //   2. 否则 → 视口中心 (永远可见, 不像 lastMouseRef 可能在 toolbar 位置导致跑画外)
-    //   3. canvas 不在 → 兜底 240, 240
-    // 修复前: lastMouseRef 优先级 = toolbar 的世界坐标 (off-screen, "不知道那个地方" 的元凶)
+    // 定位策略 (06-29 17:30 改回 3 优先级):
+    //   1. 显式坐标 (双击/右键空白) → 用 x,y
+    //   2. lastMouseRef (toolbar 触发) → 用鼠标当前位置 (window-level 监听保持 current)
+    //   3. 视口中心 (兜底, 用户没移动过鼠标)
+    // 修复前的 sign bug: 视口中心公式用 `r.width/2 - scrollLeft` (错的), 改成 `scrollLeft + r.width/2`
     let px: number;
     let py: number;
     if (x != null && y != null) {
-      // 显式坐标 (双击空白) — 已经过 NODE_W/2 + 30 偏移, 直接用
+      // 显式坐标 (双击/右键空白) — 已经过 NODE_W/2 + 30 偏移, 直接用
       px = x;
       py = y;
+    } else if (lastMouseRef.current) {
+      // 当前鼠标位置 (window-level mousemove 保持 current, 不只是 canvas 上的)
+      px = lastMouseRef.current.x - NODE_W / 2;
+      py = lastMouseRef.current.y - 30;
     } else if (canvasRef.current) {
-      // 视口中心 (toolbar 点击触发, 永远在用户视线内)
+      // 兜底: 视口中心
       const c = canvasRef.current;
       const r = c.getBoundingClientRect();
-      px = (r.width / 2 - c.scrollLeft) / zoom - NODE_W / 2;
-      py = (r.height / 2 - c.scrollTop) / zoom - 30;
+      px = (c.scrollLeft + r.width / 2) / zoom - NODE_W / 2;
+      py = (c.scrollTop + r.height / 2) / zoom - 30;
     } else {
       // 极端兜底
       px = 240;
@@ -530,8 +558,8 @@ export default function CanvasEditor({
   }
 
   // ---------- 端口连线 (拖拽模式) ----------
+    // 06-29 17:30 改: 允许从 input OR output 拖线 (双向), 标记 fromIsInput 给后续逻辑判断
   function onPortMouseDown(e: React.MouseEvent, port: Port, isInput: boolean, node: CanvasNode) {
-    if (isInput) return; // 输入端口不能作为连线起点
     e.stopPropagation();
     e.preventDefault();
     const c = canvasRef.current;
@@ -540,12 +568,15 @@ export default function CanvasEditor({
     setPending({
       fromNode: node.id,
       fromPort: port.id,
+      fromIsInput: isInput,
       mouseX: (e.clientX - r.left + c.scrollLeft) / zoom,
       mouseY: (e.clientY - r.top + c.scrollTop) / zoom,
     });
   }
 
   // 给定世界坐标, 找出最近的输入端口 (限本画布除源节点外的所有节点)
+  // 06-29 17:30 修: 原代码 `best = { nodeId: best.nodeId, ... }` 在 first iter (best=null) 会 throw
+  //              而且 `best.nodeId` 本来就是 n.id, 没必要绕一圈引用自己
   function findNearestInput(worldX: number, worldY: number, exceptNodeId: string): { nodeId: string; portId: string } | null {
     let best: { nodeId: string; portId: string; d: number } | null = null;
     for (const n of nodes) {
@@ -562,15 +593,38 @@ export default function CanvasEditor({
     return null;
   }
 
-  // 试图把 pending 连到目标输入端口 (类型校验同 v3)
+  // 06-29 17:30 加: 找最近输出端口 (用户说"双向连接", 可以从 input 端拖线, 自动接 output)
+  function findNearestOutput(worldX: number, worldY: number, exceptNodeId: string): { nodeId: string; portId: string } | null {
+    let best: { nodeId: string; portId: string; d: number } | null = null;
+    for (const n of nodes) {
+      if (n.id === exceptNodeId) continue;
+      for (const p of n.outputs) {
+        const pos = portPos(n, p, false);
+        const dx = pos.x - worldX;
+        const dy = pos.y - worldY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (!best || d < best.d) best = { nodeId: n.id, portId: p.id, d };
+      }
+    }
+    if (best && best.d <= PORT_R * 2 + 8) return { nodeId: best.nodeId, portId: best.portId };
+    return null;
+  }
+
+  // 06-29 17:30 改: 双向连接 (from input 或 from output, edge 方向自动调整)
+  //   fromIsInput=false: edge = (fromNode, fromPort) → (target, target.portId) [原版逻辑]
+  //   fromIsInput=true:  edge = (target, target.portId) → (fromNode, fromPort) [反方向]
   function tryConnect(target: { nodeId: string; portId: string }) {
     if (!pending) return;
     const fromNode = nodes.find((n) => n.id === pending.fromNode);
     if (!fromNode) { setPending(null); return; }
-    const fromPort = fromNode.outputs.find((p) => p.id === pending.fromPort);
+    const fromPort = pending.fromIsInput
+      ? fromNode.inputs.find((p) => p.id === pending.fromPort)
+      : fromNode.outputs.find((p) => p.id === pending.fromPort);
     if (!fromPort) { setPending(null); return; }
     const targetNode = nodes.find((n) => n.id === target.nodeId);
-    const targetPort = targetNode?.inputs.find((p) => p.id === target.portId);
+    const targetPort = pending.fromIsInput
+      ? targetNode?.outputs.find((p) => p.id === target.portId)
+      : targetNode?.inputs.find((p) => p.id === target.portId);
     if (!targetPort) { setPending(null); return; }
     if (fromPort.type !== targetPort.type) {
       alert(`端口类型不匹配: ${fromPort.type} → ${targetPort.type}`);
@@ -578,10 +632,11 @@ export default function CanvasEditor({
       return;
     }
     const id = `e${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-    setEdges((arr) => [
-      ...arr,
-      { id, fromNode: pending.fromNode, fromPort: pending.fromPort, toNode: target.nodeId, toPort: target.portId },
-    ]);
+    // 06-29 17:30: 双向 — from input 拖时交换 from/to
+    const edge = pending.fromIsInput
+      ? { id, fromNode: target.nodeId, fromPort: target.portId, toNode: pending.fromNode, toPort: pending.fromPort }
+      : { id, fromNode: pending.fromNode, fromPort: pending.fromPort, toNode: target.nodeId, toPort: target.portId };
+    setEdges((arr) => [...arr, edge]);
     setPending(null);
   }
 
@@ -768,10 +823,27 @@ export default function CanvasEditor({
             canvasY,
           });
         }}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          // 06-29 17:30 改: 右键 = 弹节点菜单 (之前是 panning, 现在 panning 改中键)
+          e.preventDefault();
+          const t = e.target as HTMLElement;
+          if (t.closest("[data-canvas-node]")) return;
+          if (t.closest("[data-properties-panel]")) return;
+          if (t.closest("[data-floating-tools]")) return;
+          if (t.closest("[data-zoom-controls]")) return;
+          if (t.closest("[data-text-toolbar]")) return;
+          if (t.closest("[data-top-bar]")) return;
+          if (t.closest("[data-logo]")) return;
+          const c = canvasRef.current;
+          if (!c) return;
+          const r = c.getBoundingClientRect();
+          const canvasX = (e.clientX - r.left + c.scrollLeft) / zoom - NODE_W / 2;
+          const canvasY = (e.clientY - r.top + c.scrollTop) / zoom - 30;
+          setRightClickMenu({ screenX: e.clientX, screenY: e.clientY, canvasX, canvasY });
+        }}
         onMouseDown={(e) => {
-          // 右键 = 平移画布视角
-          if (e.button !== 2) return;
+          // 06-29 17:30 改: panning 改中键 (button 1), 释放右键给菜单用
+          if (e.button !== 1) return;
           const t = e.target as HTMLElement;
           if (t.closest("[data-canvas-node]")) return;
           if (t.closest("[data-properties-panel]")) return;
@@ -808,12 +880,12 @@ export default function CanvasEditor({
           }}
         >
           <svg
-            // 06-29 17:00 改: SVG 尺寸从 2400x1600 扩到 10400x9600, 覆盖整个世界坐标
-            // (parent div 有 margin 4000px, 世界坐标范围 -4000 到 6400 / -4000 到 5600)
-            // 修复前 SVG 只覆盖 0-2400 / 0-1600, 节点在 margin 内就连线看不见
-            style={{ position: "absolute", top: -4000, left: -4000, pointerEvents: "none" }}
-            width={10400}
-            height={9600}
+            // 06-29 17:30 改: 回退到 2400x1600 (历史版本一直这样, i2i 验证通过的版)
+            // 上次我改 10400x9600 + top:-4000 是错的 — inner div 只有 2400x1600,
+            // SVG 10400x9600 起点在 -4000 → 整个 SVG 在 div 外, 被裁, 所有连线都看不见
+            style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+            width={2400}
+            height={1600}
           >
             {edges.map((e) => {
               const from = nodes.find((n) => n.id === e.fromNode);
@@ -827,9 +899,12 @@ export default function CanvasEditor({
             {pending && (() => {
               const from = nodes.find((n) => n.id === pending.fromNode);
               if (!from) return null;
-              const fp = from.outputs.find((p) => p.id === pending.fromPort);
+              // 06-29 17:30 改: 双向 — from input 拖线时从 input 端口位置出发
+              const fp = pending.fromIsInput
+                ? from.inputs.find((p) => p.id === pending.fromPort)
+                : from.outputs.find((p) => p.id === pending.fromPort);
               if (!fp) return null;
-              return <ConnectionPath a={portPos(from, fp, false)} b={{ x: pending.mouseX, y: pending.mouseY }} pending />;
+              return <ConnectionPath a={portPos(from, fp, pending.fromIsInput)} b={{ x: pending.mouseX, y: pending.mouseY }} pending />;
             })()}
           </svg>
 
@@ -880,6 +955,18 @@ export default function CanvasEditor({
             setDoubleClickMenu(null);
           }}
           onClose={() => setDoubleClickMenu(null)}
+        />
+      )}
+
+      {rightClickMenu && (
+        <DoubleClickNodeMenu
+          screenX={rightClickMenu.screenX}
+          screenY={rightClickMenu.screenY}
+          onPick={(type) => {
+            addNode(type, rightClickMenu.canvasX, rightClickMenu.canvasY);
+            setRightClickMenu(null);
+          }}
+          onClose={() => setRightClickMenu(null)}
         />
       )}
 
