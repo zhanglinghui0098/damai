@@ -4,7 +4,8 @@
 
 import { NextResponse } from "next/server";
 import { consumeVerify } from "@/lib/verify-store";
-import { createSession, deriveTenantId, SESSION_COOKIE } from "@/lib/auth";
+import { createSession, SESSION_COOKIE } from "@/lib/auth";
+import { upsertUser } from "@/lib/feishu-bitable";
 
 const PHONE_RE = /^1[3-9]\d{9}$/;
 
@@ -43,7 +44,10 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const tenantId = deriveTenantId(phone);
+  // S3: upsert user record (飞书 Bitable 00_用户档案), 用返回的 tenantId (Bitable 优先, 允许手动 override)
+  // upsert 失败 → fail-fast (500), 不让用户在没有 user record 时登录
+  const upsertResult = await upsertUser(phone, {});
+  const tenantId = upsertResult.tenantId;
   const token = await createSession(phone, tenantId);
 
   // 跳转目标 — 防 open redirect
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
     ok: true,
     phone,
     tenantId,
+    user: { record_id: upsertResult.record_id, created: upsertResult.created },
     redirect: safeFrom,
   });
   if (m) {

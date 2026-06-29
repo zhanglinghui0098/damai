@@ -477,7 +477,7 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 |---|---|---|---|---|
 | 1 | **deploy 06-27+ 到阿里云轻量** (47.96.128.172) | 30-60min | 🔴 轻量 root 密码 (user 重置 + 贴) | 等密码 |
 | 2 | **本地 stub curl 测试** (DAMI_SMS_REAL=false) | 5min | 无 | 可立即开干 |
-| 3 | **飞书 Bitable 用户表 S1+S2 ✅** (00_用户档案, 11 fields, lib/feishu-bitable.ts 6 函数 + /api/auth/upsert-user) | 2.5h/4h | 下次 S3 集成到 verify-code login flow | 待 S3 |
+| 3 | **飞书 Bitable 用户表 S1+S2+S3 ✅** (00_用户档案, 11 fields, verify-code 自动 upsert + session.tenantId 来自 Bitable) | 3.5h/4h | 阶段 1.3 收口 | done |
 | 4 | **OSS key + API tenant 隔离** (tenantId 前缀 + 过滤) | 3h | #3 完成后 | 等 #3 |
 | 5 | **SMS 真发测试** (DAMI_SMS_REAL=true 后) | 5min | 🟡 阿里云侧运营商报备 (1-2h) | 等签名变🟢 |
 

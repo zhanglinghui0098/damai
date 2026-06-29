@@ -125,7 +125,8 @@ export async function upsertUser(
     if (extra.角色 && !existing.角色) updateFields.角色 = extra.角色;
     if (extra.昵称 && !existing.昵称) updateFields.昵称 = extra.昵称;
     await updateUser(existing.record_id!, updateFields);
-    return { record_id: existing.record_id!, created: false, tenantId };
+    // 用 Bitable 里存的租户ID (允许手动 override, 不强制 t_phone)
+    return { record_id: existing.record_id!, created: false, tenantId: existing.租户ID || tenantId };
   }
   const newRecord: UserRecord = {
     手机号: phone,
