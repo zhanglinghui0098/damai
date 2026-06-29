@@ -1,9 +1,21 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-29 19:15 CST
+最后更新: 2026-06-30 01:10 CST
 
 ## 当前在做
-- ✅ **画布连接线大改 ✅ 06-29 19:10 deploy** (你 Windows 端 / Codex 推的 `ddfa331`)
+- ✅ **画布 Phase 1 完成 (scaffold) 06-30 01:10** — commit `6c90679`, 已部署
+  - `app/canvas/[id]/CanvasFlowEditor.tsx` (4KB) — React Flow v12 scaffold, 6 placeholder node types
+  - `app/canvas-v2/[id]/page.tsx` (409B) — A/B 测试路由, 用 @/ alias 跨目录 import
+  - `npm run build` 通过, `/canvas-v2/[id]` 56.8kB, `/canvas/[id]` 老路由 15.1kB (未动)
+  - 部署 01:04:50, damai.net.cn HTTP 200, vision 验证 React Flow 画布渲染成功 (1 节点 + 1 bezier 边可见)
+  - send-code 二次触发又是 aliyun mode (pm2 restart 后 .env.local 重新加载)
+- ✅ **Cron A 失败教训** — 19:46 调度 Phase 1+2, 06-30 01:00 查 job 已从列表消失 (one-time auto-deleted)
+  - 没 commit 没 push, 状态被 daily handoff cron 22:00 备份过
+  - **根因**: @xyflow/react 06-27 已装 (b214eee commit), Cron A 跑 `npm install` 看到已装就跳过, 然后没创建文件就退
+  - **修法**: 直接在 session 干 Phase 1, 不靠 cron (cron session context 不可靠)
+  - **Cron B 已 kill** (`ca9df4036ea7`), 避免空跑 Phase 3+4
+- 🚧 **Phase 2 待做** — 6 节点类型 (text/image/video-gen/audio-gen/merge/output) 真实组件 + bezier 边 + useNodesState + 案例模板 + 5 核心交互
+- ⏳ **Phase 3-4** — UI 集成 + 测试 + 部署 + 收口
   - ConnectionPath 改 cubic bezier 平滑曲线 (dx 至少 NODE_W*0.4, 不会甩半圆)
   - 加箭头 marker (`<marker id="arrow">` + `<marker id="arrow-pending">`, path markerEnd 引用)
   - SVG 改 10400×9600 覆盖全 panning 区域 (跨 margin 也能看到连接线)
