@@ -1,7 +1,9 @@
-﻿import CanvasEditor from "./CanvasEditor";
+import { redirect } from "next/navigation";
 
-// 沉浸式整页画布 (CanvasEditor 内部已 position: fixed 全屏)
-// 不再需要外层 fixed wrapper, 也不再有顶部 header / 分享按钮 (整合进 TopBar)
+// Phase 3 (06-30 06:25) — 老路由 /canvas/[id] → /canvas-v2/[id] 跳转
+// 保留 query string (template=xxx, 等)
+// 用户打开老 URL 自动看到新 React Flow 画布
+// 老 CanvasEditor.tsx 暂保留, Phase 4 A/B 测试后决定是否删
 
 export default function CanvasPage({
   params,
@@ -10,10 +12,8 @@ export default function CanvasPage({
   params: { id: string };
   searchParams: { template?: string };
 }) {
-  return (
-    <CanvasEditor
-      projectId={params.id}
-      template={searchParams?.template}
-    />
-  );
+  const qs = searchParams?.template
+    ? `?template=${encodeURIComponent(searchParams.template)}`
+    : "";
+  redirect(`/canvas-v2/${params.id}${qs}`);
 }
