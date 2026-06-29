@@ -803,19 +803,30 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     [setEdges]
   );
 
-  // 监听 edges 变化 (调试连接消失)
+  // 监听 edges 变化 (调试 + filter React Flow 内部 emit 的 add/remove/replace)
+  // Bug 2 根因 (React Flow v12 controlled mode 时序问题):
+  //   1. user pointer up → onConnectExtended → 调 user onConnect
+  //   2. user addEdge + setEdges → user state +1
+  //   3. React render → StoreUpdater setEdges 到 React Flow 内部 store
+  //   4. **React Flow 内部 store 通过 edgeQueue 推 update**:
+  //      - items = nextEdges (累加 payload 后)
+  //      - **edgeLookup 还是旧的 (不含新 edge)** — edgeLookup 更新要等 setEdges 完成
+  //   5. getElementsDiffChanges({items, lookup: oldLookup}) 算出 'add' change
+  //   6. emit 给 user onEdgesChange → applyEdgeChanges **再加一条** (id 不同)
+  //   7. state 里有 2 条 duplicate → React Flow render 只显示一条
+  //
+  // 修法: filter React Flow 内部 emit 的 add/remove/replace,只接受 select/dimensions/position
   const handleEdgesChange = useCallback(
     (changes: any) => {
-      console.log('[canvas-v2] onEdgesChange ALL:', JSON.stringify(changes));
-      onEdgesChange(changes);
+      const userChanges = changes.filter(
+        (c: any) => !['add', 'remove', 'replace'].includes(c.type)
+      );
+      if (userChanges.length > 0) {
+        onEdgesChange(userChanges);
+      }
     },
     [onEdgesChange]
   );
-
-  // 调试: 每次 edges 变化时 log
-  useEffect(() => {
-    console.log('[canvas-v2] edges render:', edges.length, 'ids:', edges.map(e => e.id));
-  }, [edges]);
 
   // FloatingTools 添加节点: 用 screenToFlowPosition 精准坐标
   const handleAdd = useCallback((type: string, screenX: number, screenY: number) => {
