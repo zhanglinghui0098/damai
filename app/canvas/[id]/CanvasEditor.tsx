@@ -858,12 +858,13 @@ export default function CanvasEditor({
           }}
         >
           <svg
-            // 06-29 17:30 改: 回退到 2400x1600 (历史版本一直这样, i2i 验证通过的版)
-            // 上次我改 10400x9600 + top:-4000 是错的 — inner div 只有 2400x1600,
-            // SVG 10400x9600 起点在 -4000 → 整个 SVG 在 div 外, 被裁, 所有连线都看不见
+            // 06-29 18:00 改: SVG 10400x9600 涵盖 4000px margin 全区域 (连接线跨 margin 也能显示)
+            // 起点 top:0 left:0 = inner div 框左上 = world (0, 0)
+            // inner div 框 = (4000,4000)~(6400,5600) in parent, SVG 跟它对齐就覆盖全部可滚动空间
+            // 路径坐标仍是世界单位, 在 SVG 自己的 0-10400 坐标内
             style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
-            width={2400}
-            height={1600}
+            width={10400}
+            height={9600}
           >
             {edges.map((e) => {
               const from = nodes.find((n) => n.id === e.fromNode);
@@ -965,7 +966,19 @@ export default function CanvasEditor({
         />
       )}
 
-      <FloatingTools onAdd={addNode} />
+      <FloatingTools
+        onAdd={addNode}
+        getCanvasRect={() => {
+          const c = canvasRef.current;
+          if (!c) return null;
+          return c.getBoundingClientRect();
+        }}
+        getScroll={() => {
+          const c = canvasRef.current;
+          if (!c) return { left: 0, top: 0 };
+          return { left: c.scrollLeft, top: c.scrollTop };
+        }}
+      />
 
       <ZoomControls zoom={zoom} setZoom={setZoom} />
 
@@ -1099,7 +1112,15 @@ function TopBar({
 // =====================================================================
 // 左侧浮动工具栏
 // =====================================================================
-function FloatingTools({ onAdd }: { onAdd: (type: NodeType) => void }) {
+function FloatingTools({
+  onAdd,
+  getCanvasRect,
+  getScroll,
+}: {
+  onAdd: (type: NodeType, x?: number, y?: number) => void;
+  getCanvasRect: () => DOMRect | null;
+  getScroll: () => { left: number; top: number };
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -1163,7 +1184,19 @@ function FloatingTools({ onAdd }: { onAdd: (type: NodeType) => void }) {
               <button
                 key={type}
                 data-floating-tools="1"
-                onClick={() => { onAdd(type); setOpen(false); }}
+                onClick={(e) => {
+                  // 06-29 17:50 改: 用真实点击位置算世界坐标, 节点出现在按钮附近, 不是 lastMouseRef 那个随机位置
+                  const r = getCanvasRect();
+                  if (r) {
+                    const s = getScroll();
+                    const wx = (e.clientX - r.left + s.left) / zoom - NODE_W / 2;
+                    const wy = (e.clientY - r.top + s.top) / zoom - 30;
+                    onAdd(type, wx, wy);
+                  } else {
+                    onAdd(type);
+                  }
+                  setOpen(false);
+                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -2161,9 +2194,10 @@ function ConnectionPath({
   return (
     <path
       d={path}
-      stroke={pending ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.5)"}
-      strokeWidth={1.5}
-      strokeDasharray={pending ? "4 3" : "none"}
+      // 06-29 18:00 改: 线条加粗 + 加深, 低 zoom 下也能看见 (原 rgba 0.5 太淡)
+      stroke={pending ? "rgba(160, 200, 255, 0.85)" : "rgba(200, 220, 255, 0.9)"}
+      strokeWidth={2.5}
+      strokeDasharray={pending ? "5 3" : "none"}
       fill="none"
     />
   );
