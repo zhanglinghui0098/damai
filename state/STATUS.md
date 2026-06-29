@@ -3,7 +3,18 @@
 最后更新: 2026-06-30 01:10 CST
 
 ## 当前在做
-- ✅ **画布 Phase 1 完成 (scaffold) 06-30 01:10** — commit `6c90679`, 已部署
+- ✅ **画布 Phase 2 完成 (6 节点类型 + state + 交互) 06-30 02:50** — commit `f15df9c`, 已部署
+  - `app/canvas/[id]/CanvasFlowEditor.tsx` 17KB (vs Phase 1 4KB)
+  - 6 节点类型真实组件: text (textarea 编辑) / image (preview + prompt) / video-gen (player) / audio-gen (audio) / merge (N 输入) / output (成片)
+  - 视觉: 深色 + 蓝紫边 + 端口选中高亮 + boxShadow
+  - Handle: 10x10 蓝紫色, merge 节点 N 个 input handle
+  - 边: React Flow 内置 bezier, stroke #6e8cd6 width 2
+  - **localStorage 持久化**: key `damai:canvas-v2:[projectId]:nodes/edges`, 300ms debounce
+  - **双击空白创建节点**: 用 pane 中心算法 (Phase 3 改成 screenToFlowPosition 精准)
+  - 初始 6 demo 节点 + 5 bezier 边 (Phase 2.4 用真实案例模板替换)
+  - `/canvas-v2/[id]` 路由 58.7kB (Phase 1 56.8kB, +1.9kB)
+  - 部署 02:49:28, vision 验证: 6 节点 + 5 曲线, 风格一致, 端口对比度偏低 (待优化)
+- ✅ **画布 Phase 1 完成 (scaffold) 06-30 01:10** — commit `6c90679`
   - `app/canvas/[id]/CanvasFlowEditor.tsx` (4KB) — React Flow v12 scaffold, 6 placeholder node types
   - `app/canvas-v2/[id]/page.tsx` (409B) — A/B 测试路由, 用 @/ alias 跨目录 import
   - `npm run build` 通过, `/canvas-v2/[id]` 56.8kB, `/canvas/[id]` 老路由 15.1kB (未动)
