@@ -482,20 +482,19 @@ export default function CanvasEditor({
   function addNode(type: NodeType, x?: number, y?: number) {
     const spec = NODE_SPECS[type];
     const id = `n${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-    // 定位策略: 显式坐标 > 鼠标位置 (居中放) > 视口中心 > 兜底
-    // 修复前是 Math.random() * 200 + 240 — 画布一缩放/拖动就找不到了
+    // 定位策略 (06-29 17:00 改):
+    //   1. 显式坐标 (双击空白) → 用 x,y
+    //   2. 否则 → 视口中心 (永远可见, 不像 lastMouseRef 可能在 toolbar 位置导致跑画外)
+    //   3. canvas 不在 → 兜底 240, 240
+    // 修复前: lastMouseRef 优先级 = toolbar 的世界坐标 (off-screen, "不知道那个地方" 的元凶)
     let px: number;
     let py: number;
     if (x != null && y != null) {
-      // 显式坐标 (双击菜单触发) — 已经过 NODE_W/2 + 30 偏移, 直接用
+      // 显式坐标 (双击空白) — 已经过 NODE_W/2 + 30 偏移, 直接用
       px = x;
       py = y;
-    } else if (lastMouseRef.current) {
-      // 鼠标在画布上 — 节点直接出现在鼠标处 (居中, 留 30px 顶部空间给 header)
-      px = lastMouseRef.current.x - NODE_W / 2;
-      py = lastMouseRef.current.y - 30;
     } else if (canvasRef.current) {
-      // 还没移动过鼠标 — 回退到当前视口中心 (总比随机数强)
+      // 视口中心 (toolbar 点击触发, 永远在用户视线内)
       const c = canvasRef.current;
       const r = c.getBoundingClientRect();
       px = (r.width / 2 - c.scrollLeft) / zoom - NODE_W / 2;
@@ -809,9 +808,12 @@ export default function CanvasEditor({
           }}
         >
           <svg
-            style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
-            width={2400}
-            height={1600}
+            // 06-29 17:00 改: SVG 尺寸从 2400x1600 扩到 10400x9600, 覆盖整个世界坐标
+            // (parent div 有 margin 4000px, 世界坐标范围 -4000 到 6400 / -4000 到 5600)
+            // 修复前 SVG 只覆盖 0-2400 / 0-1600, 节点在 margin 内就连线看不见
+            style={{ position: "absolute", top: -4000, left: -4000, pointerEvents: "none" }}
+            width={10400}
+            height={9600}
           >
             {edges.map((e) => {
               const from = nodes.find((n) => n.id === e.fromNode);
