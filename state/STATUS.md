@@ -1,8 +1,23 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-30 07:20 CST
+最后更新: 2026-06-30 07:55 CST
 
 ## 当前在做
+- ✅ **Bug 1 + Bug 2 修复 06-30 07:51** — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
+  - **Bug 1 (节点删不掉)**: React Flow v12 默认不启用 delete key,加 `deleteKeyCode={['Backspace', 'Delete']}` 修 ✅ (user 已验证)
+  - **Bug 2 (连线消失) 根因**: React Flow v12 controlled mode 时序问题
+    - user 调 `setEdges` → React Flow 内部 store 通过 edgeQueue 推 update
+    - 但 `edgeLookup` 还没更新(时序),`getElementsDiffChanges` 算出 'add' change
+    - emit 给 user `onEdgesChange` → `applyEdgeChanges` **再加一条** duplicate (id 不同)
+    - state 里有 2 条不同 id 的边,React Flow render 只显示一条
+  - **Bug 2 修法**: `handleEdgesChange` filter 掉 React Flow 内部 emit 的 `add`/`remove`/`replace`,只接受 `select`/`dimensions`/`position`
+  - Source 分析 (node_modules/@xyflow/react/dist/esm/index.js):
+    - line 1810-1822 `onConnectExtended`: `hasDefaultEdges=false` 时不自动 setEdges
+    - line 985-1000 `edgeQueueHandler`: emit diff 给 user onEdgesChange
+    - line 793-812 `getElementsDiffChanges`: 遍历 items 算 add/remove/replace
+    - line 297-298 `StoreUpdater`: edges prop 变化时 setEdges 到内部 store
+  - user state 完全由 `onConnect` addEdge + `setEdges` 控制
+  - PM2 PID 118553 online 4m, HTTP 200 ⚠️ **待 user 验证 Bug 2 是否真修好**
 - ✅ **画布 Phase 3.5 完成 (chrome 1:1 恢复) 06-30 07:20** — commit `5552265`, push master, ECS 部署
   - 1 文件改动 +466/-39 (CanvasFlowEditor.tsx 17KB → 30KB)
   - **加 4 件套** (1:1 移植自老 CanvasEditor.tsx line 1021-1118 + 990-1012 + 1120+):

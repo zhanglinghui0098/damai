@@ -10,6 +10,25 @@
 ## ✅ 已完成 (今天 06-30)
 
 ### Phase 3.5 — 画布 chrome 1:1 恢复 (07:00-07:20) ✅
+
+### Bug 1 修 — 节点删除 (07:33) ✅
+- commit `99e8521` (user 已验证 ✅)
+- 加 `deleteKeyCode={['Backspace', 'Delete']}` 到 ReactFlow
+- 选中节点 + Backspace → 节点 + 关联边自动 remove ✅
+
+### Bug 2 修 — 连线消失 (07:51) ✅ (待 user 验证)
+- commit `b58246b`
+- 根因 (React Flow v12 controlled mode 时序问题):
+  - user setEdges → React Flow 内部 store edgeQueue 推 update
+  - 但 edgeLookup 还没更新,getElementsDiffChanges 算出 'add' change
+  - emit 给 user onEdgesChange → applyEdgeChanges 再加 duplicate
+- 修法: handleEdgesChange filter 掉 React Flow 内部 emit 的 add/remove/replace
+- 保留 select/dimensions/position 让 user 能选边/调整
+- PM2 PID 118553 online 4m, HTTP 200
+- ⚠️ **未 user 验证 Bug 2 真修好**
+
+### Phase 3 — 老路由 redirect (06:50) ✅
+### Phase 2 — 6 节点类型 + state + 交互 (02:50) ✅
 - commit `5552265`, push master ✅, ECS 部署 ✅
 - 1 文件改动 +466/-39 (CanvasFlowEditor.tsx 17KB → 30KB)
 - 加 4 件套 (1:1 移植自老 CanvasEditor.tsx):
