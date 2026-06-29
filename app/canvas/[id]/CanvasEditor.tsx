@@ -969,7 +969,7 @@ export default function CanvasEditor({
         />
       )}
 
-      <FloatingTools onAdd={addNode} />
+      <FloatingTools onAdd={addNode} canvasRef={canvasRef} zoom={zoom} />
 
       <ZoomControls zoom={zoom} setZoom={setZoom} />
 
@@ -1103,7 +1103,7 @@ function TopBar({
 // =====================================================================
 // 左侧浮动工具栏
 // =====================================================================
-function FloatingTools({ onAdd }: { onAdd: (type: NodeType) => void }) {
+function FloatingTools({ onAdd, canvasRef, zoom }: { onAdd: (type: NodeType, x?: number, y?: number) => void; canvasRef: React.RefObject<HTMLDivElement>; zoom: number }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -1167,11 +1167,19 @@ function FloatingTools({ onAdd }: { onAdd: (type: NodeType) => void }) {
               <button
                 key={type}
                 data-floating-tools="1"
-                onClick={() => {
-                  // 06-29 18:xx 修: 不传坐标, 让 addNode 走 lastMouseRef 路径
-                  //   lastMouseRef 有视口边界检查, 只记录画布上的鼠标位置
-                  //   旧的用 e.clientX 换算逻辑会把按钮本身的位置当成世界坐标 (按钮在左边 → 节点飞到画布外)
-                  onAdd(type);
+                onClick={(e) => {
+                  // 06-29 修复: 直接用点击事件本身的 clientX/Y 换算世界坐标
+                  //   不依赖 lastMouseRef (只在鼠标划过画布时更新，在 toolbar/菜单上不更新)
+                  //   转换: screen → canvas world coordinates
+                  const c = canvasRef.current;
+                  if (c) {
+                    const r = c.getBoundingClientRect();
+                    const wx = (e.clientX - r.left + c.scrollLeft) / zoom;
+                    const wy = (e.clientY - r.top + c.scrollTop) / zoom;
+                    onAdd(type, wx, wy);
+                  } else {
+                    onAdd(type);
+                  }
                   setOpen(false);
                 }}
                 style={{
@@ -2169,16 +2177,18 @@ function ConnectionPath({
   b: { x: number; y: number };
   pending?: boolean;
 }) {
-  const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
-  const path = `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+  // 06-29 18:50 改: 自由 cubic bezier 飘很厉害 (dx=abs(b-a)/2, y 相同时甩半圆) → 竞品 (即梦/TapNow) 全用正交阶梯
+  // 路径: 起点 → 水平 1/2 → 垂直到目标 y → 水平到终点. 不管节点怎么放都清晰指向下一个
+  const midX = (a.x + b.x) / 2;
+  const path = `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`;
   return (
     <path
       d={path}
-      // 06-29 18:00 改: 线条加粗 + 加深, 低 zoom 下也能看见 (原 rgba 0.5 太淡)
-      stroke={pending ? "rgba(160, 200, 255, 0.85)" : "rgba(200, 220, 255, 0.9)"}
-      strokeWidth={2.5}
-      strokeDasharray={pending ? "5 3" : "none"}
+      stroke={pending ? "rgba(160, 200, 255, 0.85)" : "rgba(220, 230, 245, 0.6)"}
+      strokeWidth={pending ? 2 : 1.5}
       fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   );
 }
