@@ -339,6 +339,9 @@ export default function CanvasEditor({
       const c = canvasRef.current;
       if (!c) return;
       const r = c.getBoundingClientRect();
+      // 06-29 18:xx 修: 只在鼠标在画布视口内时才更新 lastMouseRef
+      //   否则工具栏/面板上的鼠标位置会被当作世界坐标 → 节点飞出去
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
       lastMouseRef.current = {
         x: (e.clientX - r.left + c.scrollLeft) / zoom,
         y: (e.clientY - r.top + c.scrollTop) / zoom,
@@ -966,19 +969,7 @@ export default function CanvasEditor({
         />
       )}
 
-      <FloatingTools
-        onAdd={addNode}
-        getCanvasRect={() => {
-          const c = canvasRef.current;
-          if (!c) return null;
-          return c.getBoundingClientRect();
-        }}
-        getScroll={() => {
-          const c = canvasRef.current;
-          if (!c) return { left: 0, top: 0 };
-          return { left: c.scrollLeft, top: c.scrollTop };
-        }}
-      />
+      <FloatingTools onAdd={addNode} />
 
       <ZoomControls zoom={zoom} setZoom={setZoom} />
 
@@ -1112,15 +1103,7 @@ function TopBar({
 // =====================================================================
 // 左侧浮动工具栏
 // =====================================================================
-function FloatingTools({
-  onAdd,
-  getCanvasRect,
-  getScroll,
-}: {
-  onAdd: (type: NodeType, x?: number, y?: number) => void;
-  getCanvasRect: () => DOMRect | null;
-  getScroll: () => { left: number; top: number };
-}) {
+function FloatingTools({ onAdd }: { onAdd: (type: NodeType) => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -1184,17 +1167,11 @@ function FloatingTools({
               <button
                 key={type}
                 data-floating-tools="1"
-                onClick={(e) => {
-                  // 06-29 17:50 改: 用真实点击位置算世界坐标, 节点出现在按钮附近, 不是 lastMouseRef 那个随机位置
-                  const r = getCanvasRect();
-                  if (r) {
-                    const s = getScroll();
-                    const wx = (e.clientX - r.left + s.left) / zoom - NODE_W / 2;
-                    const wy = (e.clientY - r.top + s.top) / zoom - 30;
-                    onAdd(type, wx, wy);
-                  } else {
-                    onAdd(type);
-                  }
+                onClick={() => {
+                  // 06-29 18:xx 修: 不传坐标, 让 addNode 走 lastMouseRef 路径
+                  //   lastMouseRef 有视口边界检查, 只记录画布上的鼠标位置
+                  //   旧的用 e.clientX 换算逻辑会把按钮本身的位置当成世界坐标 (按钮在左边 → 节点飞到画布外)
+                  onAdd(type);
                   setOpen(false);
                 }}
                 style={{
@@ -1726,7 +1703,9 @@ function NodeView({
               port={p}
               node={node}
               isInput
-              visible={hovered}
+              // 06-29 修: 默认 "subtle" (半透明 0.32 + 缩小 0.65x), hover 时变 full (1.0 呼吸动画)
+              //   之前 visible={hovered} → 不 hover 看不到 port → user 不知道能拖线 → "功能没了"
+              visible={hovered ? true : "subtle"}
               highlighted={hl}
               onMouseDown={(e) => onPortMouseDown(e, p, true)}
             />
@@ -1738,8 +1717,8 @@ function NodeView({
             port={p}
             node={node}
             isInput={false}
-            // 2026-06-25 09:xx: 撤回永远显示, 改回 hover 才显示
-            visible={hovered}
+            // 06-29 修: 同上, 默认 subtle 让 port 永远可见
+            visible={hovered ? true : "subtle"}
             highlighted={false}
             onMouseDown={(e) => onPortMouseDown(e, p, false)}
           />
@@ -2013,7 +1992,7 @@ function AudioIcon() {
   );
 }
 
-// 端口圆点 (灵动风格: hover 时浮现 + 呼吸动画 + 拖拽光标)
+// 端口圆点 (06-29 修复: 默认半透明可见, 不用 hover 才能发现连接功能)
 function PortDot({
   port,
   node,
@@ -2025,13 +2004,14 @@ function PortDot({
   port: Port;
   node: CanvasNode;
   isInput: boolean;
-  visible: boolean;
+  visible: boolean | "subtle";
   highlighted: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
 }) {
   const pos = portPos(node, port, isInput);
-  // 输入端口只接拖拽, 不主动拖出 → 不需要 grab cursor
   const baseCursor = isInput ? "default" : "grab";
+  const isVisible = visible !== false;
+  const isFull = visible === true;
   return (
     <div
       data-role="port"
@@ -2061,18 +2041,18 @@ function PortDot({
         fontSize: "1rem",
         fontWeight: 200,
         cursor: baseCursor,
-        pointerEvents: "auto",
+        pointerEvents: isVisible ? "auto" : "none",
         lineHeight: 1,
         zIndex: 3,
-        opacity: visible || highlighted ? 1 : 0,
+        opacity: highlighted || isFull ? 1 : isVisible ? 0.32 : 0,
         transform: highlighted
           ? "scale(1.4)"
-          : visible ? "scale(1)" : "scale(0.65)",
-        transition: "opacity 0.2s ease, transform 0.2s ease, background 0.18s ease, border-color 0.18s ease",
-        animation: visible && !highlighted ? "damaiPortBreath 1.6s ease-in-out infinite alternate" : "none",
+          : isFull ? "scale(1)" : "scale(0.65)",
+        transition: "opacity 0.25s ease, transform 0.25s ease, background 0.18s ease, border-color 0.18s ease",
+        animation: isFull && !highlighted ? "damaiPortBreath 1.6s ease-in-out infinite alternate" : "none",
         boxShadow: highlighted
           ? "0 0 0 5px rgba(140,220,160,0.18), 0 0 16px rgba(140,220,160,0.55)"
-          : visible ? "0 0 0 3px rgba(255,255,255,0.06)" : "none",
+          : isFull ? "0 0 0 3px rgba(255,255,255,0.06)" : "none",
       }}
     >
       +
