@@ -859,6 +859,11 @@ export default function CanvasEditor({
             transform: `scale(${zoom})`,
             transformOrigin: "0 0",
           }}
+          // ⚠️ transform: scale 只放在 inner div, 不会影响外层 UI
+          //   UI 元素 (TopBar/FloatingTools/ZoomControls/PropertiesPanel/TextToolbar/Logo)
+          //   都是 canvasRef 的兄弟 (position: fixed/absolute), 跟 inner div 平级
+          //   所以 zoom 改变时只缩放画布 + 节点, UI 大小不变
+          //   改这个 transform 时千万别移到外层 (会让 UI 也缩放)
         >
           <svg
             // 06-29 18:00 改: SVG 10400x9600 涵盖 4000px margin 全区域 (连接线跨 margin 也能显示)
