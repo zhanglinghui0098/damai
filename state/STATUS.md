@@ -485,10 +485,10 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 
 - 自动化 `deploy-to-ecs.sh` 脚本 ✅ **06-29 写好** (2h, 公测 10 经销商并发时必建)
 - 阿里云轻量升 2C/4G (¥80/月, **07-10 前必做**, 否则 100 并发 OOM)
-- 阶段 2 飞书项目表 **S1+S2 ✅ 06-29 14:00** (`00_项目表` 12 fields, 4 wrapper 函数 listProjects/getProjectById/createProject/updateProject) + 节点表 (5-7 天, Codex/Workbody B线)
+- 阶段 2 飞书项目表 **S1+S2+S3 ✅ 06-29 14:30** (`00_项目表` 12 fields, 4 wrapper 函数 + 4 API route: `GET/POST /api/projects` + `GET/PATCH /api/projects/[id]`, 跨租户 403, **MyProjects.tsx 改用真实 API** (home page section, dashboard ProjectsTab 暂用 mock, 减法: 不重复))
+- P1 #2.1 飞书项目表 S4 (canvas 自动 createProject + dashboard ProjectsTab 改真实数据) **未做** (下 session)
 - 视频模板存模板库 (0.5 天, Codex/Workbody B线)
 - canvas 改飞书 (1 天, Codex/Workbody B线)
-- P1 #2.1 飞书项目表 S3 (API route + login 集成) **未做** (下 session)
 
 ### P2 — 等外部触发 (不主动开干)
 
