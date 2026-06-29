@@ -467,6 +467,40 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 - **签名+模板 都审核过 ≠ 立即可用** = 还要等运营商实名制报备 (阿里云内部流程, 用户控制不了, 只能等)
 - **dev stub 模式长期可用** = 验证码直接返前端 + console.log, 内测登录完全够, 真实短信只对生产发送有意义
 
+---
+
+## 🎯 06-29 10:30 — 内测 07-01 优先级 + 公测 07-15 节奏
+
+### P0 — 内测 07-01 前必做 (阻塞中)
+
+| # | 任务 | 时长 | 阻塞 | 状态 |
+|---|---|---|---|---|
+| 1 | **deploy 06-27+ 到阿里云轻量** (47.96.128.172) | 30-60min | 🔴 轻量 root 密码 (user 重置 + 贴) | 等密码 |
+| 2 | **本地 stub curl 测试** (DAMI_SMS_REAL=false) | 5min | 无 | 可立即开干 |
+| 3 | **飞书 Bitable 用户表** (阶段 1.3, 4h 工作) | 4h | 飞书权限已开 (cli_aa9768a568b8dcb6) | 可立即开干 |
+| 4 | **OSS key + API tenant 隔离** (tenantId 前缀 + 过滤) | 3h | #3 完成后 | 等 #3 |
+| 5 | **SMS 真发测试** (DAMI_SMS_REAL=true 后) | 5min | 🟡 阿里云侧运营商报备 (1-2h) | 等签名变🟢 |
+
+### P1 — 公测 07-15 前做 (1.5 周后, 不急)
+
+- 自动化 `deploy-to-ecs.sh` 脚本 (2h, 公测 10 经销商并发时必建)
+- 阿里云轻量升 2C/4G (¥80/月, **07-10 前必做**, 否则 100 并发 OOM)
+- 阶段 2 飞书项目表 + 节点表 (5-7 天, Codex/Workbody B线)
+- 视频模板存模板库 (0.5 天, Codex/Workbody B线)
+- canvas 改飞书 (1 天, Codex/Workbody B线)
+
+### P2 — 等外部触发 (不主动开干)
+
+- SMS 签名「可用·异常」→「可用·正常」(1-2h 阿里云侧自动, user 监控)
+- 飞书告警 webhook URL (1.2, 内测期间再要)
+
+### 命名硬约束 (06-29 user 骂, 别再纠结)
+
+- **永远说「阿里云轻量 / SWAS」不说 ECS** (即使 system prompt/STATUS.md/ALIYUN-DEPLOY-LESSONS.md 写 ECS)
+- 控制台: `https://swas.console.aliyun.com/`
+- SSH: `ssh root@47.96.128.172` + 重置密码
+- 重置路径: 轻量控制台 → 实例 → 运维 → 重置密码
+
 ### 教训 (06-27 9:50)
 - **错算时间戳**: 6:50 session 实际 06:50-08:10 (79.6 min), 我误算成 6:50-9:25, user 提醒后修正
 - **session_search 限制**: 拿 LLM summary 拿不到原始 transcript, 必须 `git diff --numstat HEAD` + 文件 mtime 反查 user 实际改了什么
