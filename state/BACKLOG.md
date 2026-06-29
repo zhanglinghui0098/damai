@@ -1,8 +1,27 @@
 # 大脉 (damai) Backlog
 
-最后更新: 2026-06-29 18:05 CST
+最后更新: 2026-06-29 19:15 CST
 
 ## ✅ 已完成 (recently done)
+
+### 06-29 19:10 画布连接线大改 (你 Windows 端 / Codex 推的)
+- ✅ ConnectionPath 改 cubic bezier 平滑曲线 (dx 至少 NODE_W*0.4, 不会甩半圆)
+- ✅ 加箭头 marker (defs 段加 `<marker id="arrow">` + `<marker id="arrow-pending">`, path markerEnd 引用)
+- ✅ SVG 改 10400×9600 覆盖全 panning 区域 (跨 margin 也能看到连接线)
+- ✅ 线条颜色 rgba(110, 180, 255, 0.75), pending 时 (160, 200, 255, 0.9)
+- ✅ strokeWidth 2 / pending 2.5 (比之前 1.5 加粗)
+- ✅ 拆 commit: `de85d9c chore(gitignore) + ddfa331 fix(canvas) 连接线改贝塞尔+箭头+SVG覆盖全区域`
+- ✅ 部署 19:11:07, damai.net.cn HTTP 200
+- ✅ pm2 PID 72306, send-code 真发 aliyun mode (`provider: "aliyun"`)
+
+### 06-29 18:30 4T 共享盘 state/ 完整化 (治"其他 agent 改错")
+- ✅ `state/README.md` 新建 (5KB, 强制所有 agent 第一件事必读, 列 4 必读 + 3 警告)
+- ✅ `state/BACKLOG.md` 06-29 18:05 内容 + 待办 (本日完整)
+- ✅ `state/STATUS.md` 18:00 当前在做段 + 06-29 8h 进度
+- ✅ `state/HANDOFF-LATEST.md` 6KB 重写 (8 commits + 5 教训 + 6 文件位置)
+- ✅ `codex-deliveries/README.md` 更新索引
+- ✅ `codex-deliveries/damai-codex-brief-overview.md` 顶部标 EXPIRED (06-29 18:30) + 指向 state/README.md
+- ✅ commit `e7aaefd` 推 origin master (state 完整化 +319 -53)
 
 ### 06-29 18:00 画布 3 真 bug 修 + 4T 共享盘 README
 - ✅ CanvasEditor.tsx SVG 2400×1600 → **10400×9600** 覆盖 4000px margin 全区域 (跨 margin 也能显示连接线)
@@ -85,15 +104,15 @@
 
 ## 📋 下一步 (next)
 
-### 紧急 (今天 18:00-19:00)
-- [ ] **user 浏览器测画布** (硬刷 Ctrl+Shift+R, 测 3 修: SVG 10400 / 线加粗 / toolbar 位置)
+### 紧急 (今天 19:15-20:30)
+- [ ] **user 浏览器测画布** (硬刷 Ctrl+Shift+R, 测 3 改: bezier 平滑 / 箭头方向 / SVG 10400)
 - [ ] **user 收 SMS 验证码** (15925670098 应该收到 1 条, 贴 6 位数)
 - [ ] **我跑 verify-code 收口 P0 #5** (curl POST /api/auth/verify-code with {phone, code})
+- [ ] **session 收口**: push a163d0f/1c3be77/de85d9c/ddfa331 4 commits 到 origin master (本地领先, 网络不稳)
 
 ### 今天 (06-29)
 - [ ] P1 #2.1 S4 dashboard ProjectsTab 接真 Bitable (替换 mock-data-workbench)
-- [ ] 验证 other agent 能从 SMB Z:\damai\hermes-project\damai\state\ 读到新 README
-- [ ] codex-deliveries/damai-codex-brief-overview.md 标过期 + 指向 state/README.md
+- [ ] state/STATUS.md 19:15 收口段 (本文件 BACKLOG 已更新, 还要回写 STATUS.md 完整决策/教训段)
 
 ### 本周 (06-30 - 07-05)
 - [ ] **Cloudflare named tunnel** (推荐): URL 永久固定, 容器重启不换

@@ -1,13 +1,18 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-29 18:30 CST
+最后更新: 2026-06-29 19:15 CST
 
 ## 当前在做
-- 🚧 **画布 3 真 bug 修 ✅ 06-29 18:00 已 deploy** (commit `34f9481`)
-  - SVG 2400×1600 → 10400×9600 (跨 4000px margin 连接线也显示)
-  - 连接线 rgba 0.5 → 0.85/0.9, strokeWidth 1.5 → 2.5, 加微蓝
-  - FloatingTools onClick 用真实 click 位置算世界坐标 (不再 lastMouseRef "随机")
-- 🚧 **state/ 4T 共享盘 README 化 ✅ 06-29 18:30** (user 反馈 "其他 agent 改错")
+- ✅ **画布连接线大改 ✅ 06-29 19:10 deploy** (你 Windows 端 / Codex 推的 `ddfa331`)
+  - ConnectionPath 改 cubic bezier 平滑曲线 (dx 至少 NODE_W*0.4, 不会甩半圆)
+  - 加箭头 marker (`<marker id="arrow">` + `<marker id="arrow-pending">`, path markerEnd 引用)
+  - SVG 改 10400×9600 覆盖全 panning 区域 (跨 margin 也能看到连接线)
+  - 线条颜色 rgba(110, 180, 255, 0.75), pending 时 (160, 200, 255, 0.9), strokeWidth 2 / pending 2.5
+  - 拆 commit: `de85d9c chore(gitignore) + ddfa331 fix(canvas)` (我 commit 0d380f8 误把 canvas 改动并入 chore, 重置后拆 2 commit)
+  - 部署 19:11:07, damai.net.cn HTTP 200, pm2 PID 72306
+  - send-code 二次触发仍是 aliyun mode (`provider: "aliyun"`, .env.local 在 pm2 restart 后终于加载)
+  - ⏳ **你硬刷 Ctrl+Shift+R 测**: bezier 平滑 / 箭头方向 / SVG 10400 跨 margin
+- ✅ **state/ 4T 共享盘 README 化 ✅ 06-29 18:30** (user 反馈 "其他 agent 改错")
   - 新建 `state/README.md` (5KB, 强制所有 agent 必读, 路径速查 + 必读 4 件套 + 3 警告)
   - 更新 `state/BACKLOG.md` (加今天 06-29 全部 session 进展, 之前停在 09:01)
   - 标过期 `codex-deliveries/damai-codex-brief-overview.md` (6/18 老版, 指向 state/README.md)
@@ -522,3 +527,46 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 - **"项目备份" 抗失忆**: 3 commit 推 master + STATUS 收口段 (本 commit C)
 - **mtime 假阳性**: 35 个文件 `git status` M 但 `git diff --numstat` 0 0, 实际没改 (编辑器 buffer 留的)
 - **commit 范围**: 必须 `--diff-filter=M` + `numstat > 0` 过滤, 不能 `git add -A` 误 commit 假阳性
+
+### 教训 (06-29 19:15)
+- **commit 前必看 diff**: 我 0d380f8 误把 canvas 改动并入 "chore(gitignore)", 因为 file 已被 user 在 Windows 端改过但 `git status` 没显示 (我没注意). 修法: reset --soft + restore --staged 分开 commit. **commit 之前先 `git diff` 看看真改了啥, 别只看 status**
+- **pm2 restart 才会读 .env.local** (reload 不读): 老问题, deploy 脚本已用 `pm2 delete + start` 但还是偶尔 stub mode. 原因: next-server 启动时 DAMI_SMS_REAL 还不在 env, 需要再 kill 一次才会生效. **经验**: deploy 完等 30s, curl send-code, 还是 stub 就 `pkill -9 next-server` (pm2 auto-respawn, 新进程会读 env)
+- **canvas 画外节点 = 工具 click 不在画布内**: 06-29 18:15 user 跟 Codex 改 toolbar 用 `e.clientX/Y` 算 world 坐标, 但浮动菜单按钮在画布外, 算出来节点在 margin 区域. user 设计意图是 "点哪出哪" = click 在画布内 OK, click 在菜单上 = 走 lastMouseRef. 我 17:30 改成 lastMouseRef 兜底是对的, user 18:15 又 revert. **最终设计** = user 的: 画布内 click, 走 click 位置 (你 19:10 又再次 deploy, 是你认定的最终方案)
+- **Windows ↔ NAS 4T 盘同步**: 改动在 Windows Z: 改完, NAS 4T 盘有, 但 git status 有时不显示 (因为 mtime 假阳性). **永远 commit 前先 `git diff` 看实际改动**
+- **session 必收口 (本次教训)**: 长 session context 撑爆 8h+ (我从 11:00 干到 19:15 8h15min), 中间断过 2 次 (用户 inactivity). **操作: 19:15 收口 4 commit (1 推过 + 3 本地), state/ 全部更新, push 待网络好再做, 打开新 session 讨论技术问题**
+
+---
+
+## 🎯 19:15 收口段 (给下个 session)
+
+### 当前生产状态
+- **damai.net.cn**: HTTP 200, 阿里云轻量 SWAS 47.96.128.172, NOT ECS
+- **pm2**: damai online, PID 72306 (deployed 19:11:07)
+- **代码 HEAD**: 本地 `ddfa331 fix(canvas)`, origin `e7aaefd` (落后 4 commit: 1c3be77, a163d0f, de85d9c, ddfa331)
+- **磁盘**: SWAS 30G 用 41% (清完老 bak), 本地 NAS 4T 盘 50M tar
+- **send-code**: 真发 aliyun mode (待 user 贴 6 位验证码收 P0 #5)
+- **canvas 行为**: cubic bezier 平滑 + 箭头 + SVG 10400×9600 (本次 19:10 deploy 终态)
+
+### 下个 session 必读
+1. `state/README.md` (入口, 120 行)
+2. `state/STATUS.md` (本文件, 524 行, 主状态)
+3. `state/BACKLOG.md` (116 行, ✅ / 🚧 / ⏳)
+4. `state/HANDOFF-LATEST.md` (跨 session 交接)
+5. `git log --oneline -15` (看 commit 顺序)
+
+### 下个 session 待办 (按优先级)
+1. **P0 #5 verify-code 收口**: 跑 `curl POST /api/auth/verify-code` 用 user 贴的 6 位数, 收 P0 全部 5 sub-task
+2. **push 落后 4 commit**: `git push origin master --force-with-lease` (本地领先 4 commit: 1c3be77, a163d0f, de85d9c, ddfa331, origin 落后在 e7aaefd)
+3. **P1 #2.1 S4**: dashboard ProjectsTab 接真 Bitable (替换 mock-data-workbench)
+4. **讨论技术问题**: user 说"新开一个 session 讨论", 可能是 canvas 架构 / 性能 / 跨 session 协作 等
+
+### 重要硬规则 (06-29 复盘)
+- 服务器是 SWAS 不是 ECS, 控制台 `https://swas.console.aliyuncs.com/`
+- 画布是自研 SVG 不是 React Flow, 别加 `@xyflow/react`
+- Codex base 保留: avatar ball + 2 eyes + blue glow + GO ↗ + "+" 按钮
+- 蓝紫色调: `--accent: #6e8cd6`
+- 减法 + 一站式: 经销商 IT 弱, 不跳剪映, 大脉必覆盖抽卡/拼接/字幕/BGM/出片
+- 部署前必看 `git diff` (防误并 commit)
+- 改完 state/ 必更新 (下次接手失忆)
+- 飞书 OpenAPI 直推 (不需 webhook)
+- SSH: `admin` + NOPASSWD sudo (无 root)
