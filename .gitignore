@@ -34,3 +34,6 @@ Thumbs.db
 public/case/
 public/case/poster/
 state/案例/  # case study 视频 (不入 git, 走 NAS 本地存档)
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
