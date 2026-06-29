@@ -319,10 +319,6 @@ export default function CanvasEditor({
   const [doubleClickMenu, setDoubleClickMenu] = useState<{
     screenX: number; screenY: number; canvasX: number; canvasY: number;
   } | null>(null);
-  // 06-29 17:30 改: 右键菜单 (跟双击菜单同结构, 用户说"右键生成节点")
-  const [rightClickMenu, setRightClickMenu] = useState<{
-    screenX: number; screenY: number; canvasX: number; canvasY: number;
-  } | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [dragTargetInput, setDragTargetInput] = useState<{ nodeId: string; portId: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -558,7 +554,7 @@ export default function CanvasEditor({
   }
 
   // ---------- 端口连线 (拖拽模式) ----------
-    // 06-29 17:30 改: 允许从 input OR output 拖线 (双向), 标记 fromIsInput 给后续逻辑判断
+  // 06-29 17:30 改: 允许从 input OR output 拖线 (双向), 标记 fromIsInput 给后续逻辑判断
   function onPortMouseDown(e: React.MouseEvent, port: Port, isInput: boolean, node: CanvasNode) {
     e.stopPropagation();
     e.preventDefault();
@@ -823,27 +819,9 @@ export default function CanvasEditor({
             canvasY,
           });
         }}
-        onContextMenu={(e) => {
-          // 06-29 17:30 改: 右键 = 弹节点菜单 (之前是 panning, 现在 panning 改中键)
-          e.preventDefault();
-          const t = e.target as HTMLElement;
-          if (t.closest("[data-canvas-node]")) return;
-          if (t.closest("[data-properties-panel]")) return;
-          if (t.closest("[data-floating-tools]")) return;
-          if (t.closest("[data-zoom-controls]")) return;
-          if (t.closest("[data-text-toolbar]")) return;
-          if (t.closest("[data-top-bar]")) return;
-          if (t.closest("[data-logo]")) return;
-          const c = canvasRef.current;
-          if (!c) return;
-          const r = c.getBoundingClientRect();
-          const canvasX = (e.clientX - r.left + c.scrollLeft) / zoom - NODE_W / 2;
-          const canvasY = (e.clientY - r.top + c.scrollTop) / zoom - 30;
-          setRightClickMenu({ screenX: e.clientX, screenY: e.clientY, canvasX, canvasY });
-        }}
+        onContextMenu={(e) => e.preventDefault()}
         onMouseDown={(e) => {
-          // 06-29 17:30 改: panning 改中键 (button 1), 释放右键给菜单用
-          if (e.button !== 1) return;
+          if (e.button !== 2) return;
           const t = e.target as HTMLElement;
           if (t.closest("[data-canvas-node]")) return;
           if (t.closest("[data-properties-panel]")) return;
@@ -958,17 +936,6 @@ export default function CanvasEditor({
         />
       )}
 
-      {rightClickMenu && (
-        <DoubleClickNodeMenu
-          screenX={rightClickMenu.screenX}
-          screenY={rightClickMenu.screenY}
-          onPick={(type) => {
-            addNode(type, rightClickMenu.canvasX, rightClickMenu.canvasY);
-            setRightClickMenu(null);
-          }}
-          onClose={() => setRightClickMenu(null)}
-        />
-      )}
 
       {selected && (
         <PropertiesPanel
