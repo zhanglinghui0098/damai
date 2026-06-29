@@ -134,3 +134,32 @@
 - 推 master 分支到 github.com/zhanglinghui0098/damai.git
 - 06-29 18:00 commit: `34f9481 fix(canvas): SVG 10400x9600 + 线条 + toolbar` (跟 history 在一起)
 - 推 master 分支到 github.com/zhanglinghui0098/damai.git
+
+---
+
+## 🚧 06-30 (current)
+
+### 待处理存档 (防失忆)
+- 详见 `state/BACKLOG-PENDING-06-30.md` — 当天所有未完成事项 (6 项阻塞 + 6 项拍板)
+- 06-30 05:55 已存档,新 session 第一件事读它
+
+### 画布架构迁移 @xyflow/react (你昨晚拍板方案 A,06-29 19:30)
+- ✅ Phase 1 (06-30 01:10): scaffold + @xyflow/react v12 安装 + CanvasFlowEditor + A/B route
+- ✅ Phase 2 (06-30 02:50): 6 节点类型真实组件 + localStorage + 双击创建 + bezier 边 + ECS 部署
+- ⏳ Phase 3 (UI 入口切换): user 看不到改动的根因 — 主页按钮仍指 `/canvas/[id]` 老路由
+- ⏳ Phase 4 (A/B 测试 + 老路由下线): 端口对比度优化 + 真实案例模板替换 + 决策老路由去留
+
+### 双路由并存 (现在状态)
+- 老路由 `/canvas/[id]` → `app/canvas/[id]/CanvasEditor.tsx` (3353 行 / 120KB) — 自研 SVG, **视觉不变**
+- 新路由 `/canvas-v2/[id]` → `app/canvas-v2/[id]/page.tsx` → import `@/app/canvas/[id]/CanvasFlowEditor` (493 行 / 17KB) — React Flow v12, **新视觉**
+- A/B 测试模式: Phase 4 决定老路由下线时间
+
+### ECS 生产同步问题 (⚠️ 已发现,未拍板)
+- 本地 master `baa771d` (06-30 02:50) vs ECS HEAD `006f92e` (06-26) — **落后 12+ commit**
+- 部署只同步 `.next/` build artifacts,源码没同步到 ECS
+- PM2 PID 74595 跑的是新 build (06-30 02:51),但 ECS 工作树源码是老的
+- ECS 有未 commit 改动 (CanvasEditor.tsx 178 行大改 + .gitignore/PROJECT 等),是否丢?
+
+### 已知未 commit (06-30 05:55)
+- 7 个文本 untracked: deploy-to-ecs.sh + docs/08-OSS + scripts/{alert,backup,daily-handoff} + state/ALIYUN-DEPLOY-LESSONS.md
+- 1 个大文件目录 `state/案例库/` (30+ mp4/jpg) — 已在 .gitignore (本次 commit)
