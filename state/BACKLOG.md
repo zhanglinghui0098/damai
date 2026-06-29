@@ -1,8 +1,21 @@
 # 大脉 (damai) Backlog
 
-最后更新: 2026-06-27 07:15 CST
+最后更新: 2026-06-29 08:59 CST
 
 ## ✅ 已完成 (recently done)
+
+### 阿里云 SMS 接入 (签名+模板审核通过) — 06-29
+- ✅ 阿里云账号 UID 1148781509211780 (主账号, 实名认证)
+- ✅ 开通 SMS 服务 (dysmsapi), 杭州 region
+- ✅ 创建主账号 AK `LTAI5tHD8iA4n8rCRSmDbCx` (跟 OSS 同源)
+- ✅ 创建短信签名「杭州即客传媒」🟢 审核通过 (⏳ 运营商报备中 1-2h → 可用·正常)
+- ✅ 创建验证码模板 `SMS_335341232` (赠送, 🟢 审核通过, 等签名可用)
+- ✅ `.env.local.example` 加 SMS 段 (commit-able 模板)
+- ✅ 状态写入 state/STATUS.md + BACKLOG.md (本 session)
+- ⏳ `.env.local` 改 4 个真值 (等 user 贴 Secret 或 SMB 改)
+- ⏳ `DAMI_SMS_REAL=true` (等签名「可用·正常」)
+- ⏳ 真发 1 条测试 (user 实测手机收验证码)
+- ⏳ ECS 生产同步 (5 个 env vars + pm2 reload)
 
 ### 阿里云 OSS 接入 — 06-27
 - ✅ lib/oss.ts 单例 + ENV 校验 + 4 个核心函数
@@ -26,6 +39,14 @@
 
 ## 📋 下一步 (next)
 
+### 今天 (06-29)
+- [ ] **user 改 `.env.local`** — 4 行真值 (AK ID / Secret / SIGN_NAME / TEMPLATE_CODE), `DAMI_SMS_REAL=false` 留 stub
+- [ ] **我重启 `npm run dev` + 跑 stub curl 验证** — 等 user 通知
+- [ ] **user 监控签名状态** — 阿里云控制台 → 短信服务 → 签名管理, 看「可用·异常」→「可用·正常」
+- [ ] **user 切 `DAMI_SMS_REAL=true`** — 签名变 🟢 后
+- [ ] **我跑真发 curl + user 实测收验证码** — 最后验证
+
+### 本周 (06-30 - 07-05)
 - [ ] **NAS_BACKUP_HOST 改真 IP** (脚本现在是 placeholder 192.168.1.x)
 - [ ] FEISHU_ALERT_WEBHOOK 填真 URL (告警脚本现在没推飞书)
 - [x] **Rotate AccessKey** (Secret 经过对话了, RAM 控制台禁用旧 Key + 创建新 Key + 更新 ECS .env.local) — 06-27 08:54 完成 (新 AK `LTAI5t6k3vqta8v3GYSmDbCx`)

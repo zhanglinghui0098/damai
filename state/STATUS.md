@@ -1,8 +1,9 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-26 06:45 CST
+最后更新: 2026-06-29 08:59 CST
 
 ## 当前在做
+- 🚧 **阿里云 SMS 接入 (06-29 上午进行中)** — 签名+模板审核通过, 等运营商报备完切真实发送
 - ✅ **Canvas i2i 验证通过 (06-26 06:42 CST)** — user 实测 Image A → Image B, B 节点 outputUrl 真作 i2i 参考图生成新图
   - `lib/ark-image.ts computeArkSize` MIN_PIXELS clamp: 任意 aspect × quality 都不会被 Ark 400
   - `CanvasEditor.tsx` toAbs 转换相对 URL → 绝对 URL: Node fetch + Ark 都能拉到上游 outputUrl
@@ -397,16 +398,74 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 
 ### 关键里程碑
 - ✅ 6:50-8:10 OSS 接入 + i2i 全通
-- ✅ 8:10-9:50 SiteNav UI 重构 (user 手动)
-- ✅ 9:50 项目连贯性备份 (3 commit + push master)
-- ⏳ 下周 1.3 飞书用户表
-- ⏳ 2 周内 2.x canvas + project 接飞书
-- ⏳ 1 月 3.x CDN + 升级 + Sentry
+|  | 6:50-9:50 SiteNav UI 重构 (user 手动) |  |
+|  | 9:50 项目连贯性备份 (3 commit + push master) |  |
+|  | ⏳ 下周 1.3 飞书用户表 |  |
+|  | ⏳ 2 周内 2.x canvas + project 接飞书 |  |
+|  | ⏳ 1 月 3.x CDN + 升级 + Sentry |  |
 
 ### 阻塞 ask user (清单)
 1. **飞书告警 webhook URL** (1.2) — 飞书群 → 设置 → 群机器人 → 添加机器人 → 自定义机器人 → 复制 URL
 2. **NAS 备份 SSH user + 认证方式** (1.1) — memory 写 SSH 用手机号 `15925670098`, 之前 placeholder 是 `zhanglh`, **未确认**
 3. **ECS 47.96.128.172 root 密码** (推 1.1 脚本用) — 上 session sshpass 临时密码没继承, Permission denied
+
+---
+
+## 🚧 2026-06-29 上午 — 阿里云 SMS 接入 (进行中)
+
+### 背景
+大脉 auth 模块代码 06-24 已写完 (`lib/sms.ts` + `lib/auth.ts` + `lib/verify-store.ts` + `lib/hmac.ts` + 3 个 API routes + middleware + login page), dev 用 stub 模式跑通. **本次接入真实短信 = 验证链路 + 等签名可用后切真实发送**.
+
+### 已完成 (06-29 08:22-08:55 CST)
+- ✅ **阿里云账号实名认证**: 主账号 UID `1148781509211780` (杭州即客传媒)
+- ✅ **开通 SMS 服务 (dysmsapi)**: 杭州 region, 套餐未选 (用免费档够了, 内测 < 100 条)
+- ✅ **创建主账号 AK**: `LTAI5tHD8iA4n8rCRSmDbCx` (跟 OSS 用同一 AK, 06-27 rotate 收口后)
+  - Secret 由 user 在 RAM 控制台创建, 我**没看过** Secret (不写对话, 不进 .env.local.example)
+- ✅ **创建短信签名**: 「杭州即客传媒」, 🟢 **审核通过**, ⏳ **运营商实名制报备中** (1-2h 后「可用·正常」)
+  - 签名来源: 企事业单位全称 (简称 OK, 阿里云认)
+  - 资质附件: 营业执照 (user 上传)
+- ✅ **验证码模板**: `SMS_335341232` (激活赠送, 模板类型=验证码, 🟢 **审核通过**, ⚫ 当前「不可用」= 等签名可用后自动解)
+  - 模板内容: 默认 6 位验证码 + 5 分钟有效 (赠送模板自带, 不用再申请)
+- ✅ **`.env.local.example` 加 SMS 段** (06-29 08:55, 我改的): 5 个 env vars, 注释清楚
+
+### 待 user (按顺序)
+| # | 操作 | 谁 | 时机 |
+|---|---|---|---|
+| 1 | 把新 AK Secret 贴飞书 (或 SMB 改 .env.local) | user | **现在** |
+| 2 | `.env.local` 改 4 个真值 + `DAMI_SMS_REAL=false` (留 stub) | user | **现在** |
+| 3 | 我重启 `npm run dev` + 跑 stub curl 验证 | 我 | 收到 user 通知后 |
+| 4 | user 切 `DAMI_SMS_REAL=true` | user | **等签名变 🟢 可用·正常** (1-2h) |
+| 5 | 我跑真发 curl + user 实测收 1 条短信 | 我 + user | 第 4 步后 |
+
+### 当前阻塞 / 等
+- **签名「可用·正常」**: 阿里云侧 1-2h 自动完成, user 端需要 1-2h 后回签名列表刷新看
+- **user 改 `.env.local`**: 等 Secret + 4 行替换
+- **(远期) ECS 生产同步**: 这次本地 dev 跑通后, 把同样 5 个 env vars 加到 ECS `/opt/damai/.env.local` + 重启 PM2 = 上线
+
+### 关键发现 (给未来会话)
+1. **「可用·异常」≠ 真异常** = 运营商实名制报备还没完, 1-2h 后自动「可用·正常」, 不影响继续申请模板, 不影响代码逻辑 (签名本身已审批通过)
+2. **「模板不可用」= 签名没准备好**, 不是模板问题, **别再申请新的** (白费时间 + 占名额)
+3. **赠送模板 (SMS_335341232) 审核过就行**, 不用自建, 节省 0.5-2h 审核
+4. **SIGN_NAME 跟营业执照一字不差** = 「杭州即客传媒」OK, 「即客传媒」可能被拒 (短太狠), 「极客传媒」100% 拒 (口误)
+5. **主账号 AK 通杀** = OSS + SMS + 未来其它服务共用一个 AK, 简化管理 (子账号是未来 RAM 精细化权限计划)
+
+### 代码现状 (不需要改)
+- `lib/sms.ts`: 完整 (HMAC-SHA1 签名 + Dysmsapi 2017 API + stub fallback), 06-24 写过没改
+- `lib/auth.ts` + `lib/verify-store.ts` + `lib/hmac.ts`: 完整
+- `app/api/auth/{send-code,verify-code,logout}/route.ts`: 完整
+- `app/login/page.tsx`: 完整 (60s 倒计时 + 6 位输入框)
+- `middleware.ts`: 完整 (PUBLIC_PATHS + verifySession 注入 tenantId)
+- ✅ **本 session 没改任何 auth 代码**, 只改了 `.env.local.example` (template)
+
+### 备份 (本次)
+- 提交 `.env.local.example` (git-safe 模板, 加了 SMS 段)
+- 提交 `state/STATUS.md` + `state/BACKLOG.md` (加 06-29 段)
+- 推 master → 抗失忆 (跟 06-27 9:50 模式一致)
+
+### 教训 (非技能)
+- **.env.local 不主动代写 Secret** = user 改或贴 Secret 都行, 我只 sed 已知真值 (AK ID/SIGN_NAME/TEMPLATE_CODE), Secret 让 user 自己管
+- **签名+模板 都审核过 ≠ 立即可用** = 还要等运营商实名制报备 (阿里云内部流程, 用户控制不了, 只能等)
+- **dev stub 模式长期可用** = 验证码直接返前端 + console.log, 内测登录完全够, 真实短信只对生产发送有意义
 
 ### 教训 (06-27 9:50)
 - **错算时间戳**: 6:50 session 实际 06:50-08:10 (79.6 min), 我误算成 6:50-9:25, user 提醒后修正
