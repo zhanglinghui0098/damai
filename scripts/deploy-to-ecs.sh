@@ -74,8 +74,8 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o PasswordAuthentication=no "${EC
   echo "--- 6b. chmod .bin ---"
   find $APP/node_modules/.bin -type l -exec chmod +x {} +
 
-  echo "--- 6c. next build ---"
-  NODE_OPTIONS=--max-old-space-size=2048 npx next build 2>&1 | tail -5
+  echo "--- 6c. next build (低内存: 1 worker + 1024MB, 轻量 896M 必加) ---"
+  NEXT_TELEMETRY_DISABLED=1 NEXT_BUILD_WORKERS=1 NODE_OPTIONS=--max-old-space-size=1024 npx next build 2>&1 | tail -5
 
   echo "--- 7. pm2 delete + start (env 强制 refresh, reload 不重新读 .env.local) ---"
   pm2 delete damai 2>/dev/null
@@ -83,8 +83,11 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o PasswordAuthentication=no "${EC
   sleep 3
   pm2 list | tail -3
 
-  echo "--- cleanup tar ---"
+  echo "--- cleanup tar + 旧 bak (server 30G 小, 留一个 bak 就够, 否则 4-5 个 bak 撑爆盘) ---"
   rm -f /tmp/damai-deploy-*.tar
+  cd /opt
+  ls -dt damai.bak-* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+  ls -dth damai.bak-* 2>/dev/null | head -3
 SERVEREOF
 
 echo ""
