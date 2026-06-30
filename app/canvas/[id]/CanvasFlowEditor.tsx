@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect, useMemo, createContext, useContext } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -10,12 +10,17 @@ import {
   useEdgesState,
   addEdge,
   useReactFlow,
+  ConnectionMode,
+  MarkerType,
   type Connection,
+  type ConnectionLineComponent,
   type Edge,
   type Node,
   type NodeProps,
   type NodeTypes,
   type OnConnect,
+  type OnConnectStart,
+  type OnConnectEnd,
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
@@ -50,7 +55,10 @@ const baseNodeStyle: React.CSSProperties = {
   minWidth: 180,
   fontFamily: 'system-ui, -apple-system, sans-serif',
   fontSize: 12,
-  overflow: 'hidden',
+  // 06-30 修复: 不能用 overflow: hidden — React Flow 的 Handle 是绝对定位,
+  // 一半在节点内一半在节点外, overflow:hidden 会裁剪外部热区,
+  // 导致鼠标松开时无法命中 Handle → onConnect 不触发 → 连线消失
+  overflow: 'visible',
   boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
 };
 
@@ -89,33 +97,52 @@ const NodeIcon = ({ type }: { type: string }) => {
   }
 };
 
-// 输入端口 (左)
-function InputHandle({ selected }: { selected?: boolean }) {
+// 输入端口 (左) — 07-01 修复: 拖动半径更大 + 偏移更稳,
+//   之前 width:16 top:'50%' 节点大时 距光标远, 用户拖不动
+function LeftHandle({ selected }: { selected?: boolean }) {
   return (
     <Handle
-      type="target"
+      type="source"
+      id="left"
       position={Position.Left}
+      isConnectableStart={true}
+      isConnectableEnd={true}
       style={{
         background: PORT_BG,
-        width: 10,
-        height: 10,
-        border: selected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.3)',
+        width: 20,
+        height: 20,
+        left: -10,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        border: selected ? '2px solid #fff' : '1.5px solid rgba(0,0,0,0.4)',
+        zIndex: 10,
+        cursor: 'crosshair',
+        boxShadow: '0 0 0 3px rgba(110,140,214,0.25)',
       }}
     />
   );
 }
 
 // 输出端口 (右)
-function OutputHandle({ selected }: { selected?: boolean }) {
+function RightHandle({ selected }: { selected?: boolean }) {
   return (
     <Handle
       type="source"
+      id="right"
       position={Position.Right}
+      isConnectableStart={true}
+      isConnectableEnd={true}
       style={{
         background: PORT_BG,
-        width: 10,
-        height: 10,
-        border: selected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.3)',
+        width: 20,
+        height: 20,
+        right: -10,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        border: selected ? '2px solid #fff' : '1.5px solid rgba(0,0,0,0.4)',
+        zIndex: 10,
+        cursor: 'crosshair',
+        boxShadow: '0 0 0 3px rgba(110,140,214,0.25)',
       }}
     />
   );
@@ -414,8 +441,8 @@ function NodeShell({
       borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
       borderWidth: selected ? 2 : 1,
     }}>
-      {hasInput && <InputHandle selected={selected} />}
-      {hasOutput && <OutputHandle selected={selected} />}
+      {hasInput && <LeftHandle selected={selected} />}
+      {hasOutput && <RightHandle selected={selected} />}
       <div style={headerStyle}>
         <NodeIcon type={type} />
         {TYPE_LABELS[type]}
@@ -503,7 +530,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   const quantity = data.quantity || 1;
   return (
     <NodeShell type="image" selected={selected}>
-      <div style={{ ...bodyStyle, maxHeight: 220, overflow: 'hidden' }}>
+      <div style={{ ...bodyStyle, maxHeight: 220, overflow: 'visible' }}>
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={data.url} alt="" style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
@@ -589,7 +616,7 @@ function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
   const quantity = data.quantity || 1;
   return (
     <NodeShell type="video-gen" selected={selected}>
-      <div style={{ ...bodyStyle, maxHeight: 260 }}>
+      <div style={{ ...bodyStyle, maxHeight: 260, overflow: 'visible' }}>
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
@@ -769,18 +796,22 @@ function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
       {Array.from({ length: inputCount }).map((_, i) => (
         <Handle
           key={`in-${i}`}
-          type="target"
+          type="source"
           position={Position.Left}
           id={`in-${i}`}
+          isConnectableStart={true}
+          isConnectableEnd={true}
           style={{
             background: PORT_BG,
-            width: 10, height: 10,
+            width: 14, height: 14,
             top: `${30 + i * 25}%`,
             border: selected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.3)',
+            zIndex: 10,
+            cursor: 'crosshair',
           }}
         />
       ))}
-      <OutputHandle selected={selected} />
+      <RightHandle selected={selected} />
       <div style={headerStyle}>
         <NodeIcon type="merge" />
         {TYPE_LABELS.merge}
@@ -821,7 +852,7 @@ function OutputNode({ data, selected }: NodeProps<Node<OutputData>>) {
       borderWidth: selected ? 2 : 1,
       minWidth: 220,
     }}>
-      <InputHandle selected={selected} />
+      <LeftHandle selected={selected} />
       <div style={headerStyle}>
         <NodeIcon type="output" />
         {TYPE_LABELS.output}
@@ -876,6 +907,76 @@ const nodeTypes: NodeTypes = {
   'audio-gen': AudioGenNode,
   merge: MergeNode,
   output: OutputNode,
+};
+
+// ---------------------------------------------------------------------
+// 06-30 修复: 拖拽连线时的视觉反馈 (ConnectionLine)
+// 没有这个组件, 拖拽过程中看不到临时连线, 用户以为连线"消失了"
+// ---------------------------------------------------------------------
+const ConnectionLine: ConnectionLineComponent = ({
+  fromX, fromY, toX, toY, connectionStatus,
+}) => {
+  // connectionStatus: 'valid' | 'invalid' | undefined
+  const isValid = connectionStatus === 'valid';
+  const isInvalid = connectionStatus === 'invalid';
+  // 07-01 修复: 拖线中 visible 跟 TapNow 一样 — 蓝紫色, 不灰白看不见
+  //   之前灰白色 stroke=0.35 在黑底完全不可见, 用户以为拖线消失
+  const stroke = isValid
+    ? 'rgba(110,140,214,1)'             // 拖到有效 target → 蓝色高亮
+    : isInvalid
+      ? 'rgba(255,90,90,0.85)'          // 拖到无效位置 → 红色
+      : 'rgba(110,140,214,0.55)';       // 拖拽中 → 蓝紫半透明 (07-01: 之前白 0.35 看不见)
+  const strokeWidth = isValid ? 3 : 2.5;
+  return (
+    <g>
+      <path
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        d={`M ${fromX} ${fromY} C ${fromX + (toX - fromX) / 2} ${fromY}, ${fromX + (toX - fromX) / 2} ${toY}, ${toX} ${toY}`}
+      />
+      {/* 起点圈 (拖出节点位置) */}
+      <circle
+        cx={fromX}
+        cy={fromY}
+        r={4}
+        fill={PORT_BG}
+        stroke="#0a0a0a"
+        strokeWidth={1.5}
+      />
+      {/* 终点圆点 (鼠标位置) — 更大更好看 */}
+      <circle
+        cx={toX}
+        cy={toY}
+        r={isValid ? 7 : 6}
+        fill={isValid ? '#6e8cd6' : 'rgba(110,140,214,0.5)'}
+        stroke="#0a0a0a"
+        strokeWidth={1.5}
+      />
+    </g>
+  );
+};
+
+// 共享 edge 样式 (bezier + 箭头 + hover 高亮)
+const EDGE_STYLE: React.CSSProperties = {
+  stroke: 'rgba(255,255,255,0.55)',
+  strokeWidth: 2,
+};
+const EDGE_STYLE_SELECTED: React.CSSProperties = {
+  stroke: '#6e8cd6',
+  strokeWidth: 2.8,
+};
+
+const defaultEdgeOptions = {
+  type: 'bezier',
+  style: EDGE_STYLE,
+  // 箭头: 末端三角, 跟连线同色
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 18,
+    height: 18,
+    color: 'rgba(255,255,255,0.55)',
+  },
 };
 
 // 初始 demo 节点 (Phase 2.4 用真实案例模板替换)
@@ -1224,24 +1325,184 @@ function PulseLogo({ onClick }: { onClick: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------------
+// 06-30: Tapnow 风格节点生成菜单
+// 触发: 左键双击空白画布 / 拖拽 handle 到空白画布松开
+// ---------------------------------------------------------------------
+type MenuMode = 'doubleclick' | 'connect';
+
+const MENU_ITEMS: {
+  type: string;
+  label: string;
+  subtitle: string;
+  icon: string;
+}[] = [
+  { type: 'text', label: '文本生成', subtitle: '脚本 / 卖点 / 品牌文案', icon: '≡' },
+  { type: 'image', label: '图片生成', subtitle: '产品图 / 场景图 / 素材', icon: '▣' },
+  { type: 'video-gen', label: '视频生成', subtitle: '动态展示 / 广告片', icon: '▶' },
+  { type: 'audio-gen', label: '音频生成', subtitle: '背景音乐 / 配音', icon: '♪' },
+  { type: 'merge', label: '合并', subtitle: '多路输入合成成片', icon: '⊕' },
+  { type: 'output', label: '成片输出', subtitle: '最终导出', icon: '◉' },
+];
+
+function NodeCreationMenu({
+  x,
+  y,
+  mode,
+  onSelect,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  mode: MenuMode;
+  onSelect: (type: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {/* 遮罩: 点空白关闭菜单 */}
+      <div
+        onClick={onClose}
+        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 90,
+          background: 'transparent',
+        }}
+      />
+      <div
+        data-node-menu="1"
+        style={{
+          position: 'fixed',
+          left: x,
+          top: y,
+          zIndex: 100,
+          minWidth: 220,
+          padding: '8px 6px',
+          background: 'rgba(20,20,22,0.98)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 14,
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+          pointerEvents: 'auto',
+        }}
+      >
+        <div
+          style={{
+            padding: '6px 10px 10px',
+            color: 'rgba(255,255,255,0.35)',
+            fontSize: '0.6875rem',
+            fontWeight: 500,
+            letterSpacing: '0.3px',
+          }}
+        >
+          {mode === 'connect' ? '选择要连接的节点' : '选择节点类型'}
+        </div>
+        {MENU_ITEMS.map((item) => (
+          <button
+            key={item.type}
+            data-node-menu-item={item.type}
+            onClick={() => onSelect(item.type)}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              width: '100%',
+              padding: '9px 10px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 10,
+              color: '#fff',
+              textAlign: 'left',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
+          >
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 7,
+                background: 'rgba(110,140,214,0.12)',
+                color: '#6e8cd6',
+                fontSize: '0.875rem',
+                flexShrink: 0,
+              }}
+            >
+              {item.icon}
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#fff' }}>
+                {item.label}
+              </span>
+              <span style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.35)' }}>
+                {item.subtitle}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // =====================================================================
 // 主画布 (Phase 3.5)
 // =====================================================================
-export default function CanvasFlowEditor({ projectId }: { projectId: string }) {
+export default function CanvasFlowEditor({
+  projectId,
+  template,
+}: {
+  projectId: string;
+  template?: string;
+}) {
   return (
     <ReactFlowProvider>
-      <CanvasFlowEditorInner projectId={projectId} />
+      <CanvasFlowEditorInner projectId={projectId} template={template} />
     </ReactFlowProvider>
   );
 }
 
-function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
-  const storageKey = useMemo(() => `damai:canvas-v2:${projectId}`, [projectId]);
+function CanvasFlowEditorInner({
+  projectId,
+  template,
+}: {
+  projectId: string;
+  template?: string;
+}) {
+  // 06-30 修复: 加版本号, 旧版坏数据 (缺 sourceHandle/markerEnd) 不会覆盖新 state
+  const storageKey = useMemo(() => `damai:canvas-v2:r2:${projectId}`, [projectId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [credits] = useState(1000);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // 06-30: Tapnow 风格节点生成菜单状态
+  const [nodeMenu, setNodeMenu] = useState<{
+    show: boolean;
+    x: number;
+    y: number;
+    mode: MenuMode;
+    sourceNode?: string;
+    sourceHandle?: string;
+  }>({ show: false, x: 0, y: 0, mode: 'doubleclick' });
+
+  // 拖拽连线状态: 从哪个节点/handle 开始, 是否已成功连上
+  const connectionStartRef = useRef<{ nodeId: string; handleId?: string } | null>(null);
+  const connectionConnectedRef = useRef(false);
 
   const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getZoom } = useReactFlow();
   const [zoom, setZoom] = useState(1);
@@ -1279,77 +1540,178 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     return () => clearTimeout(t);
   }, [nodes, edges, storageKey]);
 
-  // Bug 2 修 (v3): 完全放弃 controlled mode,改用 onConnect 直接 addEdge (跟官方 demo 一致)
-  // - 不传 edges={edges} prop (避免 StoreUpdater sync 时序问题)
-  // - useEdgesState 还是管理 user state (持久化 + Render)
-  // - React Flow 内部 store 走自己的 connection flow,onConnect 触发 → user setEdges → useEdgesState 自动 update React Flow 内部 state
+  // 06-30: 创建新节点 (带默认数据)
+  const createNode = useCallback(
+    (type: string, pos: { x: number; y: number }) => {
+      const newId = `n${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: newId,
+          type,
+          position: pos,
+          data: { text: type === 'text' ? '新节点' : '' },
+        },
+      ]);
+      return newId;
+    },
+    [setNodes]
+  );
+
+  // 06-30: 从菜单选择节点类型后创建节点
+  const handleMenuSelect = useCallback(
+    (type: string) => {
+      if (!nodeMenu.show) return;
+      const flowPos = screenToFlowPosition({ x: nodeMenu.x, y: nodeMenu.y });
+      const newId = createNode(type, flowPos);
+
+      // 如果是拖拽连线到空白画布后弹菜单, 自动连一条边
+      if (nodeMenu.mode === 'connect' && nodeMenu.sourceNode) {
+        const sourceNode = nodeMenu.sourceNode;
+        const sourceHandle = nodeMenu.sourceHandle || 'right';
+        setEdges((eds) => [
+          ...eds,
+          {
+            id: `e${sourceNode}-${newId}`,
+            source: sourceNode,
+            sourceHandle,
+            target: newId,
+            targetHandle: 'left',
+            type: 'bezier',
+            style: EDGE_STYLE,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 18,
+              height: 18,
+              color: 'rgba(255,255,255,0.55)',
+            },
+          },
+        ]);
+      }
+
+      setNodeMenu((m) => ({ ...m, show: false }));
+    },
+    [nodeMenu, screenToFlowPosition, createNode, setEdges]
+  );
+
+  // 06-30: 连到已有节点 (常规 onConnect)
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      console.log('[canvas-v2] onConnect:', JSON.stringify(connection));
+      connectionConnectedRef.current = true;
+      console.log('[damai] onConnect:', connection);
       setEdges((eds) => {
-        const newEdges = addEdge({ ...connection, type: 'bezier' }, eds);
-        console.log('[canvas-v2] onConnect -> edges:', eds.length, '->', newEdges.length);
-        return newEdges;
+        // 去重: 同 source/target + handle 组合不再添加
+        const duplicate = eds.some(
+          (e) =>
+            e.source === connection.source &&
+            e.target === connection.target &&
+            e.sourceHandle === connection.sourceHandle &&
+            e.targetHandle === connection.targetHandle
+        );
+        if (duplicate) {
+          console.log('[damai] onConnect: duplicate, skipped');
+          return eds;
+        }
+        return addEdge(
+          {
+            ...connection,
+            type: 'bezier',
+            style: EDGE_STYLE,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 18,
+              height: 18,
+              color: 'rgba(255,255,255,0.55)',
+            },
+          },
+          eds
+        );
       });
     },
     [setEdges]
   );
 
-  // 用户边缘操作 (select 等) 通过 useEdgesState 自带 onEdgesChange 处理
-  const handleEdgesChange = useCallback(
-    (changes: any) => {
-      console.log('[canvas-v2] onEdgesChange:', JSON.stringify(changes));
-      // 不再 filter — 让 React Flow 内部 add/remove 走完,user state 同步
-      // 因为我们不走 controlled mode (不传 edges={edges}),React Flow 不会 emit 重复 add
-      onEdgesChange(changes);
+  // 06-30: 拖拽连线开始 (记录起点, 用于空白画布弹菜单)
+  const onConnectStart: OnConnectStart = useCallback(
+    (_event, params) => {
+      if (!params.nodeId) return;
+      const handleId = (params.handleId as string | undefined) || undefined;
+      connectionStartRef.current = { nodeId: params.nodeId, handleId };
+      connectionConnectedRef.current = false;
     },
-    [onEdgesChange]
+    []
   );
 
-  // FloatingTools 添加节点: 用 screenToFlowPosition 精准坐标
-  const handleAdd = useCallback((type: string, screenX: number, screenY: number) => {
-    // screenX/Y 是相对 canvas-region 的坐标, 加 canvas-region 位置拿绝对 screen 坐标
-    const region = document.querySelector('[data-canvas-region]') as HTMLElement;
-    if (!region) return;
-    const rect = region.getBoundingClientRect();
-    const pos = screenToFlowPosition({
-      x: rect.left + screenX,
-      y: rect.top + screenY,
-    });
-    const newId = `n${Date.now()}`;
-    setNodes((nds) => [
-      ...nds,
-      {
-        id: newId,
-        type,
-        position: pos,
-        data: { text: type === 'text' ? '新节点' : '' },
-      },
-    ]);
-  }, [screenToFlowPosition, setNodes]);
+  // 06-30: 拖拽连线结束. 如果没连到目标(onConnect 没触发), 说明落在空白画布, 弹节点菜单
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event) => {
+      const start = connectionStartRef.current;
+      if (!start || connectionConnectedRef.current) {
+        connectionStartRef.current = null;
+        return;
+      }
 
-  // 双击空白创建节点
-  const onPaneDoubleClick = useCallback(
-    (event: React.MouseEvent) => {
-      const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const newId = `n${Date.now()}`;
-      setNodes((nds) => [
-        ...nds,
-        {
-          id: newId,
-          type: 'text',
-          position: pos,
-          data: { text: '新节点' },
-        },
-      ]);
+      // 菜单显示在鼠标松开位置
+      setNodeMenu({
+        show: true,
+        x: (event as MouseEvent).clientX,
+        y: (event as MouseEvent).clientY,
+        mode: 'connect',
+        sourceNode: start.nodeId,
+        sourceHandle: start.handleId,
+      });
+      connectionStartRef.current = null;
     },
-    [screenToFlowPosition, setNodes]
+    []
   );
 
-  // 阻止右键菜单 (chrome 1:1)
+  // 06-30: 左键双击空白画布 → 弹节点菜单
+  // 注意: ReactFlow 的 onDoubleClick 是节点事件, pane 双击要自己监听 onPaneClick
+  const lastPaneClickRef = useRef(0);
+  const onPaneClickHandler = useCallback(
+    (e: React.MouseEvent) => {
+      // 检测双击 (350ms 内两次点击 = 双击)
+      const now = Date.now();
+      if (now - lastPaneClickRef.current < 350) {
+        // 双击: 弹菜单
+        setNodeMenu({
+          show: true,
+          x: e.clientX,
+          y: e.clientY,
+          mode: 'doubleclick',
+        });
+        lastPaneClickRef.current = 0;
+      } else {
+        // 单击: 记录时间 + 取消选中 + 关菜单
+        lastPaneClickRef.current = now;
+        setEdges((eds) =>
+          eds.map((ed) => ({ ...ed, selected: false, style: EDGE_STYLE }))
+        );
+        setNodeMenu((m) => ({ ...m, show: false }));
+      }
+    },
+    []
+  );
+
+  // 阻止右键菜单 (chrome 1:1) — 右键现在用来拖动画布
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
+
+  // 06-30: 左侧 FloatingTools 添加节点 (保留旧入口)
+  const handleAdd = useCallback(
+    (type: string, screenX: number, screenY: number) => {
+      const region = document.querySelector('[data-canvas-region]') as HTMLElement;
+      if (!region) return;
+      const rect = region.getBoundingClientRect();
+      const pos = screenToFlowPosition({
+        x: rect.left + screenX,
+        y: rect.top + screenY,
+      });
+      createNode(type, pos);
+    },
+    [screenToFlowPosition, createNode]
+  );
 
   // 同步 zoom 状态 (给 ZoomControls 显示)
   useEffect(() => {
@@ -1398,19 +1760,51 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
         <NodeUpdateContext.Provider value={updateNodeData}>
           <ReactFlow
             nodes={nodes}
-            defaultEdges={edges}
+            edges={edges}
             onNodesChange={onNodesChange}
-            onEdgesChange={handleEdgesChange}
+            onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onDoubleClick={onPaneDoubleClick}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+            onPaneClick={onPaneClickHandler}
             nodeTypes={nodeTypes}
+            connectionLineComponent={ConnectionLine}
+            // 06-30: loose 模式让 source/target handle 都能拉出线
+            connectionMode={ConnectionMode.Loose}
+            // 拖拽连线时显示有效/无效反馈
+            connectionRadius={30}
+            // 06-30: 右键拖动画布, 左键用于选择/拖拽节点/拉连线
+            // React Flow 类型: panOnDrag 支持 number[] 表示允许拖动画布的鼠标按键 (2=右键)
+            panOnDrag={[2]}
             fitView
             deleteKeyCode={['Backspace', 'Delete']}
             proOptions={{ hideAttribution: true }}
-            defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
+            defaultEdgeOptions={defaultEdgeOptions}
+            // 选中 edge 时高亮
+            onEdgeClick={(e, edge) => {
+              e.stopPropagation();
+              setEdges((eds) =>
+                eds.map((ed) => ({
+                  ...ed,
+                  selected: ed.id === edge.id,
+                  style: ed.id === edge.id ? EDGE_STYLE_SELECTED : EDGE_STYLE,
+                }))
+              );
+            }}
           />
         </NodeUpdateContext.Provider>
       </div>
+
+      {/* Tapnow 风格节点生成菜单 (双击空白 / 拖线到空白) */}
+      {nodeMenu.show && (
+        <NodeCreationMenu
+          x={nodeMenu.x}
+          y={nodeMenu.y}
+          mode={nodeMenu.mode}
+          onSelect={handleMenuSelect}
+          onClose={() => setNodeMenu((m) => ({ ...m, show: false }))}
+        />
+      )}
 
       {/* Chrome 4 件套 (1:1 移植) */}
       <TopBar
