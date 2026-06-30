@@ -763,18 +763,18 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
               style={{
                 background: '#1A1A1A',
                 width: 22, height: 22,
-                left: -28,  // 关键: 弹出图外 (12px gap + 22/2 让圆心在 -17)
+                left: -32,  // 弹出图外 10px gap
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.65)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%',
-                color: 'rgba(255,255,255,0.9)',
+                color: 'rgba(255,255,255,0.95)',
                 fontSize: 15,
-                fontWeight: 200,
+                fontWeight: 300,
                 lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
                 zIndex: 10,
               }}
             >+</Handle>
@@ -787,18 +787,18 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
               style={{
                 background: '#1A1A1A',
                 width: 22, height: 22,
-                right: -28,  // 关键: 弹出图外
+                right: -32,  // 弹出图外 10px gap
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.65)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%',
-                color: 'rgba(255,255,255,0.9)',
+                color: 'rgba(255,255,255,0.95)',
                 fontSize: 15,
-                fontWeight: 200,
+                fontWeight: 300,
                 lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
                 zIndex: 10,
               }}
             >+</Handle>
