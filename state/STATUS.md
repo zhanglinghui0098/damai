@@ -1,8 +1,15 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-01 10:30 CST
+最后更新: 2026-07-01 13:50 CST
 
 ## 当前在做
+- 🚧 **节点 UI 同步后 output 尺寸 / viewport 锁 2x 修复挂起 07-01 13:50** — 详见 `state/HANDOFF-2026-07-01-NODE-UI-SYNC.md`
+  - **完成**: 同步 ImageNode UI 到 text/video/audio/merge/output 5 节点 (commit `1edc043` + `c1c7ad3` + `935a5b6` + `28a9e5a` + `78724b2` + `babe919`)
+  - **NodeScaffold helper** 已建, 5 节点全用 NodeScaffold
+  - **localStorage 旧 measured 防护**: save 去掉 measured 字段 (`28a9e5a`)
+  - **fitViewOptions 限制 zoom**: `maxZoom: 1, minZoom: 0.3, padding: 0.15` (`78724b2`)
+  - **挂起**: ECS 部署 `babe919`, HTTP 200, 5/6 节点尺寸正确, **output 还卡 150x222 (user 浏览器 localStorage 旧 measured, 需清一次) + viewport 锁 scale(2) (fitView 重算 useEffect 触发 "Application error", 已临时移除待查)**
+  - **新 session 第一步**: 排查 fitView useEffect 报错根因 + 找更稳的 viewport 重置方式 (defaultViewport 或 onInit setViewport)
 - 🚧 **桌面 Chrome 拖完线消失 排查挂起 07-01 10:30** — 详见 `state/HANDOFF-2026-07-01-DESKTOP-BUG.md`
   - mobile (iOS Safari / Chrome Android) **已 OK** (user 10:05 截图证明 3 条线稳定)
   - desktop Chrome (Mac/PC) **拖完线消失**, 换浏览器仍复现 → 不是插件

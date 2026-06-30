@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-CANVAS_URL="${CANVAS_URL:-https://damai.net.cn/canvas/test-canvas-$(date +%s)}"
+CANVAS_URL="${CANVAS_URL:-https://damai.net.cn/canvas/test-canvas-$(date +%s 2>/dev/null || echo manual)}"
 echo "测试 URL: $CANVAS_URL"
 echo "=========================================="
 
