@@ -1,9 +1,19 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-01 09:55 CST
+最后更新: 2026-07-01 05:30 CST
 
 ## 当前在做
-- 🚧 **Bug 2 真修 — line disappear on mouseup 07-01 09:55** — commit `ead8294` 本地
+- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc` (stopPropagation 修正) 已 push + deploy
+  - **两段式布局** (按 user 07-01 截图):
+    - **Section A (图片区, 始终显示)**: i2i badge + `🖼 Image` 标签 + `↑ 上传` 按钮 (本地上传, 调 /api/canvas/upload FormData) + 图片 180px 高 / 占位框
+    - **Section B (操作台, 仅 selected 弹出)**: ✨/+ 工具行 + ↗ 展开 + NodeTextarea (`描述任何你想要生成的内容`) + 模型/比例/画质/数量 chips + 麦克风 + `◆cost` + RunButton
+  - **分隔**: border-top + background 0.25 黑, 视觉明显独立
+  - **stopPropagation**: 删 image area 的 (阻止 React Flow 选中, 修了), 操作台 / button 的保留
+  - **功能**:
+    - 上传 → /api/canvas/upload → 写 url/outputUrl/selectedOutputUrl (下游可作 i2i 上游)
+    - Run → /api/canvas/run-image, isI2I 自动塞 referenceUrls
+  - **deploy 教训 (07-01 05:25)**: ECS 物理内存仅 896Mi, `NODE_OPTIONS=--max-old-space-size=1024` 在 build 时 OOM SIGKILL. 修法 `pm2 stop` 释放 60M + `512M` heap + `NEXT_TELEMETRY_DISABLED=1` → build OK. 已写进 `deploy-to-ecs.sh` (commit `f49fbb0`)
+- ⏳ **待 user 验收 (07-01)**: 硬刷 `damai.net.cn/canvas/test` → 6 节点应都在 → 点图片(▣) → 操作台应弹出 → 点 ↑ 上传选本地图 → 上传后图片显示 + 下游 i2i 可用 → 点画布空白收起
   - user 截图证据: 拖线时(图 1)有蓝线, 松手后(图 2)线消失
   - 之前的 `058ed02` 部署**实际没修** — `handleEdgesChange` filter 没在 CanvasFlowEditor
   - **根因**: onConnect addEdge → React Flow props.edges 变 → 内部 store 算 'add' change → emit 给 onEdgesChange → applyEdgeChanges 又加一条 (同 ID) → state 有 2 条重复 → React Flow 只显示 1 条 → 视觉"消失"
