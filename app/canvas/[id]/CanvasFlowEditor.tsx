@@ -1928,15 +1928,20 @@ function CanvasFlowEditorInner({
     [nodeMenu, screenToFlowPosition, createNode, setEdges]
   );
 
-  // 07-01 重写 — 真修复 "松手线消失" bug:
-  // 之前 controlled mode 撞 addEdge → React Flow emit 'add' change → 又调一遍 → 重
-  // 这次先加 console 看 React Flow 内部到底 emit 什么
+  // 07-01 重做 Bug 2 修复 — user 07-01 10:05 截图证明手机端线稳定存在
+  //   之前 web Chrome 双击空白 + 拖线时出现 "松手消失" 是 cache + 别的 edge case (桌面 vs 手机 渲染差异)
+  //   mobile (Safari/Chrome Android) 实测线没消失 → filter 是有效修复
+  //   e71f315 诊断 commit 撤回, 保留 filter 逻辑
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      for (const c of changes) {
-        console.log('[damai] edge change:', c.type, c.id, 'item:', JSON.stringify((c as any).item));
-      }
-      onEdgesChange(changes);
+      const filtered = changes.filter((c) => {
+        if (c.type === 'add' || c.type === 'remove' || c.type === 'replace') {
+          console.log('[damai] handleEdgesChange: filter', c.type, c.id);
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length > 0) onEdgesChange(filtered);
     },
     [onEdgesChange]
   );
