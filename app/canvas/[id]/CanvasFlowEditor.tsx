@@ -2158,10 +2158,12 @@ function CanvasFlowEditorInner({
   }, [storageKey, setNodes, setEdges]);
 
   // 保存 localStorage (debounced) + 更新 savedAt
+  // 07-01 修: 去掉 measured 字段 (React Flow 缓存的旧尺寸), 强制重测
   useEffect(() => {
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(storageKey + ':nodes', JSON.stringify(nodes));
+        const nodesToSave = nodes.map(({ measured, ...rest }: any) => rest);
+        localStorage.setItem(storageKey + ':nodes', JSON.stringify(nodesToSave));
         localStorage.setItem(storageKey + ':edges', JSON.stringify(edges));
         setSavedAt(new Date());
       } catch (e) {
