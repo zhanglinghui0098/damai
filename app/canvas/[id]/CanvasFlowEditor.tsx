@@ -11,6 +11,7 @@ import {
   addEdge,
   useReactFlow,
   useStore,
+  useConnection,
   ConnectionMode,
   MarkerType,
   type Connection,
@@ -553,6 +554,9 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   const update = useNodeUpdate();
   const fileInputRef = useRef<HTMLInputElement>(null);  // 07-01 新增: 本地上传
   const upstreamUrls = useUpstreamUrls(id);  // 07-01: 读上游
+  // 07-01 新增: 监听 useConnection, 当别的节点拖线过来时高亮图
+  const connection = useConnection();
+  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
   const model = data.model || 'jimeng';
   const modelInfo = AI_MODELS.image.find((m) => m.id === model) || AI_MODELS.image[0];
   const aspect = data.aspect || '自适应';
@@ -693,8 +697,12 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           width: 300,
           height: 220,
           background: 'rgba(0,0,0,0.3)',
-          border: selected ? '1.5px solid rgba(110,140,214,0.7)' : '1px solid rgba(255,255,255,0.08)',
+          border: isBeingDraggedTo
+            ? '2px solid #6e8cd6'  // 拖线过来高亮
+            : (selected ? '1.5px solid rgba(110,140,214,0.7)' : '1px solid rgba(255,255,255,0.08)'),
           borderRadius: 10,
+          boxShadow: isBeingDraggedTo ? '0 0 0 3px rgba(110,140,214,0.3), 0 2px 12px rgba(0,0,0,0.5)' : 'none',
+          transition: 'all 0.12s',
           // overflow 不设 hidden, 让 + 端口能弹到图外
         }}
       >
@@ -750,6 +758,31 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             <span>{isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}</span>
           </div>
         )}
+
+        {/* ============== 大隐形 Handle — 整个图作为 drop target ==============
+            不点击时 + 端口隐藏, 但用户拖别的节点的线过来, 落到图上任意位置都能吸附
+            isConnectableStart=false: 点击图 = 选中 (不会误启动连线)
+            isConnectableEnd=true: 拖到图上 = 接收 (吸附)
+        */}
+        <Handle
+          type="source"
+          id="image-snap"
+          position={Position.Left}
+          isConnectableStart={false}
+          isConnectableEnd={true}
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            top: 0,
+            left: 0,
+            background: 'transparent',
+            border: 'none',
+            opacity: 0,
+            zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
+            pointerEvents: 'all',
+          }}
+        />
 
         {/* 端口 (左右 + 圆圈, 仅 selected 出现, 弹出图外) */}
         {selected && (
