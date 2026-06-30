@@ -1,8 +1,14 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-01 05:30 CST
+最后更新: 2026-07-01 10:30 CST
 
 ## 当前在做
+- 🚧 **桌面 Chrome 拖完线消失 排查挂起 07-01 10:30** — 详见 `state/HANDOFF-2026-07-01-DESKTOP-BUG.md`
+  - mobile (iOS Safari / Chrome Android) **已 OK** (user 10:05 截图证明 3 条线稳定)
+  - desktop Chrome (Mac/PC) **拖完线消失**, 换浏览器仍复现 → 不是插件
+  - user F12 console 唯一信号: `[damai] onConnect: ▶ Object` 触发, `[damai] edge change:` **无**
+  - **Hermes 决定不盲改**, 转新 session 排查 (commit `1ebfd66` 文档化 handoff)
+- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc`
 - ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc` (stopPropagation 修正) 已 push + deploy
   - **两段式布局** (按 user 07-01 截图):
     - **Section A (图片区, 始终显示)**: i2i badge + `🖼 Image` 标签 + `↑ 上传` 按钮 (本地上传, 调 /api/canvas/upload FormData) + 图片 180px 高 / 占位框
