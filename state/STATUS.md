@@ -1,8 +1,15 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-30 13:30 CST
+最后更新: 2026-07-01 09:00 CST
 
 ## 当前在做
+- 🚧 **拖线看不到 / 端口难命中 修复 07-01** — commit `0bbac09` 已本地落地, **待 push + deploy**
+  - Handle 热区 16x16 → 20x20 + `boxShadow` 蓝紫光晕 (更醒目 + 命中大)
+  - `transform: 'translateY(-50%)'` 让 Handle 始终在垂直中心 (节点变高不会飘)
+  - ConnectionLine 灰白 0.35 → 蓝紫 0.55 (黑底上看得见)
+  - strokeWidth 2 → 2.5/3 (粗一档)
+  - 加起点圈 + 终点圆点 (r:6) (双点指示路径方向)
+  - 待部署: 本地 VM 推不动, 详细看 `state/HANDOFF-2026-07-01-DRAG-FIX.md`
 - ✅ **节点功能按键已部署 06-30 13:27 (commit 1ec14f1, 含 3fcefd6 节点按键)** — HTTP 200 + browser verify 6 类节点 UI 全在 (TextNode/ImageNode/VideoGenNode/AudioGenNode/MergeNode + NodeShell + Context)
 - ⚠️ **deploy 事故教训 (06-30 13:21)**: ECS `npm install --include=dev` 静默失败 (0.9G RAM OOM), `node_modules/.bin/next` symlink 没建, build `sh: next: command not found` → PM2 errored + damai.net.cn **502**
 - **修法**: `cp -a /opt/damai.bak-20260630-1320/node_modules /opt/damai/` (复用旧 node_modules 跳过 npm install) → `npm run build` OK → `pm2 delete + start` → curl 200
