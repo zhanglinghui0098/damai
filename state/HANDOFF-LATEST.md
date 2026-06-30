@@ -1,17 +1,44 @@
-# 大脉项目 — Daily Handoff (2026-06-29)
+# 大脉项目 — Daily Handoff (2026-06-30 08:50 CST manual)
 
-> **用途**: 抗失忆 + 跨 session 连贯性, 每天 22:00 cron 自动生成
-> **下次 session 启动**: 读本文件 + `state/STATUS.md` + `git log --oneline -10`
-> **维护**: scripts/daily-handoff.sh
+> **用途**: 抗失忆 + 跨 session 连贯性, 06-30 手动更新 (cron 22:00 会覆盖)
+> **下次 session 启动**: 读本文件 + `state/STATUS.md` + `git log --oneline -5`
+> **维护人**: Hermes (这台 Windows VM)
 
 ---
 
 ## 0. 一句话 (今天做了什么)
 
-- 今天 commit 数: 27 (06-29) + 2 commit 待部署 (06-30)
-- 改了 26 个文件 (06-29) + 节点功能按键改 1 文件 (06-30)
-- 最近 commit: `99e8521` bug1 (React Flow 删除键) + `b58246b` bug2 (edge 时序) + 待: Phase 4 收口 + 节点 prompt/ModelChip/ChipRow/RunButton
-- ⚠️ **待部署 agent** — step 详情在 `state/PHASE4-DEPLOY-HANDOFF.md`
+- 本地 commit `3fcefd6` ✅ — **节点功能按键重设计** (prompt/ModelChip/ChipRow/RunButton + NodeShell + Context)
+- ⚠️ **本地 commit 已就位, 但 master 远端 + ECS 生产都还没更新**
+  - 这台 Windows VM 在国内, **直连 GitHub / ECS 被墙** (GFW + 防火墙)
+  - `git push origin master` 超时, SSH 47.96.128.172 超时
+  - **需要 user 在 NAS 容器或代理机器跑 push + deploy**
+
+## 1. 下一步 (user 在代理/NAS 机器跑, 3 min)
+
+```bash
+cd Z:\damai\hermes-project   # NAS 容器内或代理机器上
+
+# A. push master
+git push origin master
+
+# B. deploy 到 ECS
+bash scripts/deploy-to-ecs.sh
+```
+
+**详细步骤** 见 `state/DEPLOY-NOW-HANDOFF.md` (含 ECS 工作树领先 13 commit 风险处理).
+
+## 2. 阻塞 ask user
+
+1. ⚠️ **user 必须用能访问海外的机器跑 push + deploy** (这台 VM 不行)
+2. 飞书告警 webhook URL (阶段 1.2 阻塞) — 老的, 还没解决
+3. NAS 备份 SSH user (阶段 1.1 阻塞) — 老的, 还没解决
+
+---
+
+## 历史 (06-30 之前)
+
+[原 handoff 内容] — 今天之前的进度
 
 ## 1. 商业方案 (静态)
 - **项目**: 大脉 = AI 武装的家居 ToB 营销案例库 (对标 TapNow 模式)
