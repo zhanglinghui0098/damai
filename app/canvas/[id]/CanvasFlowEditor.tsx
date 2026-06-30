@@ -495,6 +495,8 @@ function NodeScaffold({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        minWidth: mainWidth,  // 强制撑开 (避免 React Flow 复用旧 measured 宽度)
+        width: 'fit-content',  // 跟着内容走 (op-panel 可能更宽)
       }}
     >
       {topSection}
