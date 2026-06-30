@@ -8,10 +8,10 @@
 
 ## 0. 一句话 (今天做了什么)
 
-- 今天 commit 数: 27 (06-29) + 1+ (06-30 进行中)
-- 改了 26 个文件 (06-29)
-- 最近 commit: `99e8521` bug1 (React Flow 删除键) + `b58246b` bug2 (edge 时序) + Phase 4 待部署
-- ⚠️ **Phase 4 待部署 agent** — step 详情在 `state/PHASE4-DEPLOY-HANDOFF.md`
+- 今天 commit 数: 27 (06-29) + 2 commit 待部署 (06-30)
+- 改了 26 个文件 (06-29) + 节点功能按键改 1 文件 (06-30)
+- 最近 commit: `99e8521` bug1 (React Flow 删除键) + `b58246b` bug2 (edge 时序) + 待: Phase 4 收口 + 节点 prompt/ModelChip/ChipRow/RunButton
+- ⚠️ **待部署 agent** — step 详情在 `state/PHASE4-DEPLOY-HANDOFF.md`
 
 ## 1. 商业方案 (静态)
 - **项目**: 大脉 = AI 武装的家居 ToB 营销案例库 (对标 TapNow 模式)

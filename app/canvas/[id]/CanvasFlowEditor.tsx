@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect, useMemo } from 'react';
+import { useCallback, useState, useEffect, useMemo, createContext, useContext } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -131,6 +131,300 @@ const TYPE_LABELS: Record<string, string> = {
   output: '成片输出',
 };
 
+// 模型 / 比例 / 画质 配置 (06-30 06:25 加: TapNow/LibTV 风格节点内设置)
+const AI_MODELS: Record<string, { id: string; label: string; cost: number }[]> = {
+  text: [
+    { id: 'deepseek', label: 'DeepSeek V3', cost: 1 },
+    { id: 'gemini', label: 'Gemini 2.5', cost: 4 },
+    { id: 'claude', label: 'Claude 4.5', cost: 4 },
+  ],
+  image: [
+    { id: 'jimeng', label: '即梦', cost: 8 },
+    { id: 'nano', label: 'Nano Banana', cost: 12 },
+  ],
+  'video-gen': [
+    { id: 'seedance', label: 'Seedance 2.0', cost: 8 },
+    { id: 'wan', label: 'Wan 2.6', cost: 12 },
+    { id: 'kling', label: '可灵', cost: 16 },
+  ],
+  'audio-gen': [
+    { id: 'music2', label: 'MiniMax Music 2.6', cost: 25 },
+    { id: 'tts', label: 'MiniMax TTS', cost: 6 },
+  ],
+};
+const ASPECTS = ['自适应', '16:9', '9:16', '1:1'];
+const QUALITIES = ['1K', '2K', '4K'];
+const DURATIONS = [4, 5, 8, 10, 15];
+
+// 节点更新回调类型 (从主组件传入)
+type UpdateDataFn = (id: string, data: Record<string, unknown>) => void;
+
+// 共享: 输入框 (节点内 inline 编辑, 立即同步到 node.data)
+function NodeTextarea({
+  value,
+  onChange,
+  placeholder,
+  rows = 2,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <textarea
+      data-node-input="1"
+      defaultValue={value}
+      key={value /* 受控,刷新同步 external value */}
+      onChange={(e) => onChange(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      placeholder={placeholder || '描述你想要生成的内容…'}
+      rows={rows}
+      style={{
+        width: '100%',
+        background: 'transparent',
+        color: '#fff',
+        border: 'none',
+        outline: 'none',
+        resize: 'none',
+        fontSize: 12,
+        fontFamily: 'inherit',
+        lineHeight: 1.4,
+        padding: 0,
+      }}
+    />
+  );
+}
+
+// 共享: 模型 chip (点开下拉,单选)
+function ModelChip({
+  models,
+  value,
+  onChange,
+}: {
+  models: { id: string; label: string; cost: number }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = models.find((m) => m.id === value) || models[0];
+  return (
+    <div
+      data-node-input="1"
+      style={{ position: 'relative' }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          padding: '4px 8px',
+          background: 'rgba(110,140,214,0.15)',
+          border: '1px solid rgba(110,140,214,0.3)',
+          borderRadius: 6,
+          color: '#6e8cd6',
+          fontSize: 11,
+          fontWeight: 500,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ✦ {current.label} <span style={{ opacity: 0.6 }}>·{current.cost}</span>
+      </button>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            minWidth: 160,
+            background: 'rgba(20,20,22,0.98)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 8,
+            padding: 4,
+            zIndex: 100,
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {models.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => { onChange(m.id); setOpen(false); }}
+              style={{
+                display: 'flex',
+                width: '100%',
+                padding: '6px 10px',
+                background: m.id === value ? 'rgba(110,140,214,0.2)' : 'transparent',
+                border: 'none',
+                borderRadius: 4,
+                color: '#fff',
+                fontSize: 12,
+                textAlign: 'left',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ flex: 1 }}>{m.label}</span>
+              <span style={{ opacity: 0.5 }}>{m.cost}积</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 共享: 选项组 (水平 chip, 单选)
+function ChipRow({
+  options,
+  value,
+  onChange,
+  prefix,
+}: {
+  options: string[] | number[];
+  value: string | number;
+  onChange: (v: any) => void;
+  prefix?: string;
+}) {
+  return (
+    <div
+      data-node-input="1"
+      style={{
+        display: 'flex',
+        gap: 4,
+        padding: 2,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {options.map((o) => {
+        const label = String(o);
+        const active = label === String(value);
+        return (
+          <button
+            key={label}
+            onClick={() => onChange(o)}
+            style={{
+              flex: 1,
+              padding: '3px 6px',
+              background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+              border: 'none',
+              borderRadius: 6,
+              color: active ? '#fff' : 'rgba(255,255,255,0.55)',
+              fontSize: 11,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {prefix && <span style={{ opacity: 0.5 }}>{prefix}</span>}
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// 共享: 节点底部运行按钮 (06-30 加: TapNow 风格圆形)
+function RunButton({
+  cost,
+  status,
+  onRun,
+}: {
+  cost: number;
+  status?: 'idle' | 'running' | 'done' | 'error';
+  onRun: () => void;
+}) {
+  const running = status === 'running';
+  return (
+    <div
+      data-node-input="1"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          padding: '4px 8px',
+          background: 'rgba(255,255,255,0.06)',
+          borderRadius: 980,
+          fontSize: 11,
+          color: '#fff',
+        }}
+      >
+        <span style={{ opacity: 0.6, fontSize: 10 }}>◆</span>
+        <span style={{ fontWeight: 500 }}>{cost}</span>
+      </div>
+      <div style={{ flex: 1 }} />
+      <button
+        onClick={onRun}
+        disabled={running}
+        style={{
+          width: 28, height: 28,
+          background: running ? 'rgba(255,255,255,0.1)' : '#fff',
+          border: 'none',
+          borderRadius: '50%',
+          color: running ? '#fff' : '#0a0a0a',
+          fontSize: 13,
+          cursor: running ? 'wait' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {running ? '⋯' : '↑'}
+      </button>
+    </div>
+  );
+}
+
+// 共享: 节点外壳 (统一包装: handle + header + body)
+function NodeShell({
+  type,
+  selected,
+  hasInput = true,
+  hasOutput = true,
+  children,
+}: {
+  type: string;
+  selected?: boolean;
+  hasInput?: boolean;
+  hasOutput?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      ...baseNodeStyle,
+      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
+      borderWidth: selected ? 2 : 1,
+    }}>
+      {hasInput && <InputHandle selected={selected} />}
+      {hasOutput && <OutputHandle selected={selected} />}
+      <div style={headerStyle}>
+        <NodeIcon type={type} />
+        {TYPE_LABELS[type]}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // FloatingTools 节点规格 (Chrome 1:1 移植自老 CanvasEditor.tsx)
 const FLOATING_NODE_SPECS: Record<string, { label: string; iconChar: string }> = {
   text: { label: '文本', iconChar: '≡' },
@@ -142,148 +436,278 @@ const FLOATING_NODE_SPECS: Record<string, { label: string; iconChar: string }> =
 };
 
 // ---------------------------------------------------------------------
-// 1. TextNode
+// 1. TextNode (06-30 重设计: inline 编辑 + 模型 + 数量 + 运行按钮)
 // ---------------------------------------------------------------------
-type TextNodeData = { text?: string; label?: string };
-function TextNode({ data, selected }: NodeProps<Node<TextNodeData>>) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(data.text || '');
+type TextNodeData = {
+  text?: string;
+  prompt?: string;
+  model?: string;
+  quantity?: number;
+  status?: 'idle' | 'running' | 'done' | 'error';
+};
+function TextNode({ data, selected, id }: NodeProps<Node<TextNodeData>>) {
+  const update = useNodeUpdate();
+  const model = data.model || 'deepseek';
+  const modelInfo = AI_MODELS.text.find((m) => m.id === model) || AI_MODELS.text[0];
+  const quantity = data.quantity || 1;
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1 }}>
-      <InputHandle selected={selected} />
-      <OutputHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="text" />
-        {TYPE_LABELS.text}
-      </div>
+    <NodeShell type="text" selected={selected}>
       <div style={bodyStyle}>
-        {editing ? (
-          <textarea
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onBlur={() => setEditing(false)}
-            style={{
-              width: '100%', minHeight: 60, background: 'rgba(0,0,0,0.3)',
-              color: '#fff', border: '1px solid rgba(110,140,214,0.3)',
-              borderRadius: 4, padding: 6, fontSize: 12, fontFamily: 'inherit',
-              resize: 'none',
-            }}
+        <NodeTextarea
+          value={data.prompt || ''}
+          onChange={(v) => update(id, { prompt: v, text: v })}
+          placeholder="讲讲这款现代极简三人沙发…"
+          rows={3}
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <ModelChip
+            models={AI_MODELS.text}
+            value={model}
+            onChange={(v) => update(id, { model: v })}
           />
-        ) : (
-          <div
-            onClick={() => setEditing(true)}
-            style={{ minHeight: 24, cursor: 'text', color: text ? 'inherit' : 'rgba(255,255,255,0.4)' }}
-          >
-            {text || '点击输入文字...'}
-          </div>
-        )}
+          <ChipRow
+            options={[1, 2, 4]}
+            value={quantity}
+            onChange={(v) => update(id, { quantity: Number(v) })}
+            prefix="×"
+          />
+        </div>
+        <RunButton
+          cost={modelInfo.cost * quantity}
+          status={data.status}
+          onRun={() => update(id, { status: 'running' })}
+        />
       </div>
-    </div>
+    </NodeShell>
   );
 }
 
 // ---------------------------------------------------------------------
-// 2. ImageNode
+// 2. ImageNode (06-30 重设计: prompt + 模型 + 比例 + 画质 + 数量 + 运行)
 // ---------------------------------------------------------------------
-type ImageNodeData = { url?: string; prompt?: string; label?: string };
-function ImageNode({ data, selected }: NodeProps<Node<ImageNodeData>>) {
+type ImageNodeData = {
+  url?: string;
+  prompt?: string;
+  model?: string;
+  aspect?: string;
+  quality?: string;
+  quantity?: number;
+  status?: 'idle' | 'running' | 'done' | 'error';
+};
+function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
+  const update = useNodeUpdate();
+  const model = data.model || 'jimeng';
+  const modelInfo = AI_MODELS.image.find((m) => m.id === model) || AI_MODELS.image[0];
+  const aspect = data.aspect || '自适应';
+  const quality = data.quality || '2K';
+  const quantity = data.quantity || 1;
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1 }}>
-      <InputHandle selected={selected} />
-      <OutputHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="image" />
-        {TYPE_LABELS.image}
-      </div>
-      <div style={bodyStyle}>
+    <NodeShell type="image" selected={selected}>
+      <div style={{ ...bodyStyle, maxHeight: 220, overflow: 'hidden' }}>
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.url} alt="" style={{ width: '100%', borderRadius: 4, display: 'block' }} />
+          <img src={data.url} alt="" style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
         ) : (
           <div style={{
-            height: 80,
+            height: 90,
             background: 'rgba(0,0,0,0.3)',
             borderRadius: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'rgba(255,255,255,0.4)',
             border: '1px dashed rgba(110,140,214,0.3)',
+            marginBottom: 8,
+            fontSize: 11,
           }}>
             待生成 / 上传图片
           </div>
         )}
-        {data.prompt && (
-          <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-            {data.prompt.slice(0, 40)}{data.prompt.length > 40 ? '...' : ''}
-          </div>
-        )}
+        <NodeTextarea
+          value={data.prompt || ''}
+          onChange={(v) => update(id, { prompt: v })}
+          placeholder="现代极简客厅, 大理石地板, 自然光…"
+          rows={2}
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <ModelChip
+            models={AI_MODELS.image}
+            value={model}
+            onChange={(v) => update(id, { model: v })}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+          <ChipRow
+            options={ASPECTS.slice(0, 4)}
+            value={aspect}
+            onChange={(v) => update(id, { aspect: String(v) })}
+          />
+          <ChipRow
+            options={QUALITIES.slice(0, 3)}
+            value={quality}
+            onChange={(v) => update(id, { quality: String(v) })}
+          />
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <ChipRow
+            options={[1, 2, 4]}
+            value={quantity}
+            onChange={(v) => update(id, { quantity: Number(v) })}
+            prefix="×"
+          />
+        </div>
+        <RunButton
+          cost={modelInfo.cost * quantity}
+          status={data.status}
+          onRun={() => update(id, { status: 'running' })}
+        />
       </div>
-    </div>
+    </NodeShell>
   );
 }
 
 // ---------------------------------------------------------------------
-// 3. VideoGenNode
+// 3. VideoGenNode (06-30 重设计: prompt + 模型 + 模式 + 比例 + 时长 + 数量 + 运行)
 // ---------------------------------------------------------------------
-type VideoGenData = { prompt?: string; status?: 'idle' | 'generating' | 'done'; url?: string; label?: string };
-function VideoGenNode({ data, selected }: NodeProps<Node<VideoGenData>>) {
+type VideoGenData = {
+  url?: string;
+  prompt?: string;
+  model?: string;
+  mode?: '首尾帧' | '参考图片';
+  aspect?: string;
+  duration?: number;
+  audio?: '开启' | '静音';
+  quantity?: number;
+  status?: 'idle' | 'running' | 'done' | 'error';
+};
+function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
+  const update = useNodeUpdate();
+  const model = data.model || 'seedance';
+  const modelInfo = AI_MODELS['video-gen'].find((m) => m.id === model) || AI_MODELS['video-gen'][0];
+  const mode = data.mode || '首尾帧';
+  const aspect = data.aspect || '自适应';
+  const duration = data.duration || 5;
+  const audio = data.audio || '静音';
+  const quantity = data.quantity || 1;
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1 }}>
-      <InputHandle selected={selected} />
-      <OutputHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="video-gen" />
-        {TYPE_LABELS['video-gen']}
-      </div>
-      <div style={bodyStyle}>
+    <NodeShell type="video-gen" selected={selected}>
+      <div style={{ ...bodyStyle, maxHeight: 260 }}>
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block' }} />
-        ) : data.status === 'generating' ? (
-          <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e8cd6' }}>
-            生成中...
+          <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
+        ) : data.status === 'running' ? (
+          <div style={{
+            height: 90,
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: 4,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#6e8cd6',
+            border: '1px dashed rgba(110,140,214,0.5)',
+            marginBottom: 8,
+            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+            fontSize: 11,
+          }}>
+            生成中…
           </div>
         ) : (
           <div style={{
-            height: 80,
+            height: 90,
             background: 'rgba(0,0,0,0.3)',
             borderRadius: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'rgba(255,255,255,0.4)',
             border: '1px dashed rgba(110,140,214,0.3)',
+            marginBottom: 8,
+            fontSize: 11,
           }}>
             待生成视频
           </div>
         )}
-        {data.prompt && (
-          <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-            {data.prompt.slice(0, 50)}{data.prompt.length > 50 ? '...' : ''}
-          </div>
-        )}
+        <NodeTextarea
+          value={data.prompt || ''}
+          onChange={(v) => update(id, { prompt: v })}
+          placeholder="镜头缓慢推近, 描述房间全景走位…"
+          rows={2}
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <ModelChip
+            models={AI_MODELS['video-gen']}
+            value={model}
+            onChange={(v) => update(id, { model: v })}
+          />
+          <ChipRow
+            options={['首尾帧', '参考图片']}
+            value={mode}
+            onChange={(v) => update(id, { mode: v as any })}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+          <ChipRow
+            options={ASPECTS.slice(0, 4)}
+            value={aspect}
+            onChange={(v) => update(id, { aspect: String(v) })}
+          />
+          <ChipRow
+            options={DURATIONS.slice(0, 5)}
+            value={duration}
+            onChange={(v) => update(id, { duration: Number(v) })}
+            prefix=""
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+          <ChipRow
+            options={['开启', '静音']}
+            value={audio}
+            onChange={(v) => update(id, { audio: v as any })}
+          />
+          <ChipRow
+            options={[1, 2, 4]}
+            value={quantity}
+            onChange={(v) => update(id, { quantity: Number(v) })}
+            prefix="×"
+          />
+        </div>
+        <RunButton
+          cost={modelInfo.cost * quantity * (duration / 5)}
+          status={data.status}
+          onRun={() => update(id, { status: 'running' })}
+        />
       </div>
-    </div>
+    </NodeShell>
   );
 }
 
 // ---------------------------------------------------------------------
-// 4. AudioGenNode
+// 4. AudioGenNode (06-30 重设计: prompt + 模型 + 类型 + 运行)
 // ---------------------------------------------------------------------
-type AudioGenData = { prompt?: string; status?: 'idle' | 'generating' | 'done'; url?: string; label?: string };
-function AudioGenNode({ data, selected }: NodeProps<Node<AudioGenData>>) {
+type AudioGenData = {
+  url?: string;
+  prompt?: string;
+  model?: string;
+  audioType?: '音乐' | '歌词' | '自适应' | '纯音乐';
+  status?: 'idle' | 'running' | 'done' | 'error';
+};
+function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
+  const update = useNodeUpdate();
+  const model = data.model || 'music2';
+  const modelInfo = AI_MODELS['audio-gen'].find((m) => m.id === model) || AI_MODELS['audio-gen'][0];
+  const audioType = data.audioType || '纯音乐';
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1 }}>
-      <InputHandle selected={selected} />
-      <OutputHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="audio-gen" />
-        {TYPE_LABELS['audio-gen']}
-      </div>
+    <NodeShell type="audio-gen" selected={selected}>
       <div style={bodyStyle}>
         {data.url ? (
-          <audio src={data.url} controls style={{ width: '100%' }} />
-        ) : data.status === 'generating' ? (
-          <div style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e8cd6' }}>
-            生成中...
+          <audio src={data.url} controls style={{ width: '100%', marginBottom: 8 }} />
+        ) : data.status === 'running' ? (
+          <div style={{
+            height: 50,
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: 4,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#6e8cd6',
+            border: '1px dashed rgba(110,140,214,0.5)',
+            marginBottom: 8,
+            fontSize: 11,
+            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+          }}>
+            生成中…
           </div>
         ) : (
           <div style={{
@@ -293,28 +717,55 @@ function AudioGenNode({ data, selected }: NodeProps<Node<AudioGenData>>) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'rgba(255,255,255,0.4)',
             border: '1px dashed rgba(110,140,214,0.3)',
+            marginBottom: 8,
+            fontSize: 11,
           }}>
             待生成音频
           </div>
         )}
-        {data.prompt && (
-          <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-            {data.prompt.slice(0, 50)}{data.prompt.length > 50 ? '...' : ''}
-          </div>
-        )}
+        <NodeTextarea
+          value={data.prompt || ''}
+          onChange={(v) => update(id, { prompt: v })}
+          placeholder="轻柔钢琴 + 雨声白噪音, 适合家居展示…"
+          rows={2}
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <ModelChip
+            models={AI_MODELS['audio-gen']}
+            value={model}
+            onChange={(v) => update(id, { model: v })}
+          />
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <ChipRow
+            options={['音乐', '歌词', '自适应', '纯音乐']}
+            value={audioType}
+            onChange={(v) => update(id, { audioType: v as any })}
+          />
+        </div>
+        <RunButton
+          cost={modelInfo.cost}
+          status={data.status}
+          onRun={() => update(id, { status: 'running' })}
+        />
       </div>
-    </div>
+    </NodeShell>
   );
 }
 
 // ---------------------------------------------------------------------
-// 5. MergeNode
+// 5. MergeNode (06-30 重设计: NodeShell + 输入数 chip)
 // ---------------------------------------------------------------------
 type MergeData = { inputs?: number; label?: string };
-function MergeNode({ data, selected }: NodeProps<Node<MergeData>>) {
+function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
+  const update = useNodeUpdate();
   const inputCount = data.inputs || 2;
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1 }}>
+    <div style={{
+      ...baseNodeStyle,
+      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
+      borderWidth: selected ? 2 : 1,
+    }}>
       {Array.from({ length: inputCount }).map((_, i) => (
         <Handle
           key={`in-${i}`}
@@ -323,8 +774,7 @@ function MergeNode({ data, selected }: NodeProps<Node<MergeData>>) {
           id={`in-${i}`}
           style={{
             background: PORT_BG,
-            width: 10,
-            height: 10,
+            width: 10, height: 10,
             top: `${30 + i * 25}%`,
             border: selected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.3)',
           }}
@@ -333,31 +783,44 @@ function MergeNode({ data, selected }: NodeProps<Node<MergeData>>) {
       <OutputHandle selected={selected} />
       <div style={headerStyle}>
         <NodeIcon type="merge" />
-        {TYPE_LABELS.merge} ({inputCount} 输入)
+        {TYPE_LABELS.merge}
       </div>
       <div style={bodyStyle}>
         <div style={{
-          height: 60,
+          height: 50,
           background: 'rgba(0,0,0,0.3)',
           borderRadius: 4,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'rgba(255,255,255,0.4)',
           border: '1px dashed rgba(110,140,214,0.3)',
+          marginBottom: 8,
+          fontSize: 11,
         }}>
-          合并 {inputCount} 路输入
+          合并多路输入
         </div>
+        <ChipRow
+          options={[2, 3, 4]}
+          value={inputCount}
+          onChange={(v) => update(id, { inputs: Number(v) })}
+          prefix=""
+        />
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------
-// 6. OutputNode
+// 6. OutputNode (06-30 重设计: 只有 input, 显示成片)
 // ---------------------------------------------------------------------
-type OutputData = { url?: string; status?: 'idle' | 'composing' | 'done'; label?: string };
+type OutputData = { url?: string; status?: 'idle' | 'running' | 'done'; label?: string };
 function OutputNode({ data, selected }: NodeProps<Node<OutputData>>) {
   return (
-    <div style={{ ...baseNodeStyle, borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER, borderWidth: selected ? 2 : 1, minWidth: 220 }}>
+    <div style={{
+      ...baseNodeStyle,
+      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
+      borderWidth: selected ? 2 : 1,
+      minWidth: 220,
+    }}>
       <InputHandle selected={selected} />
       <div style={headerStyle}>
         <NodeIcon type="output" />
@@ -367,18 +830,26 @@ function OutputNode({ data, selected }: NodeProps<Node<OutputData>>) {
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block' }} />
-        ) : data.status === 'composing' ? (
-          <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e8cd6' }}>
-            合成中...
+        ) : data.status === 'running' ? (
+          <div style={{
+            height: 100, borderRadius: 4,
+            background: 'rgba(0,0,0,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#6e8cd6',
+            border: '1px dashed rgba(110,140,214,0.5)',
+            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+            fontSize: 11,
+          }}>
+            合成中…
           </div>
         ) : (
           <div style={{
-            height: 100,
+            height: 100, borderRadius: 4,
             background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'rgba(255,255,255,0.4)',
             border: '1px dashed rgba(110,140,214,0.3)',
+            fontSize: 11,
           }}>
             待合成成片
           </div>
@@ -388,6 +859,16 @@ function OutputNode({ data, selected }: NodeProps<Node<OutputData>>) {
   );
 }
 
+// 节点更新 Context — 06-30 加: 节点组件通过 useNodeUpdate hook 拿 updateNodeData
+//   绕过 ReactFlow NodeProps 只能固化的限制
+const NodeUpdateContext = createContext<UpdateDataFn | null>(null);
+function useNodeUpdate(): UpdateDataFn {
+  const ctx = useContext(NodeUpdateContext);
+  if (!ctx) throw new Error('useNodeUpdate must be used within CanvasFlowEditor');
+  return ctx;
+}
+
+// nodeTypes object — 06-30 改: 各节点用 Context 拿 update
 const nodeTypes: NodeTypes = {
   text: TextNode,
   image: ImageNode,
@@ -765,6 +1246,13 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
   const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getZoom } = useReactFlow();
   const [zoom, setZoom] = useState(1);
 
+  // 06-30 加: 给子节点更新 data 的回调 (通过 Context 注入)
+  const updateNodeData = useCallback((nodeId: string, patch: Record<string, unknown>) => {
+    setNodes((nds) =>
+      nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...patch } } : n))
+    );
+  }, [setNodes]);
+
   // 加载 localStorage
   useEffect(() => {
     try {
@@ -907,19 +1395,21 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
           top: 56, left: 0, right: 0, bottom: 0,
         }}
       >
-        <ReactFlow
-          nodes={nodes}
-          defaultEdges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={handleEdgesChange}
-          onConnect={onConnect}
-          onDoubleClick={onPaneDoubleClick}
-          nodeTypes={nodeTypes}
-          fitView
-          deleteKeyCode={['Backspace', 'Delete']}
-          proOptions={{ hideAttribution: true }}
-          defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
-        />
+        <NodeUpdateContext.Provider value={updateNodeData}>
+          <ReactFlow
+            nodes={nodes}
+            defaultEdges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={onConnect}
+            onDoubleClick={onPaneDoubleClick}
+            nodeTypes={nodeTypes}
+            fitView
+            deleteKeyCode={['Backspace', 'Delete']}
+            proOptions={{ hideAttribution: true }}
+            defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#6e8cd6', strokeWidth: 2 } }}
+          />
+        </NodeUpdateContext.Provider>
       </div>
 
       {/* Chrome 4 件套 (1:1 移植) */}

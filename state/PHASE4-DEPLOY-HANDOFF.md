@@ -1,25 +1,41 @@
-# Phase 4 部署 Handoff — 画布迁移 @xyflow/react v12 收口
+# Phase 4 + 节点功能按键 部署 Handoff
 
 > **给部署 agent 必读** — 06-30 由 Hermes 写
 > 关联: state/PLAN-CANVAS-MIGRATION.md, state/README.md
 
 ---
 
-## 1. 这次改了什么
+## 1. 这次改了什么 (累计 2 个 commit)
 
+### Commit 1: Phase 4 收口
 ```
 app/canvas/[id]/page.tsx       ← 重写 (不再 redirect, 直接渲染 CanvasFlowEditor)
 app/canvas/[id]/CanvasEditor.tsx          → CanvasEditor.old.tsx  (改名备份)
-app/canvas-v2/                  ← 整目录删除 (空脚手架被老路由直接渲染取代)
-package.json + package-lock.json ← 加 @xyflow/react v12 (Phase 1 时装的)
+app/canvas-v2/                  ← 整目录删除
+package.json + package-lock.json ← 加 @xyflow/react v12
 ```
 
-**架构变化:**
+### Commit 2: 节点功能按键重设计
+```
+app/canvas/[id]/CanvasFlowEditor.tsx   ← +334/-11 (59.3 kB)
+state/STATUS.md                         ← 加 06-30 08:30 段落
+state/PHASE4-DEPLOY-HANDOFF.md (本文件) ← 合并两次部署说明
+```
+
+### 节点功能
+- **prompt textarea** (inline 编辑, 立即同步到 node.data)
+- **ModelChip** (✦ 模型下拉 + 积分显示)
+- **ChipRow** (比例/画质/时长/音频/数量 chip)
+- **RunButton** (底部圆形运行按钮 + ◆ 积分徽章 + status 动效)
+- **NodeShell** 统一外壳
+- **NodeUpdateContext** 解决 NodeProps 不支持自定义参数
+
+### 架构变化
 
 ```
 之前: /canvas/[id] → redirect → /canvas-v2/[id] → 空脚手架
-现在: /canvas/[id] → 直接 render Phase 3.5 完整版 (CanvasFlowEditor.tsx)
-      ↑ 含 TopBar / FloatingTools / "脉" logo / ZoomControls / 6 custom nodes
+现在: /canvas/[id] → 直接 render ReactFlow v12 完整版 (CanvasFlowEditor.tsx)
+      ↑ 含 TopBar / FloatingTools / "脉" logo / ZoomControls / 6 custom nodes / 全部功能按键
 ```
 
 ---
@@ -32,21 +48,21 @@ cd Z:\damai\hermes-project
 # 1. 检查 git status 干净
 git status --short
 
-# 2. 应该有这些文件等 add:
-#    - app/canvas/[id]/page.tsx (重写)
-#    - app/canvas/[id]/CanvasEditor.old.tsx (新增, 来自改名)
-#    - app/canvas/[id]/CanvasEditor.tsx 被上面覆盖 (改名)
-#    - app/canvas-v2/ 删除
-#    - package.json / package-lock.json (新 @xyflow/react)
+# 2. 应该等 add 的文件:
+#    app/canvas/[id]/page.tsx (Phase 4 重写)
+#    app/canvas/[id]/CanvasFlowEditor.tsx (Phase 3.5 + 06-30 节点功能按键)
+#    app/canvas/[id]/CanvasEditor.old.tsx (新增, 来自 CanvasEditor.tsx 改名)
+#    app/canvas-v2/ (整目录删除)
+#    package.json + package-lock.json (新 @xyflow/react)
+#    state/STATUS.md + state/PHASE4-DEPLOY-HANDOFF.md + state/HANDOFF-LATEST.md + state/README.md
 
-# 3. Stage + commit
+# 3. Stage + commit (拆 2 commit 方便回滚)
 git add app/canvas/[id]/page.tsx \
+        app/canvas/[id]/CanvasFlowEditor.tsx \
         app/canvas/[id]/CanvasEditor.old.tsx \
         app/canvas-v2/ \
         package.json package-lock.json
-# 也加上 CanvasFlowEditor.tsx (Phase 3.5 那个 agent 写的)
-git add "app/canvas/[id]/CanvasFlowEditor.tsx"
-git commit -m "feat(canvas): migrate to @xyflow/react v12 (Phase 4 收口, /canvas/[id] 直渲染 ReactFlow)"
+git commit -m "feat(canvas): Phase 4 收口 + 节点功能按键 (prompt/ModelChip/ChipRow/RunButton)"
 
 # 4. 部署
 bash scripts/deploy-to-ecs.sh

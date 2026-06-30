@@ -3,9 +3,16 @@
 最后更新: 2026-06-30 08:30 CST
 
 ## 当前在做
+- ✅ **节点功能按键重设计 06-30 08:30** — TextNode/ImageNode/VideoGenNode/AudioGenNode/MergeNode 全部加上:
+  - prompt textarea (inline 编辑, 立即同步到 node.data)
+  - ModelChip (✦ 模型下拉 + 积分显示) — TextNode 3 模型 / ImageNode 2 / VideoGenNode 3 / AudioGenNode 2
+  - ChipRow (参数选择, 单选) — 比例/画质/时长/音频/数量
+  - RunButton (底部圆形运行按钮 + ◆ 积分 + status)
+  - NodeShell 统一外壳 (handle + header + body + 选中边框)
+  - NodeUpdateContext (06-30 加) 解决 NodeProps 不支持自定义参数的痛点
+  - Build 验证: /canvas/[id] 59.3 kB (vs 上一版 57.5 kB, +1.8 kB)
+  - 待部署: commit 待部署 agent 提交
 - ✅ **Phase 4 收口完成 06-30 08:30** — 老路由 /canvas/[id] 直接渲染 Phase 3.5 完整版, CanvasEditor.tsx 改名 .old.tsx 备份, canvas-v2/ 整目录删
-  - commit 待部署 agent 提交 (state/PHASE4-DEPLOY-HANDOFF.md 有完整步骤)
-  - Build 验证: /canvas/[id] 57.5 kB, React Flow 内置,全 22 个静态/动态路由 OK
 - ✅ **Bug 1 + Bug 2 修复 06-30 07:51** — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
   - **Bug 1 (节点删不掉)**: React Flow v12 默认不启用 delete key,加 `deleteKeyCode={['Backspace', 'Delete']}` 修 ✅ (user 已验证)
   - **Bug 2 (连线消失) 根因**: React Flow v12 controlled mode 时序问题
