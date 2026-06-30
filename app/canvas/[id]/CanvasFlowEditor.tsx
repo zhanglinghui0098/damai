@@ -551,6 +551,7 @@ function useUpstreamUrls(nodeId: string): string[] {
 
 function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   const update = useNodeUpdate();
+  const fileInputRef = useRef<HTMLInputElement>(null);  // 07-01 新增: 本地上传
   const upstreamUrls = useUpstreamUrls(id);  // 07-01: 读上游
   const model = data.model || 'jimeng';
   const modelInfo = AI_MODELS.image.find((m) => m.id === model) || AI_MODELS.image[0];
@@ -595,9 +596,45 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
     }
   }, [id, data.prompt, data.status, model, aspect, quality, quantity, isI2I, upstreamUrls, update]);
 
+  // 07-01 新增: 本地上传 (用上传 API, 不会走生成)
+  const onUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';  // reset 允许同文件再选
+    if (!file) return;
+    update(id, { status: 'running', errorMsg: undefined });
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/canvas/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || json.detail || `HTTP ${res.status}`);
+      }
+      // 上传成功 → 设 url (走完整 i2i 输出字段, 让下游 referenceUrls 能拿到)
+      update(id, {
+        url: json.url,
+        outputUrl: json.url,
+        outputUrls: [json.url],
+        selectedOutputUrl: json.url,
+        refCount: 0,
+        status: 'done',
+      });
+    } catch (e: any) {
+      console.error('[ImageNode upload]', id, e);
+      update(id, { status: 'error', errorMsg: e?.message || '上传失败' });
+    }
+  }, [id, update]);
+
   return (
     <NodeShell type="image" selected={selected}>
-      <div style={{ ...bodyStyle, maxHeight: 220, overflow: 'visible' }}>
+      {/* ============== Section A: 图片区 (始终显示) ============== */}
+      <div
+        data-image-area="1"
+        onClick={(e) => e.stopPropagation()}  // 阻止冒泡到 pane (让节点保持选中)
+        style={{
+          padding: '8px 10px 10px',
+        }}
+      >
         {/* 07-01: i2i 模式提示 (上游接了 image 节点) */}
         {isI2I && (
           <div
@@ -618,65 +655,196 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             🔗 i2i 模式 · {upstreamUrls.length} 张参考图
           </div>
         )}
+
+        {/* 顶部: 标签 + 上传按钮 (参考截图) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 6,
+        }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>🖼</span> Image
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '4px 10px',
+              fontSize: 11,
+              color: 'rgba(255,255,255,0.85)',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(110,140,214,0.18)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            title="本地图片上传, 作为参考图 (i2i 上游)"
+          >
+            <span style={{ fontSize: 12 }}>↑</span> 上传
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={onUpload}
+            style={{ display: 'none' }}
+            data-testid={`upload-input-${id}`}
+          />
+        </div>
+
+        {/* 图片 / 占位框 (固定高度 180, 跟参考截图一致) */}
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.url} alt="" style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
+          <img
+            src={data.url}
+            alt=""
+            style={{
+              width: '100%',
+              height: 180,
+              objectFit: 'contain',
+              borderRadius: 6,
+              display: 'block',
+              background: 'rgba(0,0,0,0.3)',
+            }}
+          />
         ) : (
           <div style={{
-            height: 90,
+            width: '100%',
+            height: 180,
             background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
+            borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'rgba(255,255,255,0.4)',
             border: '1px dashed rgba(110,140,214,0.3)',
-            marginBottom: 8,
             fontSize: 11,
           }}>
-            {isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}
+            {isI2I ? '🔗 i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}
           </div>
         )}
-        <NodeTextarea
-          value={data.prompt || ''}
-          onChange={(v) => update(id, { prompt: v })}
-          placeholder="现代极简客厅, 大理石地板, 自然光…"
-          rows={2}
-        />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          <ModelChip
-            models={AI_MODELS.image}
-            value={model}
-            onChange={(v) => update(id, { model: v })}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-          <ChipRow
-            options={ASPECTS.slice(0, 4)}
-            value={aspect}
-            onChange={(v) => update(id, { aspect: String(v) })}
-          />
-          <ChipRow
-            options={QUALITIES.slice(0, 3)}
-            value={quality}
-            onChange={(v) => update(id, { quality: String(v) })}
-          />
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <ChipRow
-            options={[1, 2, 4]}
-            value={quantity}
-            onChange={(v) => update(id, { quantity: Number(v) })}
-            prefix="×"
-          />
-        </div>
-        {data.errorMsg && (
-          <div style={{ fontSize: 10, color: '#ff6b6b', marginTop: 4 }}>⚠ {data.errorMsg}</div>
-        )}
-        <RunButton
-          cost={modelInfo.cost * quantity}
-          status={data.status}
-          onRun={onRun}
-        />
       </div>
+
+      {/* ============== Section B: 操作台 (仅 selected 时弹出) ============== */}
+      {selected && (
+        <div
+          data-op-panel="1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            padding: '10px 10px 10px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.25)',
+            borderRadius: '0 0 8px 8px',
+          }}
+        >
+          {/* 工具行: 灯泡 + 加号 (左) | 展开 (右) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                title="AI 优化提示词 (TODO)"
+                style={{
+                  width: 24, height: 24,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >✨</button>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                title="预设 (TODO)"
+                style={{
+                  width: 24, height: 24,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >+</button>
+            </div>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              title="全屏展开 (TODO)"
+              style={{
+                width: 24, height: 24,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.5)',
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+            >↗</button>
+          </div>
+
+          {/* prompt textarea */}
+          <NodeTextarea
+            value={data.prompt || ''}
+            onChange={(v) => update(id, { prompt: v })}
+            placeholder="描述任何你想要生成的内容"
+            rows={3}
+          />
+
+          {/* 工具行: 模型 + 比例 + 画质 + 数量 + 麦克风 + cost + run */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 4,
+            marginTop: 8,
+          }}>
+            <ModelChip
+              models={AI_MODELS.image}
+              value={model}
+              onChange={(v) => update(id, { model: v })}
+            />
+            <ChipRow
+              options={ASPECTS.slice(0, 4)}
+              value={aspect}
+              onChange={(v) => update(id, { aspect: String(v) })}
+            />
+            <ChipRow
+              options={QUALITIES.slice(0, 3)}
+              value={quality}
+              onChange={(v) => update(id, { quality: String(v) })}
+            />
+            <ChipRow
+              options={[1, 2, 4]}
+              value={quantity}
+              onChange={(v) => update(id, { quantity: Number(v) })}
+              prefix="×"
+            />
+            <span style={{ flex: 1 }} />
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 2 }}>
+              ◆{modelInfo.cost * quantity}
+            </span>
+          </div>
+
+          {data.errorMsg && (
+            <div style={{ fontSize: 10, color: '#ff6b6b', marginTop: 4 }}>⚠ {data.errorMsg}</div>
+          )}
+
+          <RunButton
+            cost={modelInfo.cost * quantity}
+            status={data.status}
+            onRun={onRun}
+          />
+        </div>
+      )}
     </NodeShell>
   );
 }
