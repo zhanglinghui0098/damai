@@ -791,6 +791,10 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     return () => clearTimeout(t);
   }, [nodes, edges, storageKey]);
 
+  // Bug 2 修 (v3): 完全放弃 controlled mode,改用 onConnect 直接 addEdge (跟官方 demo 一致)
+  // - 不传 edges={edges} prop (避免 StoreUpdater sync 时序问题)
+  // - useEdgesState 还是管理 user state (持久化 + Render)
+  // - React Flow 内部 store 走自己的 connection flow,onConnect 触发 → user setEdges → useEdgesState 自动 update React Flow 内部 state
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       console.log('[canvas-v2] onConnect:', JSON.stringify(connection));
@@ -803,27 +807,13 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
     [setEdges]
   );
 
-  // 监听 edges 变化 (调试 + filter React Flow 内部 emit 的 add/remove/replace)
-  // Bug 2 根因 (React Flow v12 controlled mode 时序问题):
-  //   1. user pointer up → onConnectExtended → 调 user onConnect
-  //   2. user addEdge + setEdges → user state +1
-  //   3. React render → StoreUpdater setEdges 到 React Flow 内部 store
-  //   4. **React Flow 内部 store 通过 edgeQueue 推 update**:
-  //      - items = nextEdges (累加 payload 后)
-  //      - **edgeLookup 还是旧的 (不含新 edge)** — edgeLookup 更新要等 setEdges 完成
-  //   5. getElementsDiffChanges({items, lookup: oldLookup}) 算出 'add' change
-  //   6. emit 给 user onEdgesChange → applyEdgeChanges **再加一条** (id 不同)
-  //   7. state 里有 2 条 duplicate → React Flow render 只显示一条
-  //
-  // 修法: filter React Flow 内部 emit 的 add/remove/replace,只接受 select/dimensions/position
+  // 用户边缘操作 (select 等) 通过 useEdgesState 自带 onEdgesChange 处理
   const handleEdgesChange = useCallback(
     (changes: any) => {
-      const userChanges = changes.filter(
-        (c: any) => !['add', 'remove', 'replace'].includes(c.type)
-      );
-      if (userChanges.length > 0) {
-        onEdgesChange(userChanges);
-      }
+      console.log('[canvas-v2] onEdgesChange:', JSON.stringify(changes));
+      // 不再 filter — 让 React Flow 内部 add/remove 走完,user state 同步
+      // 因为我们不走 controlled mode (不传 edges={edges}),React Flow 不会 emit 重复 add
+      onEdgesChange(changes);
     },
     [onEdgesChange]
   );
@@ -919,7 +909,7 @@ function CanvasFlowEditorInner({ projectId }: { projectId: string }) {
       >
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          defaultEdges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
