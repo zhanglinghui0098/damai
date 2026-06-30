@@ -763,8 +763,10 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             不点击时 + 端口隐藏, 但用户拖别的节点的线过来, 落到图上任意位置都能吸附
             isConnectableStart=false: 点击图 = 选中 (不会误启动连线)
             isConnectableEnd=true: 拖到图上 = 接收 (吸附)
-            transform: 'none' 关键: 覆盖 React Flow 默认 translate(-50%, -50%)
-              (否则 100% 宽的 handle 会被往左推 50% 宽度, 只剩左半图能吸)
+            关键覆盖:
+              - transform: 'none' (默认 translate(-50%, -50%) 把 100% 宽 handle 推左半)
+              - borderRadius: 0 (默认 100% 让 298x218 handle 变椭圆, 4 角切掉)
+              - width/height 100% 真的铺满整个图
         */}
         <Handle
           type="source"
@@ -780,6 +782,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             left: 0,
             background: 'transparent',
             border: 'none',
+            borderRadius: 0,  // 关键: 覆盖默认 100% 圆角, 避免椭圆
             opacity: 0,
             transform: 'none',  // 关键: 覆盖默认 translate, 让 handle 真的铺满图
             zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
