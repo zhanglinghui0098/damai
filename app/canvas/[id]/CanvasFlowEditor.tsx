@@ -630,7 +630,6 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
       {/* ============== Section A: 图片区 (始终显示) ============== */}
       <div
         data-image-area="1"
-        onClick={(e) => e.stopPropagation()}  // 阻止冒泡到 pane (让节点保持选中)
         style={{
           padding: '8px 10px 10px',
         }}
