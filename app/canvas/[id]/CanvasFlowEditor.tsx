@@ -763,6 +763,8 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             不点击时 + 端口隐藏, 但用户拖别的节点的线过来, 落到图上任意位置都能吸附
             isConnectableStart=false: 点击图 = 选中 (不会误启动连线)
             isConnectableEnd=true: 拖到图上 = 接收 (吸附)
+            transform: 'none' 关键: 覆盖 React Flow 默认 translate(-50%, -50%)
+              (否则 100% 宽的 handle 会被往左推 50% 宽度, 只剩左半图能吸)
         */}
         <Handle
           type="source"
@@ -779,6 +781,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             background: 'transparent',
             border: 'none',
             opacity: 0,
+            transform: 'none',  // 关键: 覆盖默认 translate, 让 handle 真的铺满图
             zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
             pointerEvents: 'all',
           }}
@@ -2001,6 +2004,11 @@ function CanvasFlowEditorInner({
   // 06-30: 连到已有节点 (常规 onConnect)
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
+      // 07-01 修: 阻止自连接 (image 拖到自己)
+      if (connection.source === connection.target) {
+        console.log('[damai] onConnect: self-loop blocked', connection.source);
+        return;
+      }
       connectionConnectedRef.current = true;
       console.log('[damai] onConnect:', connection);
       setEdges((eds) => {
