@@ -51,6 +51,7 @@ else
     --exclude='./.env.local.bak-*' \
     --exclude='./test*.txt' \
     --exclude='./codex-cli' \
+    --exclude='./scripts/deploy-to-ecs.sh' \
     -czf /tmp/damai_deploy.tar.gz .
   echo "  打包完成"
 
@@ -72,10 +73,12 @@ else
     echo "权限修复完成"
 REMOTE
 
-  echo ""
-  echo "--- npm install ---"
-  ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
-    cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" npm install --include=dev --legacy-peer-deps 2>&1 | tail -5
+echo ""
+echo "--- npm install ---"
+${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
+  set -e
+  set -o pipefail
+  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" npm install --include=dev --legacy-peer-deps
 REMOTE
 fi
 
@@ -83,7 +86,9 @@ fi
 echo ""
 echo "--- npm run build（约 2-4 分钟）---"
 ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
-  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" npm run build 2>&1 | tail -20
+  set -e
+  set -o pipefail
+  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=1024" npm run build
 REMOTE
 
 # PM2 reload
