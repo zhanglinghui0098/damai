@@ -16,6 +16,7 @@ import {
   type Connection,
   type ConnectionLineComponent,
   type Edge,
+  type EdgeChange,
   type Node,
   type NodeProps,
   type NodeTypes,
@@ -1683,6 +1684,24 @@ function CanvasFlowEditorInner({
     [nodeMenu, screenToFlowPosition, createNode, setEdges]
   );
 
+  // 07-01 重写: 屏蔽 React Flow 内部 emit 的 add/remove/replace change,
+  //  只接受 select/dimensions/position 等用户输入变化
+  //  (防止 onConnect 加的边被 React Flow 内部 store 算成 "add change",
+  //   再次推到 onEdgesChange 让我们再加一次 → 视觉上变成 "拖完线消失")
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const filtered = changes.filter((c) => {
+        if (c.type === 'add' || c.type === 'remove' || c.type === 'replace') {
+          console.log('[damai] handleEdgesChange: filter', c.type, c.id);
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length > 0) onEdgesChange(filtered);
+    },
+    [onEdgesChange]
+  );
+
   // 06-30: 连到已有节点 (常规 onConnect)
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
@@ -1851,7 +1870,8 @@ function CanvasFlowEditorInner({
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            // 07-01: 用 handleEdgesChange 替代 onEdgesChange, 屏蔽 React Flow 内部 add/remove/replace
+            onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
             onConnectStart={onConnectStart}
             onConnectEnd={onConnectEnd}
