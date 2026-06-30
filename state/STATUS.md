@@ -1,9 +1,15 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-01 05:13 CST
+最后更新: 2026-07-01 09:55 CST
 
 ## 当前在做
-- ✅ **拖线看不到 / 端口难命中 + i2i 数据流 修复 07-01** — commit `0bbac09` (视觉) + `058ed02` (i2i) 已 push + deploy 完成
+- 🚧 **Bug 2 真修 — line disappear on mouseup 07-01 09:55** — commit `ead8294` 本地
+  - user 截图证据: 拖线时(图 1)有蓝线, 松手后(图 2)线消失
+  - 之前的 `058ed02` 部署**实际没修** — `handleEdgesChange` filter 没在 CanvasFlowEditor
+  - **根因**: onConnect addEdge → React Flow props.edges 变 → 内部 store 算 'add' change → emit 给 onEdgesChange → applyEdgeChanges 又加一条 (同 ID) → state 有 2 条重复 → React Flow 只显示 1 条 → 视觉"消失"
+  - **修法 (重新做)**: 加 `handleEdgesChange` 替代 `onEdgesChange`, filter 掉 `type: 'add'/'remove'/'replace'`, 只放行 `select/dimensions/position` 等用户交互
+  - 类型: `EdgeChange` (从 @xyflow/react 引入)
+  - 验证: build OK, 本机未跑交互测试 (本地无 GUI 浏览器), 待 NAS 部署后 user 浏览器验证
   - **视觉层 (0bbac09)**: Handle 热区 16x16 → 20x20 + `boxShadow` 蓝紫光晕 + `transform: translateY(-50%)` 垂直居中
   - **ConnectionLine 视觉**: 灰白 0.35 → 蓝紫 0.55 + strokeWidth 2 → 2.5/3 + 起点圈 + 终点圆点
   - **i2i 数据流 (058ed02)**: ImageNode 加 useUpstreamUrls hook (useStore 订阅 edges/nodes) → 找 incoming edge → 上游 image 节点的 url → onRun 调 run-image API 传 `referenceUrls: [upstreamUrl]`
