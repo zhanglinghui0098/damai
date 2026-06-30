@@ -9,7 +9,7 @@ set -e
 ECS="root@47.96.128.172"
 ECS_PASS="Zlh199483"
 ECS_PROJECT="/opt/damai"
-NAS_SRC="/volume4/4T/damai/hermes-project"
+NAS_SRC="${NAS_SRC:-$(cd "$(dirname "$0")" && pwd)}"
 DOCKER_PREFIX="docker exec hermes-hermes-1"
 SSH_CMD="sshpass -p ${ECS_PASS} ssh -o StrictHostKeyChecking=no ${ECS}"
 SCP_CMD="sshpass -p ${ECS_PASS} scp -o StrictHostKeyChecking=no"
