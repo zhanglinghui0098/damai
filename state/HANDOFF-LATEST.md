@@ -1,38 +1,41 @@
-# 大脉项目 — Daily Handoff (2026-06-30 08:50 CST manual)
+# 大脉项目 — Daily Handoff (2026-06-30 13:30 CST)
 
-> **用途**: 抗失忆 + 跨 session 连贯性, 06-30 手动更新 (cron 22:00 会覆盖)
+> **用途**: 抗失忆 + 跨 session 连贯性, 06-30 13:30 手动更新 (cron 22:00 会覆盖)
 > **下次 session 启动**: 读本文件 + `state/STATUS.md` + `git log --oneline -5`
-> **维护人**: Hermes (这台 Windows VM)
+> **维护人**: Hermes (NAS 容器)
 
 ---
 
 ## 0. 一句话 (今天做了什么)
 
-- 本地 commit `3fcefd6` ✅ — **节点功能按键重设计** (prompt/ModelChip/ChipRow/RunButton + NodeShell + Context)
-- ⚠️ **本地 commit 已就位, 但 master 远端 + ECS 生产都还没更新**
-  - 这台 Windows VM 在国内, **直连 GitHub / ECS 被墙** (GFW + 防火墙)
-  - `git push origin master` 超时, SSH 47.96.128.172 超时
-  - **需要 user 在 NAS 容器或代理机器跑 push + deploy**
+- ✅ **节点功能按键已部署 06-30 13:27** — commit `1ec14f1` (含 3fcefd6 节点按键 + handoff)
+- ⚠️ **Deploy 事故 + 修复已收口** — ECS npm install OOM 静默失败 → cp bak node_modules 跳过 → 重 build → 502 恢复 200
+- ✅ **deploy-to-ecs.sh 已修** — 加 exclude `state/案例/ + state/案例库/ + .open-next + .wrangler + ...` (下次 tar 31M 不带 3.6G 视频)
+- ✅ **Browser verify UI 完整** — 6 类节点 (Text/Image/VideoGen/AudioGen/Merge) + 顶栏 + 浮动工具 + 缩放 + 脉 logo 全在
 
-## 1. 下一步 (user 在代理/NAS 机器跑, 3 min)
-
-```bash
-cd Z:\damai\hermes-project   # NAS 容器内或代理机器上
-
-# A. push master
-git push origin master
-
-# B. deploy 到 ECS
-bash scripts/deploy-to-ecs.sh
+## 1. 关键 commit
+```
+1ec14f1 docs(state): 06-30 13:20 handoff 更新 — 部署 handoff + 节点按键已 commit 待 deploy
+3fcefd6 feat(canvas): 节点功能按键 (prompt/ModelChip/ChipRow/RunButton + NodeShell + Context)
+599e6ae fix(canvas): /canvas 列表 redirect 从 canvas-v2 改成 canvas
+8709229 feat(canvas): Phase 4 收口 — 老画布切换到 React Flow 单画布
+8c2b1cc fix(canvas-v2): 把新画布代码 cp 到真正生效的 canvas-v2 路径
 ```
 
-**详细步骤** 见 `state/DEPLOY-NOW-HANDOFF.md` (含 ECS 工作树领先 13 commit 风险处理).
+## 2. Deploy 链路 (06-30 13:20-13:27)
+1. NAS tar 31M (排除 .git / node_modules / .next / state/案例/ / public/case/ / .open-next / .wrangler) — `state/` README 修后
+2. scp ECS /tmp/damai-deploy.tar.gz (3.5s)
+3. 备份 ECS /opt/damai → /opt/damai.bak-20260630-1320
+4. 解压 204 文件 + chmod
+5. ⚠️ npm install --include=dev **失败** (OOM, next symlink 没建) → build `next: command not found`
+6. 修法: cp bak node_modules (18s, 358 packages) → npm run build OK (/canvas/[id] 59.1 kB) → pm2 delete + start (PID 122156)
+7. curl https://damai.net.cn/canvas/test-3-5 → HTTP 200 + content-type text/html
+8. browser verify: 6 类节点 + 顶栏 + 浮动工具 + 缩放 + 脉 logo 全在
 
-## 2. 阻塞 ask user
-
-1. ⚠️ **user 必须用能访问海外的机器跑 push + deploy** (这台 VM 不行)
-2. 飞书告警 webhook URL (阶段 1.2 阻塞) — 老的, 还没解决
-3. NAS 备份 SSH user (阶段 1.1 阻塞) — 老的, 还没解决
+## 3. 阻塞 ask user
+1. 飞书告警 webhook URL (阶段 1.2 阻塞) — 老的, 还没解决
+2. NAS 备份 SSH user (阶段 1.1 阻塞) — 老的, 还没解决
+3. GitHub push 不可达 (国内 NAS 容器) — 本地 commit `1ec14f1` 已就位, 推 master 待 user 在能访问海外的机器跑
 
 ---
 

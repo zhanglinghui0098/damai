@@ -1,18 +1,13 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-30 08:30 CST
+最后更新: 2026-06-30 13:30 CST
 
 ## 当前在做
-- ✅ **节点功能按键重设计 06-30 08:30** — TextNode/ImageNode/VideoGenNode/AudioGenNode/MergeNode 全部加上:
-  - prompt textarea (inline 编辑, 立即同步到 node.data)
-  - ModelChip (✦ 模型下拉 + 积分显示) — TextNode 3 模型 / ImageNode 2 / VideoGenNode 3 / AudioGenNode 2
-  - ChipRow (参数选择, 单选) — 比例/画质/时长/音频/数量
-  - RunButton (底部圆形运行按钮 + ◆ 积分 + status)
-  - NodeShell 统一外壳 (handle + header + body + 选中边框)
-  - NodeUpdateContext (06-30 加) 解决 NodeProps 不支持自定义参数的痛点
-  - Build 验证: /canvas/[id] 59.3 kB (vs 上一版 57.5 kB, +1.8 kB)
-  - 待部署: commit 待部署 agent 提交
-- ✅ **Phase 4 收口完成 06-30 08:30** — 老路由 /canvas/[id] 直接渲染 Phase 3.5 完整版, CanvasEditor.tsx 改名 .old.tsx 备份, canvas-v2/ 整目录删
+- ✅ **节点功能按键已部署 06-30 13:27 (commit 1ec14f1, 含 3fcefd6 节点按键)** — HTTP 200 + browser verify 6 类节点 UI 全在 (TextNode/ImageNode/VideoGenNode/AudioGenNode/MergeNode + NodeShell + Context)
+- ⚠️ **deploy 事故教训 (06-30 13:21)**: ECS `npm install --include=dev` 静默失败 (0.9G RAM OOM), `node_modules/.bin/next` symlink 没建, build `sh: next: command not found` → PM2 errored + damai.net.cn **502**
+- **修法**: `cp -a /opt/damai.bak-20260630-1320/node_modules /opt/damai/` (复用旧 node_modules 跳过 npm install) → `npm run build` OK → `pm2 delete + start` → curl 200
+- **deploy 脚本同步修**: `deploy-to-ecs.sh` 加 exclude `.open-next/.wrangler/.bak-v1/state/案例/state/案例库/hermes-reports/.env.local.bak-*/test*.txt/codex-cli` — 下次 tar 31M, 不会带 state/案例 3.6G 视频
+- ✅ Bug 1 + Bug 2 修复 06-30 07:51 — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
 - ✅ **Bug 1 + Bug 2 修复 06-30 07:51** — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
   - **Bug 1 (节点删不掉)**: React Flow v12 默认不启用 delete key,加 `deleteKeyCode={['Backspace', 'Delete']}` 修 ✅ (user 已验证)
   - **Bug 2 (连线消失) 根因**: React Flow v12 controlled mode 时序问题

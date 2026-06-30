@@ -36,6 +36,21 @@ else
     --exclude='./videos' \
     --exclude='./backups' \
     --exclude='./.git' \
+    --exclude='./.open-next' \
+    --exclude='./.vercel' \
+    --exclude='./.wrangler' \
+    --exclude='./.bak-v1' \
+    --exclude='./public/case' \
+    --exclude='./public/case/*' \
+    --exclude='./state/案例' \
+    --exclude='./state/案例/*' \
+    --exclude='./state/案例库' \
+    --exclude='./state/案例库/*' \
+    --exclude='./hermes-reports' \
+    --exclude='./hermes-reports/*' \
+    --exclude='./.env.local.bak-*' \
+    --exclude='./test*.txt' \
+    --exclude='./codex-cli' \
     -czf /tmp/damai_deploy.tar.gz .
   echo "  打包完成"
 
