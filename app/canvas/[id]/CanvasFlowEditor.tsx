@@ -766,7 +766,8 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             关键覆盖:
               - transform: 'none' (默认 translate(-50%, -50%) 把 100% 宽 handle 推左半)
               - borderRadius: 0 (默认 100% 让 298x218 handle 变椭圆, 4 角切掉)
-              - width/height 100% 真的铺满整个图
+              - pointerEvents: 仅拖线中才 'all', 平时 'none' → 透传 mousedown 给节点拖拽
+                (否则 100% 透明的 handle 永远拦截 mousedown, 节点拖不动)
         */}
         <Handle
           type="source"
@@ -786,7 +787,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             opacity: 0,
             transform: 'none',  // 关键: 覆盖默认 translate, 让 handle 真的铺满图
             zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
-            pointerEvents: 'all',
+            pointerEvents: isBeingDraggedTo ? 'all' : 'none',  // 关键: 平时透传
           }}
         />
 
