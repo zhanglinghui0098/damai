@@ -455,6 +455,136 @@ function NodeShell({
   );
 }
 
+// 07-01 共享: 节点 scaffold (新 UI, 跟 image 节点一致)
+// 3 段独立: 顶部浮动 (top) + 裸 main (mainContent) + 底部 op-panel (bottom)
+// - 大隐形 Handle 铺满 main: 拖线到 main 任意位置 = 吸附 (pointerEvents 条件化)
+// - selected 时左右小 + 端口浮出图外
+// - 选中蓝紫边 / 拖线中更亮边
+function NodeScaffold({
+  id,
+  selected,
+  isBeingDraggedTo,
+  mainWidth,
+  mainHeight,
+  mainContent,         // main area 内容 (textarea / video / audio / placeholder)
+  topSection,          // 可选: 顶部浮动 (image 的 upload 按钮)
+  bottomSection,       // 可选: 底部独立 panel (op-panel when selected)
+  badge,               // 可选: 角标 (image 的 i2i 模式)
+  showPorts = true,    // 是否显示左右 + 端口
+  mainStyle = {},      // main area 额外样式
+}: {
+  id: string;
+  selected: boolean;
+  isBeingDraggedTo: boolean;
+  mainWidth: number;
+  mainHeight: number;
+  mainContent: React.ReactNode;
+  topSection?: React.ReactNode;
+  bottomSection?: React.ReactNode;
+  badge?: React.ReactNode;
+  showPorts?: boolean;
+  mainStyle?: React.CSSProperties;
+}) {
+  return (
+    <div
+      data-node-scaffold="1"
+      style={{
+        position: 'relative',
+        background: 'transparent',
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      {topSection}
+
+      <div
+        data-main-bare="1"
+        style={{
+          position: 'relative',
+          width: mainWidth,
+          height: mainHeight,
+          background: 'rgba(0,0,0,0.3)',
+          border: isBeingDraggedTo
+            ? '2px solid #6e8cd6'
+            : (selected ? '1.5px solid rgba(110,140,214,0.7)' : '1px solid rgba(255,255,255,0.08)'),
+          borderRadius: 10,
+          boxShadow: isBeingDraggedTo ? '0 0 0 3px rgba(110,140,214,0.3), 0 2px 12px rgba(0,0,0,0.5)' : 'none',
+          transition: 'all 0.12s',
+          ...mainStyle,
+        }}
+      >
+        {badge}
+        {mainContent}
+
+        {/* 大隐形 Handle — 整个 main 作为 drop target */}
+        <Handle
+          type="source"
+          id={`snap-${id}`}
+          position={Position.Left}
+          isConnectableStart={false}
+          isConnectableEnd={true}
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            top: 0,
+            left: 0,
+            background: 'transparent',
+            border: 'none',
+            borderRadius: 0,
+            opacity: 0,
+            transform: 'none',
+            zIndex: 1,
+            pointerEvents: isBeingDraggedTo ? 'all' : 'none',
+          }}
+        />
+
+        {/* 小 + 端口 (selected 时浮出) */}
+        {showPorts && selected && (
+          <>
+            <Handle
+              type="source"
+              id="left"
+              position={Position.Left}
+              isConnectableStart={true}
+              isConnectableEnd={true}
+              style={{
+                background: '#1A1A1A', width: 22, height: 22,
+                left: -32, top: '50%', transform: 'translateY(-50%)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
+                borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
+                fontSize: 15, fontWeight: 300, lineHeight: '20px',
+                textAlign: 'center', cursor: 'crosshair',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.6)', zIndex: 10,
+              }}
+            >+</Handle>
+            <Handle
+              type="source"
+              id="right"
+              position={Position.Right}
+              isConnectableStart={true}
+              isConnectableEnd={true}
+              style={{
+                background: '#1A1A1A', width: 22, height: 22,
+                right: -32, top: '50%', transform: 'translateY(-50%)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
+                borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
+                fontSize: 15, fontWeight: 300, lineHeight: '20px',
+                textAlign: 'center', cursor: 'crosshair',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.6)', zIndex: 10,
+              }}
+            >+</Handle>
+          </>
+        )}
+      </div>
+
+      {bottomSection}
+    </div>
+  );
+}
+
 // FloatingTools 节点规格 (Chrome 1:1 移植自老 CanvasEditor.tsx)
 const FLOATING_NODE_SPECS: Record<string, { label: string; iconChar: string }> = {
   text: { label: '文本', iconChar: '≡' },
@@ -477,40 +607,79 @@ type TextNodeData = {
 };
 function TextNode({ data, selected, id }: NodeProps<Node<TextNodeData>>) {
   const update = useNodeUpdate();
+  const connection = useConnection();
+  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
   const model = data.model || 'deepseek';
   const modelInfo = AI_MODELS.text.find((m) => m.id === model) || AI_MODELS.text[0];
   const quantity = data.quantity || 1;
   return (
-    <NodeShell type="text" selected={selected}>
-      <div style={bodyStyle}>
+    <NodeScaffold
+      id={id}
+      selected={selected}
+      isBeingDraggedTo={isBeingDraggedTo}
+      mainWidth={300}
+      mainHeight={140}
+      mainContent={
         <NodeTextarea
           value={data.prompt || ''}
           onChange={(v) => update(id, { prompt: v, text: v })}
           placeholder="讲讲这款现代极简三人沙发…"
-          rows={3}
+          rows={5}
         />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          <ModelChip
-            models={AI_MODELS.text}
-            value={model}
-            onChange={(v) => update(id, { model: v })}
-          />
-          <ChipRow
-            options={[1, 2, 4]}
-            value={quantity}
-            onChange={(v) => update(id, { quantity: Number(v) })}
-            prefix="×"
-          />
+      }
+      bottomSection={selected && (
+        <div
+          data-op-panel="1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 14,
+            width: 300,
+            padding: '12px 14px 14px',
+            background: '#1A1A1A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}
+        >
+          {/* Section 1: 工具行 ✨ + ↗ */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={(e) => e.stopPropagation()} title="AI 优化 (TODO)" style={toolBtnStyle}>✨</button>
+              <button onClick={(e) => e.stopPropagation()} title="预设 (TODO)" style={toolBtnStyle}>+</button>
+            </div>
+            <button onClick={(e) => e.stopPropagation()} title="展开 (TODO)" style={toolBtnStyle}>↗</button>
+          </div>
+          {/* Section 3: chips + cost + run */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <ModelChip models={AI_MODELS.text} value={model} onChange={(v) => update(id, { model: v })} />
+              <ChipRow options={[1, 2, 4]} value={quantity} onChange={(v) => update(id, { quantity: Number(v) })} prefix="×" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              {data.errorMsg && <span style={{ fontSize: 10, color: '#ff6b6b', marginRight: 'auto' }}>⚠ {data.errorMsg}</span>}
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>◆{modelInfo.cost * quantity}</span>
+              <RunButton cost={modelInfo.cost * quantity} status={data.status} onRun={() => update(id, { status: 'running' })} />
+            </div>
+          </div>
         </div>
-        <RunButton
-          cost={modelInfo.cost * quantity}
-          status={data.status}
-          onRun={() => update(id, { status: 'running' })}
-        />
-      </div>
-    </NodeShell>
+      )}
+    />
   );
 }
+
+// 07-01 工具按钮统一样式 (op-panel 内的 ✨ + ↗)
+const toolBtnStyle: React.CSSProperties = {
+  width: 28, height: 28,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 6,
+  color: 'rgba(255,255,255,0.75)',
+  cursor: 'pointer',
+  fontSize: 14,
+};
 
 // ---------------------------------------------------------------------
 // 2. ImageNode (06-30 重设计: prompt + 模型 + 比例 + 画质 + 数量 + 运行)
@@ -1000,6 +1169,8 @@ type VideoGenData = {
 };
 function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
   const update = useNodeUpdate();
+  const connection = useConnection();
+  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
   const model = data.model || 'seedance';
   const modelInfo = AI_MODELS['video-gen'].find((m) => m.id === model) || AI_MODELS['video-gen'][0];
   const mode = data.mode || '首尾帧';
@@ -1007,91 +1178,94 @@ function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
   const duration = data.duration || 5;
   const audio = data.audio || '静音';
   const quantity = data.quantity || 1;
+  // main area 内容: 视频 / 占位
+  const mainContent = (
+    <>
+      {data.url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <video src={data.url} controls style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+      ) : data.status === 'running' ? (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: '#6e8cd6', fontSize: 12,
+          animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.6 }}>▶</span>
+          <span>生成中…</span>
+        </div>
+      ) : (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: 'rgba(255,255,255,0.35)', fontSize: 12,
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.5 }}>🎬</span>
+          <span>待生成视频</span>
+        </div>
+      )}
+    </>
+  );
   return (
-    <NodeShell type="video-gen" selected={selected}>
-      <div style={{ ...bodyStyle, maxHeight: 260, overflow: 'visible' }}>
-        {data.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
-        ) : data.status === 'running' ? (
-          <div style={{
-            height: 90,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#6e8cd6',
-            border: '1px dashed rgba(110,140,214,0.5)',
-            marginBottom: 8,
-            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
-            fontSize: 11,
-          }}>
-            生成中…
+    <NodeScaffold
+      id={id}
+      selected={selected}
+      isBeingDraggedTo={isBeingDraggedTo}
+      mainWidth={300}
+      mainHeight={200}
+      mainContent={mainContent}
+      bottomSection={selected && (
+        <div
+          data-op-panel="1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 14,
+            width: 300,
+            padding: '12px 14px 14px',
+            background: '#1A1A1A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}
+        >
+          {/* Section 1: 工具行 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={(e) => e.stopPropagation()} title="AI 优化 (TODO)" style={toolBtnStyle}>✨</button>
+              <button onClick={(e) => e.stopPropagation()} title="预设 (TODO)" style={toolBtnStyle}>+</button>
+            </div>
+            <button onClick={(e) => e.stopPropagation()} title="展开 (TODO)" style={toolBtnStyle}>↗</button>
           </div>
-        ) : (
-          <div style={{
-            height: 90,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.4)',
-            border: '1px dashed rgba(110,140,214,0.3)',
-            marginBottom: 8,
-            fontSize: 11,
-          }}>
-            待生成视频
+          {/* Section 2: prompt textarea */}
+          <NodeTextarea
+            value={data.prompt || ''}
+            onChange={(v) => update(id, { prompt: v })}
+            placeholder="镜头缓慢推近, 描述房间全景走位…"
+            rows={3}
+          />
+          {/* Section 3: chips + cost + run */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <ModelChip models={AI_MODELS['video-gen']} value={model} onChange={(v) => update(id, { model: v })} />
+              <ChipRow options={['首尾帧', '参考图片']} value={mode} onChange={(v) => update(id, { mode: v as any })} />
+              <ChipRow options={ASPECTS.slice(0, 4)} value={aspect} onChange={(v) => update(id, { aspect: String(v) })} />
+              <ChipRow options={DURATIONS.slice(0, 5)} value={duration} onChange={(v) => update(id, { duration: Number(v) })} />
+              <ChipRow options={['开启', '静音']} value={audio} onChange={(v) => update(id, { audio: v as any })} />
+              <ChipRow options={[1, 2, 4]} value={quantity} onChange={(v) => update(id, { quantity: Number(v) })} prefix="×" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              {data.errorMsg && <span style={{ fontSize: 10, color: '#ff6b6b', marginRight: 'auto' }}>⚠ {data.errorMsg}</span>}
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>◆{modelInfo.cost * quantity * (duration / 5)}</span>
+              <RunButton cost={modelInfo.cost * quantity * (duration / 5)} status={data.status} onRun={() => update(id, { status: 'running' })} />
+            </div>
           </div>
-        )}
-        <NodeTextarea
-          value={data.prompt || ''}
-          onChange={(v) => update(id, { prompt: v })}
-          placeholder="镜头缓慢推近, 描述房间全景走位…"
-          rows={2}
-        />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          <ModelChip
-            models={AI_MODELS['video-gen']}
-            value={model}
-            onChange={(v) => update(id, { model: v })}
-          />
-          <ChipRow
-            options={['首尾帧', '参考图片']}
-            value={mode}
-            onChange={(v) => update(id, { mode: v as any })}
-          />
         </div>
-        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-          <ChipRow
-            options={ASPECTS.slice(0, 4)}
-            value={aspect}
-            onChange={(v) => update(id, { aspect: String(v) })}
-          />
-          <ChipRow
-            options={DURATIONS.slice(0, 5)}
-            value={duration}
-            onChange={(v) => update(id, { duration: Number(v) })}
-            prefix=""
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-          <ChipRow
-            options={['开启', '静音']}
-            value={audio}
-            onChange={(v) => update(id, { audio: v as any })}
-          />
-          <ChipRow
-            options={[1, 2, 4]}
-            value={quantity}
-            onChange={(v) => update(id, { quantity: Number(v) })}
-            prefix="×"
-          />
-        </div>
-        <RunButton
-          cost={modelInfo.cost * quantity * (duration / 5)}
-          status={data.status}
-          onRun={() => update(id, { status: 'running' })}
-        />
-      </div>
-    </NodeShell>
+      )}
+    />
   );
 }
 
@@ -1107,69 +1281,94 @@ type AudioGenData = {
 };
 function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
   const update = useNodeUpdate();
+  const connection = useConnection();
+  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
   const model = data.model || 'music2';
   const modelInfo = AI_MODELS['audio-gen'].find((m) => m.id === model) || AI_MODELS['audio-gen'][0];
   const audioType = data.audioType || '纯音乐';
+  // main area: 音频 / 占位
+  const mainContent = (
+    <>
+      {data.url ? (
+        <audio src={data.url} controls style={{ width: '100%' }} />
+      ) : data.status === 'running' ? (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: '#6e8cd6', fontSize: 12,
+          animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.6 }}>♪</span>
+          <span>生成中…</span>
+        </div>
+      ) : (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: 'rgba(255,255,255,0.35)', fontSize: 12,
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.5 }}>🎵</span>
+          <span>待生成音频</span>
+        </div>
+      )}
+    </>
+  );
   return (
-    <NodeShell type="audio-gen" selected={selected}>
-      <div style={bodyStyle}>
-        {data.url ? (
-          <audio src={data.url} controls style={{ width: '100%', marginBottom: 8 }} />
-        ) : data.status === 'running' ? (
-          <div style={{
-            height: 50,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#6e8cd6',
-            border: '1px dashed rgba(110,140,214,0.5)',
-            marginBottom: 8,
-            fontSize: 11,
-            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
-          }}>
-            生成中…
+    <NodeScaffold
+      id={id}
+      selected={selected}
+      isBeingDraggedTo={isBeingDraggedTo}
+      mainWidth={300}
+      mainHeight={90}
+      mainContent={mainContent}
+      bottomSection={selected && (
+        <div
+          data-op-panel="1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 14,
+            width: 300,
+            padding: '12px 14px 14px',
+            background: '#1A1A1A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}
+        >
+          {/* Section 1: 工具行 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={(e) => e.stopPropagation()} title="AI 优化 (TODO)" style={toolBtnStyle}>✨</button>
+              <button onClick={(e) => e.stopPropagation()} title="预设 (TODO)" style={toolBtnStyle}>+</button>
+            </div>
+            <button onClick={(e) => e.stopPropagation()} title="展开 (TODO)" style={toolBtnStyle}>↗</button>
           </div>
-        ) : (
-          <div style={{
-            height: 50,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.4)',
-            border: '1px dashed rgba(110,140,214,0.3)',
-            marginBottom: 8,
-            fontSize: 11,
-          }}>
-            待生成音频
+          {/* Section 2: prompt textarea */}
+          <NodeTextarea
+            value={data.prompt || ''}
+            onChange={(v) => update(id, { prompt: v })}
+            placeholder="轻柔钢琴 + 雨声白噪音, 适合家居展示…"
+            rows={3}
+          />
+          {/* Section 3: chips + cost + run */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <ModelChip models={AI_MODELS['audio-gen']} value={model} onChange={(v) => update(id, { model: v })} />
+              <ChipRow options={['音乐', '歌词', '自适应', '纯音乐']} value={audioType} onChange={(v) => update(id, { audioType: v as any })} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              {data.errorMsg && <span style={{ fontSize: 10, color: '#ff6b6b', marginRight: 'auto' }}>⚠ {data.errorMsg}</span>}
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>◆{modelInfo.cost}</span>
+              <RunButton cost={modelInfo.cost} status={data.status} onRun={() => update(id, { status: 'running' })} />
+            </div>
           </div>
-        )}
-        <NodeTextarea
-          value={data.prompt || ''}
-          onChange={(v) => update(id, { prompt: v })}
-          placeholder="轻柔钢琴 + 雨声白噪音, 适合家居展示…"
-          rows={2}
-        />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          <ModelChip
-            models={AI_MODELS['audio-gen']}
-            value={model}
-            onChange={(v) => update(id, { model: v })}
-          />
         </div>
-        <div style={{ marginTop: 6 }}>
-          <ChipRow
-            options={['音乐', '歌词', '自适应', '纯音乐']}
-            value={audioType}
-            onChange={(v) => update(id, { audioType: v as any })}
-          />
-        </div>
-        <RunButton
-          cost={modelInfo.cost}
-          status={data.status}
-          onRun={() => update(id, { status: 'running' })}
-        />
-      </div>
-    </NodeShell>
+      )}
+    />
   );
 }
 
@@ -1179,57 +1378,89 @@ function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
 type MergeData = { inputs?: number; label?: string };
 function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
   const update = useNodeUpdate();
+  const connection = useConnection();
+  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
   const inputCount = data.inputs || 2;
-  return (
+  // main area: 输入口可视化 + 标签
+  const mainContent = (
     <div style={{
-      ...baseNodeStyle,
-      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
-      borderWidth: selected ? 2 : 1,
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: 8, color: 'rgba(255,255,255,0.4)', fontSize: 12,
     }}>
-      {Array.from({ length: inputCount }).map((_, i) => (
-        <Handle
-          key={`in-${i}`}
-          type="source"
-          position={Position.Left}
-          id={`in-${i}`}
-          isConnectableStart={true}
-          isConnectableEnd={true}
-          style={{
-            background: PORT_BG,
-            width: 14, height: 14,
-            top: `${30 + i * 25}%`,
-            border: selected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.3)',
-            zIndex: 10,
-            cursor: 'crosshair',
-          }}
-        />
-      ))}
-      <RightHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="merge" />
-        {TYPE_LABELS.merge}
-      </div>
-      <div style={bodyStyle}>
-        <div style={{
-          height: 50,
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: 4,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'rgba(255,255,255,0.4)',
-          border: '1px dashed rgba(110,140,214,0.3)',
-          marginBottom: 8,
-          fontSize: 11,
-        }}>
-          合并多路输入
-        </div>
-        <ChipRow
-          options={[2, 3, 4]}
-          value={inputCount}
-          onChange={(v) => update(id, { inputs: Number(v) })}
-          prefix=""
-        />
-      </div>
+      <span style={{ fontSize: 36, opacity: 0.5 }}>⊕</span>
+      <span>合并多路输入 · {inputCount} 路</span>
     </div>
+  );
+  // 多个 input handle (每个输入口一个, 左侧排列) — 跟主 snap handle 共存
+  const inputHandles = Array.from({ length: inputCount }).map((_, i) => (
+    <Handle
+      key={`in-${i}`}
+      type="source"
+      position={Position.Left}
+      id={`in-${i}`}
+      isConnectableStart={true}
+      isConnectableEnd={true}
+      style={{
+        background: PORT_BG, width: 14, height: 14,
+        top: `${20 + (i + 1) * (60 / (inputCount + 1))}%`,
+        border: '1.5px solid rgba(0,0,0,0.4)',
+        zIndex: 11,  // 比 snap (z=1) 和小 + (z=10) 都高
+        cursor: 'crosshair',
+      }}
+    />
+  ));
+  return (
+    <NodeScaffold
+      id={id}
+      selected={selected}
+      isBeingDraggedTo={isBeingDraggedTo}
+      mainWidth={300}
+      mainHeight={120}
+      mainContent={
+        <>
+          {inputHandles}
+          <RightHandle selected={selected} />
+          {mainContent}
+        </>
+      }
+      bottomSection={selected && (
+        <div
+          data-op-panel="1"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 14,
+            width: 300,
+            padding: '12px 14px 14px',
+            background: '#1A1A1A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}
+        >
+          {/* Section 1: 工具行 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={(e) => e.stopPropagation()} title="设置 (TODO)" style={toolBtnStyle}>⚙</button>
+            </div>
+            <button onClick={(e) => e.stopPropagation()} title="展开 (TODO)" style={toolBtnStyle}>↗</button>
+          </div>
+          {/* Section 3: 输入数 chips (merge 节点无 run 按钮) */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>输入数:</span>
+              <ChipRow options={[2, 3, 4]} value={inputCount} onChange={(v) => update(id, { inputs: Number(v) })} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{inputCount} 路输入 · 1 路输出</span>
+            </div>
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
@@ -1237,49 +1468,47 @@ function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
 // 6. OutputNode (06-30 重设计: 只有 input, 显示成片)
 // ---------------------------------------------------------------------
 type OutputData = { url?: string; status?: 'idle' | 'running' | 'done'; label?: string };
-function OutputNode({ data, selected }: NodeProps<Node<OutputData>>) {
+function OutputNode({ data, selected, id }: NodeProps<Node<OutputData>>) {
+  // main area: 成片视频 / 占位
+  const mainContent = (
+    <>
+      {data.url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <video src={data.url} controls style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+      ) : data.status === 'running' ? (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: '#6e8cd6', fontSize: 12,
+          animation: 'damaiRunPulse 1.1s ease-in-out infinite',
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.6 }}>◉</span>
+          <span>合成中…</span>
+        </div>
+      ) : (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          color: 'rgba(255,255,255,0.35)', fontSize: 12,
+        }}>
+          <span style={{ fontSize: 36, opacity: 0.5 }}>◉</span>
+          <span>待合成成片</span>
+        </div>
+      )}
+    </>
+  );
   return (
-    <div style={{
-      ...baseNodeStyle,
-      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
-      borderWidth: selected ? 2 : 1,
-      minWidth: 220,
-    }}>
-      <LeftHandle selected={selected} />
-      <div style={headerStyle}>
-        <NodeIcon type="output" />
-        {TYPE_LABELS.output}
-      </div>
-      <div style={bodyStyle}>
-        {data.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <video src={data.url} controls style={{ width: '100%', borderRadius: 4, display: 'block' }} />
-        ) : data.status === 'running' ? (
-          <div style={{
-            height: 100, borderRadius: 4,
-            background: 'rgba(0,0,0,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#6e8cd6',
-            border: '1px dashed rgba(110,140,214,0.5)',
-            animation: 'damaiRunPulse 1.1s ease-in-out infinite',
-            fontSize: 11,
-          }}>
-            合成中…
-          </div>
-        ) : (
-          <div style={{
-            height: 100, borderRadius: 4,
-            background: 'rgba(0,0,0,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.4)',
-            border: '1px dashed rgba(110,140,214,0.3)',
-            fontSize: 11,
-          }}>
-            待合成成片
-          </div>
-        )}
-      </div>
-    </div>
+    <NodeScaffold
+      id={id}
+      selected={selected}
+      isBeingDraggedTo={false}  // 终端节点, 不接受新连接
+      mainWidth={300}
+      mainHeight={200}
+      showPorts={false}  // 终端节点, 没有 right + 端口
+      mainContent={mainContent}
+    />
   );
 }
 
