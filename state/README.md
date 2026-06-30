@@ -58,11 +58,12 @@ state/
 - **项目根**: `/opt/damai`
 - **历史教训**: user 多次纠正, 不要说 ECS, 不要用 ECS 控制台路径
 
-### 2. 画布是**自研 SVG**, 不是 React Flow / @xyflow/react
-- 3200+ 行的 `app/canvas/[id]/CanvasEditor.tsx`
-- 手写 SVG + Path, port 简化后每节点 1 input + 1 output
-- i2i (Image A → Image B) 06-26 验证通过
-- **不要**给画布加 react flow 包, 不要用 react flow 的 API
+### 2. 画布是 **React Flow (@xyflow/react v12)**, 06-30 迁移完成
+- 文件: `app/canvas/[id]/CanvasFlowEditor.tsx` (Phase 3.5 完整版, 30KB)
+- 老自研 SVG CanvasEditor 已改名 `.old.tsx` 备份
+- 老路由 `/canvas/[id]` 直接 render React Flow (不再 redirect)
+- 06-29 19:30 user 拍板, 06-30 Phase 1-4 完成
+- 部署详情见 `state/PHASE4-DEPLOY-HANDOFF.md`
 
 ### 3. 飞书 Bitable 权限已开 (2026-06-11 升级)
 - **App ID**: `cli_aa9768a568b8dcb6`
@@ -86,8 +87,7 @@ state/
 - ❌ 不读 state/ 就改代码
 - ❌ 改完代码不更新 state/STATUS.md (下次 agent 接手失忆)
 - ❌ 用 `ecs.console.aliyun.com` (是 SWAS, 不是 ECS)
-- ❌ 给画布加 react flow
-- ❌ 跑 `npm install react-flow` 或类似
+- ❌ 给画布加 react-flow (React Flow v12 已经装好了, 不要再装)
 
 ---
 

@@ -8,10 +8,10 @@
 
 ## 0. 一句话 (今天做了什么)
 
-- 今天 commit 数: 27
-- 改了 26 个文件
-- 最近 commit: `66156ae` plan(canvas): 迁移 @xyflow/react v12 (4 phase 8-10h) — 06-29 19:30 user 决定走方案 A
-- 还在 working tree 没 commit 的: 7 个文件
+- 今天 commit 数: 27 (06-29) + 1+ (06-30 进行中)
+- 改了 26 个文件 (06-29)
+- 最近 commit: `99e8521` bug1 (React Flow 删除键) + `b58246b` bug2 (edge 时序) + Phase 4 待部署
+- ⚠️ **Phase 4 待部署 agent** — step 详情在 `state/PHASE4-DEPLOY-HANDOFF.md`
 
 ## 1. 商业方案 (静态)
 - **项目**: 大脉 = AI 武装的家居 ToB 营销案例库 (对标 TapNow 模式)

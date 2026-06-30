@@ -1,8 +1,11 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-06-30 07:55 CST
+最后更新: 2026-06-30 08:30 CST
 
 ## 当前在做
+- ✅ **Phase 4 收口完成 06-30 08:30** — 老路由 /canvas/[id] 直接渲染 Phase 3.5 完整版, CanvasEditor.tsx 改名 .old.tsx 备份, canvas-v2/ 整目录删
+  - commit 待部署 agent 提交 (state/PHASE4-DEPLOY-HANDOFF.md 有完整步骤)
+  - Build 验证: /canvas/[id] 57.5 kB, React Flow 内置,全 22 个静态/动态路由 OK
 - ✅ **Bug 1 + Bug 2 修复 06-30 07:51** — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
   - **Bug 1 (节点删不掉)**: React Flow v12 默认不启用 delete key,加 `deleteKeyCode={['Backspace', 'Delete']}` 修 ✅ (user 已验证)
   - **Bug 2 (连线消失) 根因**: React Flow v12 controlled mode 时序问题

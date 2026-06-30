@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
+// =====================================================================
+// canvas/[id] 路由 — Phase 4 收口
+// 06-30: 直接用 React Flow 画布 (Phase 3.5 完整版, 含 TopBar/FloatingTools/4 件套)
+// 替代老自研 SVG CanvasEditor (已改名 .old.tsx 备份)
+// =====================================================================
 
-// Phase 3 (06-30 06:25) — 老路由 /canvas/[id] → /canvas-v2/[id] 跳转
-// 保留 query string (template=xxx, 等)
-// 用户打开老 URL 自动看到新 React Flow 画布
-// 老 CanvasEditor.tsx 暂保留, Phase 4 A/B 测试后决定是否删
+import CanvasFlowEditor from "./CanvasFlowEditor";
 
 export default function CanvasPage({
   params,
@@ -12,8 +13,6 @@ export default function CanvasPage({
   params: { id: string };
   searchParams: { template?: string };
 }) {
-  const qs = searchParams?.template
-    ? `?template=${encodeURIComponent(searchParams.template)}`
-    : "";
-  redirect(`/canvas-v2/${params.id}${qs}`);
+  // 保留 template=xxx query 透传给新画布 (template starter 用)
+  return <CanvasFlowEditor projectId={params.id} template={searchParams?.template} />;
 }
