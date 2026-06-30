@@ -12,6 +12,7 @@ import {
   useReactFlow,
   useStore,
   useConnection,
+  useUpdateNodeInternals,
   ConnectionMode,
   MarkerType,
   type Connection,
@@ -485,6 +486,12 @@ function NodeScaffold({
   showPorts?: boolean;
   mainStyle?: React.CSSProperties;
 }) {
+  // 07-01: 强制 React Flow 重新测量节点尺寸
+  // 修 bug: 旧 measured 缓存会让节点 (尤其 showPorts=false) 渲染时宽度被压到 ~137px
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals]);
   return (
     <div
       data-node-scaffold="1"
