@@ -82,19 +82,23 @@ ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
 REMOTE
 fi
 
-# Build
+# Build (07-01 修: ECS 物理内存仅 896Mi, 1024M OOM. 改 512M + 先停 PM2 释放 60M)
 echo ""
-echo "--- npm run build（约 2-4 分钟）---"
+echo "--- PM2 stop (释放 60M 内存, 避 build OOM) ---"
+${DOCKER_PREFIX} ${SSH_CMD} pm2 stop damai 2>&1 | tail -3
+
+echo ""
+echo "--- npm run build（约 2-4 分钟，512M heap 适配 896Mi ECS）---"
 ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
   set -e
   set -o pipefail
-  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=1024" npm run build
+  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" NEXT_TELEMETRY_DISABLED=1 npm run build
 REMOTE
 
-# PM2 reload
+# PM2 restart
 echo ""
-echo "--- PM2 reload ---"
-${DOCKER_PREFIX} ${SSH_CMD} pm2 reload damai
+echo "--- PM2 start ---"
+${DOCKER_PREFIX} ${SSH_CMD} pm2 start damai 2>&1 | tail -3
 
 echo ""
 echo "=== 部署完成！==="
