@@ -2378,6 +2378,17 @@ function CanvasFlowEditorInner({
     return () => clearInterval(interval);
   }, [getZoom]);
 
+  // 07-01 修: 节点尺寸变了 (从 600→300), 强制重算 fitView
+  // 旧 viewport 是 scale(2), 新尺寸 fitView 会算成 ~0.8x
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        reactFlow.fitView({ maxZoom: 1, minZoom: 0.3, padding: 0.15, duration: 200 });
+      } catch (e) { /* ignore */ }
+    }, 100);
+    return () => clearTimeout(t);
+  }, [reactFlow]);
+
   const handleZoomIn = useCallback(() => zoomIn({ duration: 200 }), [zoomIn]);
   const handleZoomOut = useCallback(() => zoomOut({ duration: 200 }), [zoomOut]);
   const handleZoomReset = useCallback(() => setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 200 }), [setViewport]);
@@ -2433,6 +2444,9 @@ function CanvasFlowEditorInner({
             // 06-30: 右键拖动画布, 左键用于选择/拖拽节点/拉连线
             // React Flow 类型: panOnDrag 支持 number[] 表示允许拖动画布的鼠标按键 (2=右键)
             panOnDrag={[2]}
+            // 07-01 修: 加 fitViewOptions 限制 maxZoom, 避免旧 measured (600px wide) 算的 scale 2x 锁住
+            // 旧 measured 被清掉后, 新节点都是 300px, fitView 算出来应该是 ~0.8x, 但 maxZoom=1 兜底
+            fitViewOptions={{ maxZoom: 1, minZoom: 0.3, padding: 0.15 }}
             fitView
             deleteKeyCode={['Backspace', 'Delete']}
             proOptions={{ hideAttribution: true }}
