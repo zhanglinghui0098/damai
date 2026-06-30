@@ -1851,20 +1851,15 @@ function CanvasFlowEditorInner({
     [nodeMenu, screenToFlowPosition, createNode, setEdges]
   );
 
-  // 07-01 重写: 屏蔽 React Flow 内部 emit 的 add/remove/replace change,
-  //  只接受 select/dimensions/position 等用户输入变化
-  //  (防止 onConnect 加的边被 React Flow 内部 store 算成 "add change",
-  //   再次推到 onEdgesChange 让我们再加一次 → 视觉上变成 "拖完线消失")
+  // 07-01 重写 — 真修复 "松手线消失" bug:
+  // 之前 controlled mode 撞 addEdge → React Flow emit 'add' change → 又调一遍 → 重
+  // 这次先加 console 看 React Flow 内部到底 emit 什么
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      const filtered = changes.filter((c) => {
-        if (c.type === 'add' || c.type === 'remove' || c.type === 'replace') {
-          console.log('[damai] handleEdgesChange: filter', c.type, c.id);
-          return false;
-        }
-        return true;
-      });
-      if (filtered.length > 0) onEdgesChange(filtered);
+      for (const c of changes) {
+        console.log('[damai] edge change:', c.type, c.id, 'item:', JSON.stringify((c as any).item));
+      }
+      onEdgesChange(changes);
     },
     [onEdgesChange]
   );
