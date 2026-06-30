@@ -10,6 +10,7 @@ import {
   useEdgesState,
   addEdge,
   useReactFlow,
+  useStore,
   ConnectionMode,
   MarkerType,
   type Connection,
@@ -511,26 +512,111 @@ function TextNode({ data, selected, id }: NodeProps<Node<TextNodeData>>) {
 
 // ---------------------------------------------------------------------
 // 2. ImageNode (06-30 重设计: prompt + 模型 + 比例 + 画质 + 数量 + 运行)
+// 07-01 加 i2i 数据流: 读上游 image 节点的 url → run-image referenceUrls
 // ---------------------------------------------------------------------
 type ImageNodeData = {
   url?: string;
+  outputUrl?: string;       // i2i 输出 url (持久化字段)
+  outputUrls?: string[];    // 多张候选
+  selectedOutputUrl?: string; // 用户在 overlay 选中的 (i2i 上游优先用这个)
+  refCount?: number;        // 本次用了多少张参考图 (UI 展示)
   prompt?: string;
   model?: string;
   aspect?: string;
   quality?: string;
   quantity?: number;
   status?: 'idle' | 'running' | 'done' | 'error';
+  errorMsg?: string;
 };
+
+// 07-01 新增: 读上游所有 image 节点的 url (i2i 数据流)
+// 不用 useStore 重订阅每条边/节点, 用 shallow 比较, 只在 edges/nodes 变化时 re-render
+function useUpstreamUrls(nodeId: string): string[] {
+  return useStore((s) => {
+    const incoming = s.edges.filter((e: Edge) => e.target === nodeId);
+    if (incoming.length === 0) return [];
+    const urls: string[] = [];
+    for (const e of incoming) {
+      const src = s.nodes.find((n: Node) => n.id === e.source);
+      if (!src) continue;
+      // 上游 url 字段优先级: selectedOutputUrl > outputUrl > url
+      const d: any = src.data || {};
+      const u = d.selectedOutputUrl || d.outputUrl || d.url;
+      if (u) urls.push(u);
+    }
+    return urls;
+  });
+}
+
 function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   const update = useNodeUpdate();
+  const upstreamUrls = useUpstreamUrls(id);  // 07-01: 读上游
   const model = data.model || 'jimeng';
   const modelInfo = AI_MODELS.image.find((m) => m.id === model) || AI_MODELS.image[0];
   const aspect = data.aspect || '自适应';
   const quality = data.quality || '2K';
   const quantity = data.quantity || 1;
+  const isI2I = upstreamUrls.length > 0;
+
+  // 07-01 新增: 真正调用 run-image API, 带上 referenceUrls
+  const onRun = useCallback(async () => {
+    if (data.status === 'running') return;  // 防重入
+    update(id, { status: 'running', errorMsg: undefined });
+    try {
+      const res = await fetch('/api/canvas/run-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: data.prompt || '',
+          model,
+          aspect,
+          quality,
+          quantity,
+          referenceUrls: isI2I ? upstreamUrls : undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || json.detail || `HTTP ${res.status}`);
+      }
+      // 写 url + outputUrl + refCount (UI 显示 + i2i 上游用)
+      update(id, {
+        url: json.outputUrl,
+        outputUrl: json.outputUrl,
+        outputUrls: json.outputUrls || [json.outputUrl],
+        selectedOutputUrl: json.outputUrl,
+        refCount: isI2I ? upstreamUrls.length : 0,
+        status: 'done',
+      });
+    } catch (e: any) {
+      console.error('[ImageNode run]', id, e);
+      update(id, { status: 'error', errorMsg: e?.message || '生成失败' });
+    }
+  }, [id, data.prompt, data.status, model, aspect, quality, quantity, isI2I, upstreamUrls, update]);
+
   return (
     <NodeShell type="image" selected={selected}>
       <div style={{ ...bodyStyle, maxHeight: 220, overflow: 'visible' }}>
+        {/* 07-01: i2i 模式提示 (上游接了 image 节点) */}
+        {isI2I && (
+          <div
+            data-i2i-badge="1"
+            style={{
+              fontSize: 10,
+              color: '#6e8cd6',
+              background: 'rgba(110,140,214,0.12)',
+              border: '1px solid rgba(110,140,214,0.4)',
+              borderRadius: 3,
+              padding: '2px 6px',
+              marginBottom: 6,
+              display: 'inline-block',
+              fontWeight: 500,
+            }}
+            title={`将使用 ${upstreamUrls.length} 张上游图作为 i2i 参考`}
+          >
+            🔗 i2i 模式 · {upstreamUrls.length} 张参考图
+          </div>
+        )}
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={data.url} alt="" style={{ width: '100%', borderRadius: 4, display: 'block', marginBottom: 8 }} />
@@ -545,7 +631,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             marginBottom: 8,
             fontSize: 11,
           }}>
-            待生成 / 上传图片
+            {isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}
           </div>
         )}
         <NodeTextarea
@@ -581,10 +667,13 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             prefix="×"
           />
         </div>
+        {data.errorMsg && (
+          <div style={{ fontSize: 10, color: '#ff6b6b', marginTop: 4 }}>⚠ {data.errorMsg}</div>
+        )}
         <RunButton
           cost={modelInfo.cost * quantity}
           status={data.status}
-          onRun={() => update(id, { status: 'running' })}
+          onRun={onRun}
         />
       </div>
     </NodeShell>
