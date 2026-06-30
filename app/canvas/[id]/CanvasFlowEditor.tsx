@@ -626,15 +626,18 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   }, [id, update]);
 
   return (
-    // 07-01 重做: 3 段独立 panel, 不用 NodeShell, 不绑在一起
+    // 07-01 重做 v2: 3 段独立 panel, op-panel 居中, + 端口弹出
     // - 默认 (未选中): 只显示裸图
-    // - 选中: 上方浮出 upload 按钮 + 下方浮出 op-panel + 左右端口圆圈
+    // - 选中: 上方浮出 upload 按钮 + 下方浮出 op-panel + 左右 + 端口弹出图外
     <div
       data-image-node="1"
       style={{
         position: 'relative',
         background: 'transparent',
         padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',  // 关键: 让 image 和 op-panel 水平居中对齐
         // 不要 border/box-shadow, 让 3 段看着独立
       }}
     >
@@ -687,11 +690,12 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
         data-image-bare="1"
         style={{
           position: 'relative',
-          width: 280,
+          width: 300,
+          height: 220,
           background: 'rgba(0,0,0,0.3)',
           border: selected ? '1.5px solid rgba(110,140,214,0.7)' : '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 8,
-          overflow: 'hidden',
+          borderRadius: 10,
+          // overflow 不设 hidden, 让 + 端口能弹到图外
         }}
       >
         {/* i2i badge (顶部, 始终) */}
@@ -716,7 +720,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           </div>
         )}
 
-        {/* 图片 / 占位框 (固定高度, 跟参考截图一致) */}
+        {/* 图片 / 占位框 (固定 300x220, + borderRadius 配父容器) */}
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -724,29 +728,30 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             alt=""
             style={{
               width: '100%',
-              height: 200,
+              height: '100%',
               objectFit: 'contain',
+              borderRadius: 10,
               display: 'block',
             }}
           />
         ) : (
           <div style={{
             width: '100%',
-            height: 200,
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: 10,
             color: 'rgba(255,255,255,0.35)',
-            fontSize: 11,
+            fontSize: 12,
           }}>
-            <span style={{ fontSize: 28, opacity: 0.5 }}>🖼</span>
+            <span style={{ fontSize: 36, opacity: 0.5 }}>🖼</span>
             <span>{isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}</span>
           </div>
         )}
 
-        {/* 端口 (左右圆圈, 仅 selected 出现, 居中于 image) */}
+        {/* 端口 (左右 + 圆圈, 仅 selected 出现, 弹出图外) */}
         {selected && (
           <>
             <Handle
@@ -757,18 +762,19 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
               isConnectableEnd={true}
               style={{
                 background: '#1A1A1A',
-                width: 24, height: 24,
-                left: -12,
+                width: 22, height: 22,
+                left: -28,  // 关键: 弹出图外 (12px gap + 22/2 让圆心在 -17)
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.6)',
+                border: '1.5px solid rgba(255,255,255,0.65)',
                 borderRadius: '50%',
                 color: 'rgba(255,255,255,0.9)',
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 200,
-                lineHeight: '22px',
+                lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 zIndex: 10,
               }}
             >+</Handle>
@@ -780,18 +786,19 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
               isConnectableEnd={true}
               style={{
                 background: '#1A1A1A',
-                width: 24, height: 24,
-                right: -12,
+                width: 22, height: 22,
+                right: -28,  // 关键: 弹出图外
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.6)',
+                border: '1.5px solid rgba(255,255,255,0.65)',
                 borderRadius: '50%',
                 color: 'rgba(255,255,255,0.9)',
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 200,
-                lineHeight: '22px',
+                lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 zIndex: 10,
               }}
             >+</Handle>
@@ -806,49 +813,51 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
-            marginTop: 12,
-            width: 300,
-            padding: '10px 12px',
+            marginTop: 14,
+            width: 300,  // 跟图同宽, 居中对齐 (parent flex column + alignItems: center)
+            padding: '12px 14px 14px',
             background: '#1A1A1A',
             border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 10,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,  // 3 段之间的间隔
           }}
         >
-          {/* 工具行: 灯泡 + 加号 (左) | 展开 (右) */}
+          {/* ========== Section 1: 工具行 (左上: ✨ +, 右上: ↗) ========== */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: 8,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button
                 onClick={(e) => e.stopPropagation()}
                 title="AI 优化提示词 (TODO)"
                 style={{
-                  width: 24, height: 24,
+                  width: 28, height: 28,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 4,
-                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 6,
+                  color: 'rgba(255,255,255,0.75)',
                   cursor: 'pointer',
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               >✨</button>
               <button
                 onClick={(e) => e.stopPropagation()}
                 title="预设 (TODO)"
                 style={{
-                  width: 24, height: 24,
+                  width: 28, height: 28,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 4,
-                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 6,
+                  color: 'rgba(255,255,255,0.75)',
                   cursor: 'pointer',
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               >+</button>
             </div>
@@ -856,69 +865,79 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
               onClick={(e) => e.stopPropagation()}
               title="全屏展开 (TODO)"
               style={{
-                width: 24, height: 24,
+                width: 28, height: 28,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.5)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 6,
+                color: 'rgba(255,255,255,0.55)',
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: 15,
               }}
             >↗</button>
           </div>
 
-          {/* prompt textarea */}
+          {/* ========== Section 2: 提示词 (大 textarea) ========== */}
           <NodeTextarea
             value={data.prompt || ''}
             onChange={(v) => update(id, { prompt: v })}
-            placeholder="描述任何你想要生成的内容"
-            rows={3}
+            placeholder="描述我们要生成的内容"
+            rows={4}
           />
 
-          {/* 工具行: 模型 + 比例 + 画质 + 数量 + cost + run */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 4,
-            marginTop: 8,
-          }}>
-            <ModelChip
-              models={AI_MODELS.image}
-              value={model}
-              onChange={(v) => update(id, { model: v })}
-            />
-            <ChipRow
-              options={ASPECTS.slice(0, 4)}
-              value={aspect}
-              onChange={(v) => update(id, { aspect: String(v) })}
-            />
-            <ChipRow
-              options={QUALITIES.slice(0, 3)}
-              value={quality}
-              onChange={(v) => update(id, { quality: String(v) })}
-            />
-            <ChipRow
-              options={[1, 2, 4]}
-              value={quantity}
-              onChange={(v) => update(id, { quantity: Number(v) })}
-              prefix="×"
-            />
-            <span style={{ flex: 1 }} />
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 2 }}>
-              ◆{modelInfo.cost * quantity}
-            </span>
+          {/* ========== Section 3: 模型 + 比例 + 画质 + 数量 + cost + run ========== */}
+          <div>
+            {/* 上行: 模型 + 比例 + 画质 + 数量 chips */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 5,
+            }}>
+              <ModelChip
+                models={AI_MODELS.image}
+                value={model}
+                onChange={(v) => update(id, { model: v })}
+              />
+              <ChipRow
+                options={ASPECTS.slice(0, 4)}
+                value={aspect}
+                onChange={(v) => update(id, { aspect: String(v) })}
+              />
+              <ChipRow
+                options={QUALITIES.slice(0, 3)}
+                value={quality}
+                onChange={(v) => update(id, { quality: String(v) })}
+              />
+              <ChipRow
+                options={[1, 2, 4]}
+                value={quantity}
+                onChange={(v) => update(id, { quantity: Number(v) })}
+                prefix="×"
+              />
+            </div>
+
+            {/* 下行: cost + run (右对齐) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 8,
+              marginTop: 8,
+            }}>
+              {data.errorMsg && (
+                <span style={{ fontSize: 10, color: '#ff6b6b', marginRight: 'auto' }}>⚠ {data.errorMsg}</span>
+              )}
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                ◆{modelInfo.cost * quantity}
+              </span>
+              <RunButton
+                cost={modelInfo.cost * quantity}
+                status={data.status}
+                onRun={onRun}
+              />
+            </div>
           </div>
-
-          {data.errorMsg && (
-            <div style={{ fontSize: 10, color: '#ff6b6b', marginTop: 4 }}>⚠ {data.errorMsg}</div>
-          )}
-
-          <RunButton
-            cost={modelInfo.cost * quantity}
-            status={data.status}
-            onRun={onRun}
-          />
         </div>
       )}
     </div>
