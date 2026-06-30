@@ -626,63 +626,50 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   }, [id, update]);
 
   return (
-    <NodeShell type="image" selected={selected}>
-      {/* ============== Section A: 图片区 (始终显示) ============== */}
-      <div
-        data-image-area="1"
-        style={{
-          padding: '8px 10px 10px',
-        }}
-      >
-        {/* 07-01: i2i 模式提示 (上游接了 image 节点) */}
-        {isI2I && (
-          <div
-            data-i2i-badge="1"
-            style={{
-              fontSize: 10,
-              color: '#6e8cd6',
-              background: 'rgba(110,140,214,0.12)',
-              border: '1px solid rgba(110,140,214,0.4)',
-              borderRadius: 3,
-              padding: '2px 6px',
-              marginBottom: 6,
-              display: 'inline-block',
-              fontWeight: 500,
-            }}
-            title={`将使用 ${upstreamUrls.length} 张上游图作为 i2i 参考`}
-          >
-            🔗 i2i 模式 · {upstreamUrls.length} 张参考图
-          </div>
-        )}
-
-        {/* 顶部: 标签 + 上传按钮 (参考截图) */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 6,
-        }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>🖼</span> Image
-          </span>
+    // 07-01 重做: 3 段独立 panel, 不用 NodeShell, 不绑在一起
+    // - 默认 (未选中): 只显示裸图
+    // - 选中: 上方浮出 upload 按钮 + 下方浮出 op-panel + 左右端口圆圈
+    <div
+      data-image-node="1"
+      style={{
+        position: 'relative',
+        background: 'transparent',
+        padding: 0,
+        // 不要 border/box-shadow, 让 3 段看着独立
+      }}
+    >
+      {/* ============== Section 1: 上传按钮 (上方浮动, 仅 selected) ============== */}
+      {selected && (
+        <div
+          data-upload-panel="1"
+          style={{
+            position: 'absolute',
+            top: -36,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            pointerEvents: 'auto',
+          }}
+        >
           <button
             onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
-              padding: '4px 10px',
+              padding: '5px 12px',
               fontSize: 11,
-              color: 'rgba(255,255,255,0.85)',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 12,
+              color: 'rgba(255,255,255,0.9)',
+              background: '#1A1A1A',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 14,
               cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(110,140,214,0.18)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(110,140,214,0.25)'; e.currentTarget.style.borderColor = 'rgba(110,140,214,0.5)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#1A1A1A'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
             title="本地图片上传, 作为参考图 (i2i 上游)"
           >
-            <span style={{ fontSize: 12 }}>↑</span> 上传
+            <span style={{ fontSize: 13 }}>↑</span> 上传
           </button>
           <input
             ref={fileInputRef}
@@ -693,8 +680,43 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             data-testid={`upload-input-${id}`}
           />
         </div>
+      )}
 
-        {/* 图片 / 占位框 (固定高度 180, 跟参考截图一致) */}
+      {/* ============== Section 2: 裸图 (始终显示, 没 chrome) ============== */}
+      <div
+        data-image-bare="1"
+        style={{
+          position: 'relative',
+          width: 280,
+          background: 'rgba(0,0,0,0.3)',
+          border: selected ? '1.5px solid rgba(110,140,214,0.7)' : '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}
+      >
+        {/* i2i badge (顶部, 始终) */}
+        {isI2I && (
+          <div
+            data-i2i-badge="1"
+            style={{
+              position: 'absolute',
+              top: 6, left: 6,
+              zIndex: 2,
+              fontSize: 10,
+              color: '#6e8cd6',
+              background: 'rgba(110,140,214,0.18)',
+              border: '1px solid rgba(110,140,214,0.5)',
+              borderRadius: 3,
+              padding: '2px 6px',
+              fontWeight: 500,
+            }}
+            title={`将使用 ${upstreamUrls.length} 张上游图作为 i2i 参考`}
+          >
+            🔗 i2i · {upstreamUrls.length}
+          </div>
+        )}
+
+        {/* 图片 / 占位框 (固定高度, 跟参考截图一致) */}
         {data.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -702,40 +724,95 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             alt=""
             style={{
               width: '100%',
-              height: 180,
+              height: 200,
               objectFit: 'contain',
-              borderRadius: 6,
               display: 'block',
-              background: 'rgba(0,0,0,0.3)',
             }}
           />
         ) : (
           <div style={{
             width: '100%',
-            height: 180,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 6,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.4)',
-            border: '1px dashed rgba(110,140,214,0.3)',
+            height: 200,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            color: 'rgba(255,255,255,0.35)',
             fontSize: 11,
           }}>
-            {isI2I ? '🔗 i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}
+            <span style={{ fontSize: 28, opacity: 0.5 }}>🖼</span>
+            <span>{isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}</span>
           </div>
+        )}
+
+        {/* 端口 (左右圆圈, 仅 selected 出现, 居中于 image) */}
+        {selected && (
+          <>
+            <Handle
+              type="source"
+              id="left"
+              position={Position.Left}
+              isConnectableStart={true}
+              isConnectableEnd={true}
+              style={{
+                background: '#1A1A1A',
+                width: 24, height: 24,
+                left: -12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: '1.5px solid rgba(255,255,255,0.6)',
+                borderRadius: '50%',
+                color: 'rgba(255,255,255,0.9)',
+                fontSize: 16,
+                fontWeight: 200,
+                lineHeight: '22px',
+                textAlign: 'center',
+                cursor: 'crosshair',
+                zIndex: 10,
+              }}
+            >+</Handle>
+            <Handle
+              type="source"
+              id="right"
+              position={Position.Right}
+              isConnectableStart={true}
+              isConnectableEnd={true}
+              style={{
+                background: '#1A1A1A',
+                width: 24, height: 24,
+                right: -12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: '1.5px solid rgba(255,255,255,0.6)',
+                borderRadius: '50%',
+                color: 'rgba(255,255,255,0.9)',
+                fontSize: 16,
+                fontWeight: 200,
+                lineHeight: '22px',
+                textAlign: 'center',
+                cursor: 'crosshair',
+                zIndex: 10,
+              }}
+            >+</Handle>
+          </>
         )}
       </div>
 
-      {/* ============== Section B: 操作台 (仅 selected 时弹出) ============== */}
+      {/* ============== Section 3: 操作台 (下方独立 panel, 仅 selected) ============== */}
       {selected && (
         <div
           data-op-panel="1"
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
-            padding: '10px 10px 10px',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(0,0,0,0.25)',
-            borderRadius: '0 0 8px 8px',
+            marginTop: 12,
+            width: 300,
+            padding: '10px 12px',
+            background: '#1A1A1A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 10,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
           }}
         >
           {/* 工具行: 灯泡 + 加号 (左) | 展开 (右) */}
@@ -743,7 +820,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: 6,
+            marginBottom: 8,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <button
@@ -798,7 +875,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             rows={3}
           />
 
-          {/* 工具行: 模型 + 比例 + 画质 + 数量 + 麦克风 + cost + run */}
+          {/* 工具行: 模型 + 比例 + 画质 + 数量 + cost + run */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -844,7 +921,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           />
         </div>
       )}
-    </NodeShell>
+    </div>
   );
 }
 
