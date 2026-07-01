@@ -4,27 +4,27 @@ import { useCallback, useState, useEffect, useMemo, useRef, createContext, useCo
 import {
   ReactFlow,
   ReactFlowProvider,
-  Handle,
-  Position,
   useNodesState,
   useEdgesState,
-  addEdge,
   useReactFlow,
   useStore,
-  useConnection,
   useUpdateNodeInternals,
+  Handle,
+  Position,
+  addEdge,
   ConnectionMode,
   MarkerType,
-  type Connection,
-  type ConnectionLineComponent,
   type Edge,
-  type EdgeChange,
   type Node,
   type NodeProps,
   type NodeTypes,
+  type EdgeProps,
+  type Connection,
+  type EdgeChange,
   type OnConnect,
   type OnConnectStart,
   type OnConnectEnd,
+  type ConnectionLineComponent,
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
@@ -101,58 +101,7 @@ const NodeIcon = ({ type }: { type: string }) => {
   }
 };
 
-// 输入端口 (左) — 07-01 修复: 拖动半径更大 + 偏移更稳,
-//   之前 width:16 top:'50%' 节点大时 距光标远, 用户拖不动
-function LeftHandle({ selected }: { selected?: boolean }) {
-  return (
-    <Handle
-      type="source"
-      id="left"
-      position={Position.Left}
-      isConnectableStart={true}
-      isConnectableEnd={true}
-      style={{
-        background: PORT_BG,
-        width: 20,
-        height: 20,
-        left: -10,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        border: selected ? '2px solid #fff' : '1.5px solid rgba(0,0,0,0.4)',
-        zIndex: 10,
-        cursor: 'crosshair',
-        boxShadow: '0 0 0 3px rgba(110,140,214,0.25)',
-      }}
-    />
-  );
-}
-
-// 输出端口 (右)
-function RightHandle({ selected }: { selected?: boolean }) {
-  return (
-    <Handle
-      type="source"
-      id="right"
-      position={Position.Right}
-      isConnectableStart={true}
-      isConnectableEnd={true}
-      style={{
-        background: PORT_BG,
-        width: 20,
-        height: 20,
-        right: -10,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        border: selected ? '2px solid #fff' : '1.5px solid rgba(0,0,0,0.4)',
-        zIndex: 10,
-        cursor: 'crosshair',
-        boxShadow: '0 0 0 3px rgba(110,140,214,0.25)',
-      }}
-    />
-  );
-}
-
-// 节点类型标签
+// 节点图标
 const TYPE_LABELS: Record<string, string> = {
   text: '文字',
   image: '图片',
@@ -425,69 +374,41 @@ function RunButton({
   );
 }
 
-// 共享: 节点外壳 (统一包装: handle + header + body)
-function NodeShell({
-  type,
-  selected,
-  hasInput = true,
-  hasOutput = true,
-  children,
-}: {
-  type: string;
-  selected?: boolean;
-  hasInput?: boolean;
-  hasOutput?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{
-      ...baseNodeStyle,
-      borderColor: selected ? NODE_BORDER_SELECTED : NODE_BORDER,
-      borderWidth: selected ? 2 : 1,
-    }}>
-      {hasInput && <LeftHandle selected={selected} />}
-      {hasOutput && <RightHandle selected={selected} />}
-      <div style={headerStyle}>
-        <NodeIcon type={type} />
-        {TYPE_LABELS[type]}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 // 07-01 共享: 节点 scaffold (新 UI, 跟 image 节点一致)
 // 3 段独立: 顶部浮动 (top) + 裸 main (mainContent) + 底部 op-panel (bottom)
-// - 大隐形 Handle 铺满 main: 拖线到 main 任意位置 = 吸附 (pointerEvents 条件化)
-// - selected 时左右小 + 端口浮出图外
-// - 选中蓝紫边 / 拖线中更亮边
+// - 自研 PortDot (取代 React Flow Handle): left=input, right=output
+// - 默认 subtle 永远可见 (老画布 06-29 修复风格)
+// - selected 时高亮 (蓝紫发光), isBeingDraggedTo 时绿光 (有人正拖过来)
+// - 07-02 改: 通过 NodeInteractionContext 拿 onPortMouseDown + isBeingDraggedTo
+//   (不再用 props, 5 个调用点不用改)
 function NodeScaffold({
   id,
   selected,
-  isBeingDraggedTo,
   mainWidth,
   mainHeight,
   mainContent,         // main area 内容 (textarea / video / audio / placeholder)
   topSection,          // 可选: 顶部浮动 (image 的 upload 按钮)
   bottomSection,       // 可选: 底部独立 panel (op-panel when selected)
   badge,               // 可选: 角标 (image 的 i2i 模式)
-  showPorts = true,    // 是否显示左右 + 端口
   mainStyle = {},      // main area 额外样式
+  isBeingDraggedTo: propIsDragged,  // 可选: 强制覆盖 context 值 (OutputNode 用 false)
+  showPorts = true,    // 可选: 是否显示 PortDot (OutputNode 用 false)
 }: {
   id: string;
   selected: boolean;
-  isBeingDraggedTo: boolean;
   mainWidth: number;
   mainHeight: number;
   mainContent: React.ReactNode;
   topSection?: React.ReactNode;
   bottomSection?: React.ReactNode;
   badge?: React.ReactNode;
-  showPorts?: boolean;
   mainStyle?: React.CSSProperties;
+  isBeingDraggedTo?: boolean;
+  showPorts?: boolean;
 }) {
+  const { onPortMouseDown, isBeingDraggedTo: ctxIsDragged } = useContext(NodeInteractionContext);
+  const isBeingDraggedTo = propIsDragged !== undefined ? propIsDragged : ctxIsDragged(id);
   // 07-01: 强制 React Flow 重新测量节点尺寸
-  // 修 bug: 旧 measured 缓存会让节点 (尤其 showPorts=false) 渲染时宽度被压到 ~137px
   const updateNodeInternals = useUpdateNodeInternals();
   useEffect(() => {
     updateNodeInternals(id);
@@ -502,8 +423,8 @@ function NodeScaffold({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        minWidth: mainWidth,  // 强制撑开 (避免 React Flow 复用旧 measured 宽度)
-        width: 'fit-content',  // 跟着内容走 (op-panel 可能更宽)
+        minWidth: mainWidth,
+        width: 'fit-content',
       }}
     >
       {topSection}
@@ -527,71 +448,25 @@ function NodeScaffold({
         {badge}
         {mainContent}
 
-        {/* 大隐形 Handle — 整个 main 作为 drop target */}
-        <Handle
-          type="source"
-          id={`snap-${id}`}
-          position={Position.Left}
-          isConnectableStart={false}
-          isConnectableEnd={false}  // 07-01: 改 false, + 端口是唯一 drop target, 连线终点精准在 + 圆心 (不再吸到 body 中点)
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            top: 0,
-            left: 0,
-            background: 'transparent',
-            border: 'none',
-            borderRadius: 0,
-            opacity: 0,
-            transform: 'none',
-            zIndex: 1,
-            pointerEvents: 'none',  // 07-01 修红线: isConnectableEnd=false 后不能还拦 events, 透传给 + 端口
-          }}
-        />
-
-        {/* 小 + 端口 (selected 或 isBeingDraggedTo 时浮出, 07-01 tapnow 风格)
-            之前仅 selected 才出现, 拖到目标时目标节点没提示. 现在拖到时也弹 + 端口 + 发光. */}
-        {showPorts && (selected || isBeingDraggedTo) && (
+        {/* 07-02 自研 PortDot — 取代 React Flow <Handle/> */}
+        {showPorts && (
           <>
-            <Handle
-              type="target"
-              id="left"
-              position={Position.Left}
-              isConnectableStart={true}
-              isConnectableEnd={true}
-              style={{
-                background: '#1A1A1A', width: 22, height: 22,
-                left: -32, top: '50%', transform: 'translateY(-50%)',
-                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
-                borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
-                fontSize: 15, fontWeight: 300, lineHeight: '20px',
-                textAlign: 'center', cursor: 'crosshair',
-                boxShadow: isBeingDraggedTo
-                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
-                  : '0 2px 10px rgba(0,0,0,0.6)',
-                zIndex: 10,
-              }}
-            >+</Handle>
-            <Handle
-              type="source"
-              id="right"
-              position={Position.Right}
-              isConnectableStart={true}
-              isConnectableEnd={true}
-              style={{
-                background: '#1A1A1A', width: 22, height: 22,
-                right: -32, top: '50%', transform: 'translateY(-50%)',
-                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
-                borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
-                fontSize: 15, fontWeight: 300, lineHeight: '20px',
-                textAlign: 'center', cursor: 'crosshair',
-                boxShadow: isBeingDraggedTo
-                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
-                  : '0 2px 10px rgba(0,0,0,0.6)',
-                zIndex: 10,
-              }}
-            >+</Handle>
+            <PortDot
+              nodeId={id}
+              portId="left"
+              isInput
+              selected={selected}
+              isBeingDraggedTo={isBeingDraggedTo}
+              onMouseDown={(e) => onPortMouseDown(id, 'left', true, e)}
+            />
+            <PortDot
+              nodeId={id}
+              portId="right"
+              isInput={false}
+              selected={selected}
+              isBeingDraggedTo={isBeingDraggedTo}
+              onMouseDown={(e) => onPortMouseDown(id, 'right', false, e)}
+            />
           </>
         )}
       </div>
@@ -620,11 +495,11 @@ type TextNodeData = {
   model?: string;
   quantity?: number;
   status?: 'idle' | 'running' | 'done' | 'error';
+  errorMsg?: string;
 };
 function TextNode({ data, selected, id }: NodeProps<Node<TextNodeData>>) {
   const update = useNodeUpdate();
-  const connection = useConnection();
-  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
+  // 07-02: useConnection 已删, isBeingDraggedTo 通过 NodeScaffold / ImageNode 内部 useContext 拿
   const model = data.model || 'deepseek';
   const modelInfo = AI_MODELS.text.find((m) => m.id === model) || AI_MODELS.text[0];
   const quantity = data.quantity || 1;
@@ -632,7 +507,6 @@ function TextNode({ data, selected, id }: NodeProps<Node<TextNodeData>>) {
     <NodeScaffold
       id={id}
       selected={selected}
-      isBeingDraggedTo={isBeingDraggedTo}
       mainWidth={300}
       mainHeight={140}
       mainContent={
@@ -739,9 +613,9 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
   const update = useNodeUpdate();
   const fileInputRef = useRef<HTMLInputElement>(null);  // 07-01 新增: 本地上传
   const upstreamUrls = useUpstreamUrls(id);  // 07-01: 读上游
-  // 07-01 新增: 监听 useConnection, 当别的节点拖线过来时高亮图
-  const connection = useConnection();
-  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
+  // 07-02: 自研, ImageNode 自己用 (border + boxShadow 高亮拖过来的线)
+  const { onPortMouseDown, isBeingDraggedTo: ctxIsDragged } = useContext(NodeInteractionContext);
+  const isBeingDraggedTo = ctxIsDragged(id);
   const model = data.model || 'jimeng';
   const modelInfo = AI_MODELS.image.find((m) => m.id === model) || AI_MODELS.image[0];
   const aspect = data.aspect || '自适应';
@@ -944,95 +818,25 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           </div>
         )}
 
-        {/* ============== 大隐形 Handle — 整个图作为 drop target ==============
-            不点击时 + 端口隐藏, 但用户拖别的节点的线过来, 落到图上任意位置都能吸附
-            isConnectableStart=false: 点击图 = 选中 (不会误启动连线)
-            isConnectableEnd=true: 拖到图上 = 接收 (吸附)
-            关键覆盖:
-              - transform: 'none' (默认 translate(-50%, -50%) 把 100% 宽 handle 推左半)
-              - borderRadius: 0 (默认 100% 让 298x218 handle 变椭圆, 4 角切掉)
-              - pointerEvents: 仅拖线中才 'all', 平时 'none' → 透传 mousedown 给节点拖拽
-                (否则 100% 透明的 handle 永远拦截 mousedown, 节点拖不动)
-        */}
-        <Handle
-          type="source"
-          id="image-snap"
-          position={Position.Left}
-          isConnectableStart={false}
-          isConnectableEnd={false}  // 07-01: 改 false, + 端口是唯一 drop target, 连线终点精准在 + 圆心 (不再吸到 body 中点)
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            top: 0,
-            left: 0,
-            background: 'transparent',
-            border: 'none',
-            borderRadius: 0,  // 关键: 覆盖默认 100% 圆角, 避免椭圆
-            opacity: 0,
-            transform: 'none',  // 关键: 覆盖默认 translate, 让 handle 真的铺满图
-            zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
-            pointerEvents: 'none',  // 07-01 修红线: isConnectableEnd=false 后不能还拦 events, 透传给 + 端口
-          }}
+        {/* ============== 07-02 自研 PortDot — 取代 React Flow <Handle/> ==============
+            (image 节点不走 NodeScaffold, 自己挂 PortDot)
+            默认 subtle 永远可见, selected 时高亮, isBeingDraggedTo 时绿光 */}
+        <PortDot
+          nodeId={id}
+          portId="left"
+          isInput
+          selected={selected}
+          isBeingDraggedTo={isBeingDraggedTo}
+          onMouseDown={(e) => onPortMouseDown(id, 'left', true, e)}
         />
-
-        {/* 端口 (左右 + 圆圈, selected 或 isBeingDraggedTo 时出现, 弹出图外) (07-01 tapnow 风格) */}
-        {(selected || isBeingDraggedTo) && (
-          <>
-            <Handle
-              type="target"
-              id="left"
-              position={Position.Left}
-              isConnectableStart={true}
-              isConnectableEnd={true}
-              style={{
-                background: '#1A1A1A',
-                width: 22, height: 22,
-                left: -32,  // 弹出图外 10px gap
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
-                borderRadius: '50%',
-                color: 'rgba(255,255,255,0.95)',
-                fontSize: 15,
-                fontWeight: 300,
-                lineHeight: '20px',
-                textAlign: 'center',
-                cursor: 'crosshair',
-                boxShadow: isBeingDraggedTo
-                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
-                  : '0 2px 10px rgba(0,0,0,0.6)',
-                zIndex: 10,
-              }}
-            >+</Handle>
-            <Handle
-              type="source"
-              id="right"
-              position={Position.Right}
-              isConnectableStart={true}
-              isConnectableEnd={true}
-              style={{
-                background: '#1A1A1A',
-                width: 22, height: 22,
-                right: -32,  // 弹出图外 10px gap
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
-                borderRadius: '50%',
-                color: 'rgba(255,255,255,0.95)',
-                fontSize: 15,
-                fontWeight: 300,
-                lineHeight: '20px',
-                textAlign: 'center',
-                cursor: 'crosshair',
-                boxShadow: isBeingDraggedTo
-                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
-                  : '0 2px 10px rgba(0,0,0,0.6)',
-                zIndex: 10,
-              }}
-            >+</Handle>
-          </>
-        )}
+        <PortDot
+          nodeId={id}
+          portId="right"
+          isInput={false}
+          selected={selected}
+          isBeingDraggedTo={isBeingDraggedTo}
+          onMouseDown={(e) => onPortMouseDown(id, 'right', false, e)}
+        />
       </div>
 
       {/* ============== Section 3: 操作台 (下方独立 panel, 仅 selected) ============== */}
@@ -1186,11 +990,11 @@ type VideoGenData = {
   audio?: '开启' | '静音';
   quantity?: number;
   status?: 'idle' | 'running' | 'done' | 'error';
+  errorMsg?: string;
 };
 function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
   const update = useNodeUpdate();
-  const connection = useConnection();
-  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
+  // 07-02: useConnection 已删, isBeingDraggedTo 通过 NodeScaffold / ImageNode 内部 useContext 拿
   const model = data.model || 'seedance';
   const modelInfo = AI_MODELS['video-gen'].find((m) => m.id === model) || AI_MODELS['video-gen'][0];
   const mode = data.mode || '首尾帧';
@@ -1232,7 +1036,6 @@ function VideoGenNode({ data, selected, id }: NodeProps<Node<VideoGenData>>) {
     <NodeScaffold
       id={id}
       selected={selected}
-      isBeingDraggedTo={isBeingDraggedTo}
       mainWidth={300}
       mainHeight={200}
       mainContent={mainContent}
@@ -1298,11 +1101,11 @@ type AudioGenData = {
   model?: string;
   audioType?: '音乐' | '歌词' | '自适应' | '纯音乐';
   status?: 'idle' | 'running' | 'done' | 'error';
+  errorMsg?: string;
 };
 function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
   const update = useNodeUpdate();
-  const connection = useConnection();
-  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
+  // 07-02: useConnection 已删, isBeingDraggedTo 通过 NodeScaffold / ImageNode 内部 useContext 拿
   const model = data.model || 'music2';
   const modelInfo = AI_MODELS['audio-gen'].find((m) => m.id === model) || AI_MODELS['audio-gen'][0];
   const audioType = data.audioType || '纯音乐';
@@ -1339,7 +1142,6 @@ function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
     <NodeScaffold
       id={id}
       selected={selected}
-      isBeingDraggedTo={isBeingDraggedTo}
       mainWidth={300}
       mainHeight={90}
       mainContent={mainContent}
@@ -1398,8 +1200,7 @@ function AudioGenNode({ data, selected, id }: NodeProps<Node<AudioGenData>>) {
 type MergeData = { inputs?: number; label?: string };
 function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
   const update = useNodeUpdate();
-  const connection = useConnection();
-  const isBeingDraggedTo = connection.inProgress && connection.fromNode?.id !== id;
+  // 07-02: useConnection 已删, isBeingDraggedTo 通过 NodeScaffold / ImageNode 内部 useContext 拿
   const inputCount = data.inputs || 2;
   // main area: 输入口可视化 + 标签
   const mainContent = (
@@ -1435,13 +1236,11 @@ function MergeNode({ data, selected, id }: NodeProps<Node<MergeData>>) {
     <NodeScaffold
       id={id}
       selected={selected}
-      isBeingDraggedTo={isBeingDraggedTo}
       mainWidth={300}
       mainHeight={120}
       mainContent={
         <>
           {inputHandles}
-          <RightHandle selected={selected} />
           {mainContent}
         </>
       }
@@ -1598,6 +1397,205 @@ const ConnectionLine: ConnectionLineComponent = ({
     </g>
   );
 };
+
+// =====================================================================
+// 07-02 自研连接线系统 (老画布 CanvasEditor.old.tsx 移植, 替换 React Flow 默认)
+// - PortDot: 自研 div 端口 (取代 React Flow <Handle/>)
+// - ConnectionPath: cubic bezier + 箭头
+// - SelfDrawnEdge: React Flow 自定义 edge 渲染 (通过 edgeTypes 接管)
+// =====================================================================
+
+const PORT_R = 11;  // 端口圆点半径 (跟老画布一致, 默认 subtle 时 22px 直径)
+
+// 自研端口圆点 — 永远可见, 默认 subtle (老画布 06-29 修复风格)
+// selected: 高亮 (蓝紫发光 + 缩放 1.4)
+// isBeingDraggedTo: 绿光 (有人正拖线过来)
+// 默认 subtle: 0.32 opacity, scale 0.65
+function PortDot({
+  nodeId,
+  portId,
+  isInput,
+  selected,
+  isBeingDraggedTo,
+  onMouseDown,
+}: {
+  nodeId: string;
+  portId: string;
+  isInput: boolean;
+  selected: boolean;
+  isBeingDraggedTo: boolean;
+  onMouseDown: (e: React.MouseEvent) => void;
+}) {
+  const highlighted = isBeingDraggedTo;
+  return (
+    <div
+      data-role="port"
+      data-port-id={portId}
+      data-port-node={nodeId}
+      data-port-input={isInput ? '1' : '0'}
+      data-port-type="default"
+      onMouseDown={onMouseDown}
+      title={isInput ? '输入' : '输出'}
+      style={{
+        position: 'absolute',
+        ...(isInput ? { left: -PORT_R } : { right: -PORT_R }),
+        top: '50%',
+        transform: `translateY(-50%) scale(${highlighted ? 1.4 : selected ? 1 : 0.65})`,
+        width: PORT_R * 2,
+        height: PORT_R * 2,
+        borderRadius: '50%',
+        background: highlighted
+          ? 'rgba(110,140,214,0.95)'
+          : selected
+            ? 'rgba(110,140,214,0.55)'
+            : '#1A1A1A',
+        border: highlighted
+          ? '1.5px solid rgba(140,220,160,1)'
+          : selected
+            ? '1.5px solid rgba(110,140,214,0.85)'
+            : '1.5px solid rgba(255,255,255,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: highlighted || selected ? '#fff' : 'rgba(255,255,255,0.9)',
+        fontSize: '1rem',
+        fontWeight: 200,
+        cursor: isInput ? 'default' : 'grab',
+        pointerEvents: 'auto',
+        lineHeight: 1,
+        zIndex: 10,
+        opacity: highlighted || selected ? 1 : 0.32,
+        transition: 'opacity 0.25s ease, transform 0.25s ease, background 0.18s ease, border-color 0.18s ease',
+        boxShadow: highlighted
+          ? '0 0 0 5px rgba(140,220,160,0.18), 0 0 16px rgba(140,220,160,0.55)'
+          : selected
+            ? '0 0 0 3px rgba(110,140,214,0.25)'
+            : 'none',
+      }}
+    >
+      +
+    </div>
+  );
+}
+
+// 自研连接线 cubic bezier + 箭头 (移植自 CanvasEditor.old.tsx line 2186-2219)
+// dx/dy 自动判断水平/竖直主导, 平滑曲线 (NODE_W * 0.4 最小偏移避免圆弧)
+const NODE_W = 300;  // 节点宽 (跟 NodeScaffold mainWidth 一致)
+function makeConnectionPath(a: { x: number; y: number }, b: { x: number; y: number }, pending = false) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const cp = Math.max(NODE_W * 0.4, Math.abs(dx) * 0.5, Math.abs(dy) * 0.5);
+  let path: string;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    path = `M ${a.x} ${a.y} C ${a.x + cp} ${a.y}, ${b.x - cp} ${b.y}, ${b.x} ${b.y}`;
+  } else {
+    path = `M ${a.x} ${a.y} C ${a.x} ${a.y + Math.sign(dy) * cp}, ${b.x} ${b.y - Math.sign(dy) * cp}, ${b.x} ${b.y}`;
+  }
+  return { path, stroke: pending ? 'rgba(160, 200, 255, 0.9)' : 'rgba(110, 140, 214, 0.85)', strokeWidth: pending ? 2.5 : 2.5, markerEnd: pending ? 'url(#arrow-pending)' : 'url(#arrow)' };
+}
+
+// React Flow 自定义 edge 渲染 (通过 edgeTypes 接管默认 bezier)
+// React Flow 给的 sourceX/Y/targetX/Y 是世界坐标
+function SelfDrawnEdge(props: EdgeProps) {
+  const { sourceX, sourceY, targetX, targetY, selected } = props;
+  const { path, stroke, strokeWidth, markerEnd } = makeConnectionPath(
+    { x: sourceX, y: sourceY },
+    { x: targetX, y: targetY }
+  );
+  return (
+    <g>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="rgba(220,230,245,0.7)" />
+        </marker>
+        <marker id="arrow-pending" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="rgba(160,200,255,0.85)" />
+        </marker>
+      </defs>
+      <path
+        d={path}
+        stroke={selected ? '#6e8cd6' : stroke}
+        strokeWidth={selected ? 2.8 : strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+        markerEnd={markerEnd}
+      />
+    </g>
+  );
+}
+
+// React Flow edgeTypes 注册 (在 CanvasFlowEditorInner 之前定义)
+const SELF_DRAWN_EDGE_TYPES = { selfDrawn: SelfDrawnEdge };
+
+// 07-02 自研候选线 SVG overlay 组件
+// 接收 pending state, 渲染从 fromNode port 到鼠标位置的虚线
+// SVG 在 canvas-region 内 (绝对定位, 屏幕坐标)
+function PendingLineOverlay({ pending }: { pending: {
+  fromNode: string;
+  fromPort: string;
+  fromIsInput: boolean;
+  mouseScreenX: number;
+  mouseScreenY: number;
+  hoveredPort: { nodeId: string; portId: string } | null;
+} }) {
+  // 找起点 port 的屏幕坐标 (用 DOM PortDot 元素)
+  const portEl = document.querySelector(
+    `[data-port-node="${pending.fromNode}"][data-port-id="${pending.fromPort}"][data-port-input="${pending.fromIsInput ? '1' : '0'}"]`
+  ) as HTMLElement | null;
+  if (!portEl) return null;
+  const portRect = portEl.getBoundingClientRect();
+  // SVG 容器是 data-canvas-region, 起点 = port 中心 - canvas-region 左上角
+  const canvasRegion = document.querySelector('[data-canvas-region]') as HTMLElement | null;
+  if (!canvasRegion) return null;
+  const canvasRect = canvasRegion.getBoundingClientRect();
+  const startX = portRect.left + portRect.width / 2 - canvasRect.left;
+  const startY = portRect.top + portRect.height / 2 - canvasRect.top;
+  const endX = pending.mouseScreenX - canvasRect.left;
+  const endY = pending.mouseScreenY - canvasRect.top;
+  const { path, stroke, strokeWidth, markerEnd } = makeConnectionPath(
+    { x: startX, y: startY },
+    { x: endX, y: endY },
+    true
+  );
+  return (
+    <svg
+      data-pending-line="1"
+      style={{
+        position: 'absolute',
+        top: 0, left: 0,
+        width: '100%', height: '100%',
+        pointerEvents: 'none',
+        zIndex: 40,
+        overflow: 'visible',
+      }}
+    >
+      <path
+        d={path}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={pending.hoveredPort ? undefined : '6 4'}
+        markerEnd={markerEnd}
+      />
+    </svg>
+  );
+}
+
+// =====================================================================
+// 07-02 节点交互 context
+// 让 6 个节点 (5 个 NodeScaffold + ImageNode) 共享 pending state + onPortMouseDown 回调
+// 不传 props 避免每个调用点重复传 (NodeScaffold 内部 useContext 拿)
+// =====================================================================
+type NodeInteractionCtx = {
+  onPortMouseDown: (nodeId: string, portId: string, isInput: boolean, e: React.MouseEvent) => void;
+  isBeingDraggedTo: (id: string) => boolean;  // 给定 nodeId, 算它是否被拖线
+};
+
+const NodeInteractionContext = createContext<NodeInteractionCtx>({
+  onPortMouseDown: () => {},
+  isBeingDraggedTo: () => false,
+});
 
 // 共享 edge 样式 (bezier + 箭头 + hover 高亮)
 //
@@ -2142,12 +2140,126 @@ function CanvasFlowEditorInner({
     sourceHandle?: string;
   }>({ show: false, x: 0, y: 0, mode: 'doubleclick' });
 
-  // 拖拽连线状态: 从哪个节点/handle 开始, 是否已成功连上
-  const connectionStartRef = useRef<{ nodeId: string; handleId?: string } | null>(null);
-  const connectionConnectedRef = useRef(false);
-
+  // 07-02: useReactFlow 必须在 handlePortMouseDown 之前 (否则 useCallback dep TDZ)
   const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getZoom } = useReactFlow();
   const [zoom, setZoom] = useState(1);
+
+  // 07-02 自研连接线系统 — pending state + window 监听 + findNearest + tryConnect
+  //   (替代 React Flow onConnect/onConnectStart/onConnectEnd + connection store)
+  type PendingConn = {
+    fromNode: string;
+    fromPort: string;
+    fromIsInput: boolean;
+    mouseX: number;       // 世界坐标 (findNearest 用)
+    mouseY: number;
+    mouseScreenX: number; // 屏幕坐标 (SVG overlay 候选线 用)
+    mouseScreenY: number;
+    hoveredPort: { nodeId: string; portId: string } | null;
+  } | null;
+  const [pending, setPending] = useState<PendingConn>(null);
+
+  // PortDot mousedown → 开始拖 (从 NodeInteractionContext 调用)
+  const handlePortMouseDown = useCallback((nodeId: string, portId: string, isInput: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    setPending({
+      fromNode: nodeId,
+      fromPort: portId,
+      fromIsInput: isInput,
+      mouseX: x,
+      mouseY: y,
+      mouseScreenX: e.clientX,
+      mouseScreenY: e.clientY,
+      hoveredPort: null,
+    });
+  }, [screenToFlowPosition]);
+
+  // NodeInteractionContext value (供 NodeScaffold / ImageNode 拿 onPortMouseDown + isBeingDraggedTo)
+  const ctxIsBeingDraggedTo = useCallback((id: string) => pending !== null && pending.fromNode !== id, [pending]);
+  const ctxValue = useMemo(() => ({
+    onPortMouseDown: handlePortMouseDown,
+    isBeingDraggedTo: ctxIsBeingDraggedTo,
+  }), [handlePortMouseDown, ctxIsBeingDraggedTo]);
+
+  // 自研 findNearest: 用 selector 找所有 PortDot DOM 元素 (data-port-node + data-port-input)
+  // 阈值 = PORT_R * 2 + 8 = 30px (老画布 .old.tsx line 591 一致)
+  const findNearestPort = useCallback((worldX: number, worldY: number, exceptNodeId: string, isInput: boolean) => {
+    let best: { nodeId: string; portId: string; d: number } | null = null;
+    const selector = isInput ? '[data-port-input="1"]' : '[data-port-input="0"]';
+    const allPorts = document.querySelectorAll(selector);
+    for (const portEl of Array.from(allPorts)) {
+      const nodeId = portEl.getAttribute('data-port-node');
+      const portId = portEl.getAttribute('data-port-id');
+      if (!nodeId || !portId || nodeId === exceptNodeId) continue;
+      const rect = (portEl as HTMLElement).getBoundingClientRect();
+      const screenCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const portWorld = screenToFlowPosition(screenCenter);
+      const dx = portWorld.x - worldX;
+      const dy = portWorld.y - worldY;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (!best || d < best.d) best = { nodeId, portId, d };
+    }
+    if (best && best.d <= PORT_R * 2 + 8) return { nodeId: best.nodeId, portId: best.portId };
+    return null;
+  }, [screenToFlowPosition]);
+
+  // 自研 tryConnect: 鼠标松开 → 创建 React Flow Edge (走 selfDrawn type)
+  const tryConnect = useCallback((target: { nodeId: string; portId: string }) => {
+    if (!pending) return;
+    const id = `e${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setEdges((eds) => {
+      const newEdge = pending.fromIsInput
+        ? { id, source: target.nodeId, sourceHandle: target.portId, target: pending.fromNode, targetHandle: pending.fromPort, type: 'selfDrawn' as const }
+        : { id, source: pending.fromNode, sourceHandle: pending.fromPort, target: target.nodeId, targetHandle: target.portId, type: 'selfDrawn' as const };
+      const dup = eds.some(e =>
+        e.source === newEdge.source && e.target === newEdge.target &&
+        e.sourceHandle === newEdge.sourceHandle && e.targetHandle === newEdge.targetHandle
+      );
+      return dup ? eds : [...eds, newEdge];
+    });
+    setPending(null);
+  }, [pending, setEdges]);
+
+  // 全局 window mousemove + mouseup 监听 (拖线中)
+  useEffect(() => {
+    if (!pending) return;
+    const onMove = (e: MouseEvent) => {
+      const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const nearest = pending.fromIsInput
+        ? findNearestPort(x, y, pending.fromNode, false)  // from input → 找 output
+        : findNearestPort(x, y, pending.fromNode, true);   // from output → 找 input
+      setPending(p => p ? { ...p, mouseX: x, mouseY: y, mouseScreenX: e.clientX, mouseScreenY: e.clientY, hoveredPort: nearest } : null);
+    };
+    const onUp = (e: MouseEvent) => {
+      if (!pending.hoveredPort) {
+        // 落在空白画布 → 弹节点菜单 (跟原 onConnectEnd 一样的行为)
+        const target = e.target as HTMLElement;
+        const onCanvas = target.closest('[data-canvas-region]') !== null;
+        if (onCanvas && !target.closest('[data-node-scaffold]')) {
+          setNodeMenu({
+            show: true,
+            x: e.clientX,
+            y: e.clientY,
+            mode: 'connect',
+            sourceNode: pending.fromNode,
+            sourceHandle: pending.fromPort,
+          });
+        }
+      }
+      setPending(null);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [pending, findNearestPort, screenToFlowPosition]);
+
+  // 旧 useReactFlow 行 (07-02 移到新代码之前, 防 TDZ)
+  // const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getZoom } = useReactFlow();
+  // const [zoom, setZoom] = useState(1);
 
   // 06-30 加: 给子节点更新 data 的回调 (通过 Context 注入)
   const updateNodeData = useCallback((nodeId: string, patch: Record<string, unknown>) => {
@@ -2221,14 +2333,7 @@ function CanvasFlowEditorInner({
             sourceHandle,
             target: newId,
             targetHandle: 'left',
-            type: 'bezier',
-            style: EDGE_STYLE,
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 18,
-              height: 18,
-              color: 'rgba(255,255,255,0.55)',
-            },
+            type: 'selfDrawn',  // 07-02: 跟 SelfDrawnEdge 配套
           },
         ]);
       }
@@ -2238,99 +2343,8 @@ function CanvasFlowEditorInner({
     [nodeMenu, screenToFlowPosition, createNode, setEdges]
   );
 
-  // 07-01 重做 Bug 2 修复 — user 07-01 10:05 截图证明手机端线稳定存在
-  //   之前 web Chrome 双击空白 + 拖线时出现 "松手消失" 是 cache + 别的 edge case (桌面 vs 手机 渲染差异)
-  //   mobile (Safari/Chrome Android) 实测线没消失 → filter 是有效修复
-  //   e71f315 诊断 commit 撤回, 保留 filter 逻辑
-  const handleEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      const filtered = changes.filter((c) => {
-        if (c.type === 'add' || c.type === 'remove' || c.type === 'replace') {
-          console.log('[damai] handleEdgesChange: filter', c.type, c.id);
-          return false;
-        }
-        return true;
-      });
-      if (filtered.length > 0) onEdgesChange(filtered);
-    },
-    [onEdgesChange]
-  );
-
-  // 06-30: 连到已有节点 (常规 onConnect)
-  const onConnect: OnConnect = useCallback(
-    (connection: Connection) => {
-      // 07-01 修: 阻止自连接 (image 拖到自己)
-      if (connection.source === connection.target) {
-        console.log('[damai] onConnect: self-loop blocked', connection.source);
-        return;
-      }
-      connectionConnectedRef.current = true;
-      console.log('[damai] onConnect:', connection);
-      setEdges((eds) => {
-        // 去重: 同 source/target + handle 组合不再添加
-        const duplicate = eds.some(
-          (e) =>
-            e.source === connection.source &&
-            e.target === connection.target &&
-            e.sourceHandle === connection.sourceHandle &&
-            e.targetHandle === connection.targetHandle
-        );
-        if (duplicate) {
-          console.log('[damai] onConnect: duplicate, skipped');
-          return eds;
-        }
-        return addEdge(
-          {
-            ...connection,
-            type: 'bezier',
-            style: EDGE_STYLE,
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 18,
-              height: 18,
-              color: 'rgba(255,255,255,0.55)',
-            },
-          },
-          eds
-        );
-      });
-    },
-    [setEdges]
-  );
-
-  // 06-30: 拖拽连线开始 (记录起点, 用于空白画布弹菜单)
-  const onConnectStart: OnConnectStart = useCallback(
-    (_event, params) => {
-      if (!params.nodeId) return;
-      const handleId = (params.handleId as string | undefined) || undefined;
-      connectionStartRef.current = { nodeId: params.nodeId, handleId };
-      connectionConnectedRef.current = false;
-    },
-    []
-  );
-
-  // 06-30: 拖拽连线结束. 如果没连到目标(onConnect 没触发), 说明落在空白画布, 弹节点菜单
-  const onConnectEnd: OnConnectEnd = useCallback(
-    (event) => {
-      const start = connectionStartRef.current;
-      if (!start || connectionConnectedRef.current) {
-        connectionStartRef.current = null;
-        return;
-      }
-
-      // 菜单显示在鼠标松开位置
-      setNodeMenu({
-        show: true,
-        x: (event as MouseEvent).clientX,
-        y: (event as MouseEvent).clientY,
-        mode: 'connect',
-        sourceNode: start.nodeId,
-        sourceHandle: start.handleId,
-      });
-      connectionStartRef.current = null;
-    },
-    []
-  );
+  // 07-02: 替代 React Flow handleEdgesChange + onConnect + onConnectStart + onConnectEnd
+  // (实现已在 pending state + window 监听段, 这里是空段防 TS 报错,实际逻辑走自研)
 
   // 06-30: 左键双击空白画布 → 弹节点菜单
   // 注意: ReactFlow 的 onDoubleClick 是节点事件, pane 双击要自己监听 onPaneClick
@@ -2425,47 +2439,37 @@ function CanvasFlowEditorInner({
         }}
       >
         <NodeUpdateContext.Provider value={updateNodeData}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            // 07-01 修 Bug 2 终极版: 直接用 useEdgesState 解构的 onEdgesChange (不过滤)
-            //   之前 handleEdgesChange filter 'add'/'remove'/'replace' 是错的 —
-            //   React Flow 内部 store 看不到 edge, 边"消失"
-            //   这次回归 React Flow v12 原生行为, 让所有 change 传给它
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onConnectStart={onConnectStart}
-            onConnectEnd={onConnectEnd}
-            onPaneClick={onPaneClickHandler}
-            nodeTypes={nodeTypes}
-            connectionLineComponent={ConnectionLine}
-            // 06-30: loose 模式让 source/target handle 都能拉出线
-            connectionMode={ConnectionMode.Loose}
-            // 拖拽连线时显示有效/无效反馈
-            connectionRadius={30}
-            // 06-30: 右键拖动画布, 左键用于选择/拖拽节点/拉连线
-            // React Flow 类型: panOnDrag 支持 number[] 表示允许拖动画布的鼠标按键 (2=右键)
-            panOnDrag={[2]}
-            // 07-01 修: 加 fitViewOptions 限制 maxZoom, 避免旧 measured (600px wide) 算的 scale 2x 锁住
-            // 旧 measured 被清掉后, 新节点都是 300px, fitView 算出来应该是 ~0.8x, 但 maxZoom=1 兜底
-            fitViewOptions={{ maxZoom: 1, minZoom: 0.3, padding: 0.15 }}
-            fitView
-            deleteKeyCode={['Backspace', 'Delete']}
-            proOptions={{ hideAttribution: true }}
-            defaultEdgeOptions={defaultEdgeOptions}
-            // 选中 edge 时高亮
-            onEdgeClick={(e, edge) => {
-              e.stopPropagation();
-              setEdges((eds) =>
-                eds.map((ed) => ({
-                  ...ed,
-                  selected: ed.id === edge.id,
-                  style: ed.id === edge.id ? EDGE_STYLE_SELECTED : EDGE_STYLE,
-                }))
-              );
-            }}
-          />
+          <NodeInteractionContext.Provider value={ctxValue}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              // 07-02: 自研连接线 (onConnect/onConnectStart/onConnectEnd 全砍)
+              onEdgesChange={onEdgesChange}
+              onPaneClick={onPaneClickHandler}
+              nodeTypes={nodeTypes}
+              edgeTypes={SELF_DRAWN_EDGE_TYPES}  // 07-02: 自研 edge 渲染
+              // 06-30: 右键拖动画布, 左键用于选择/拖拽节点
+              panOnDrag={[2]}
+              fitViewOptions={{ maxZoom: 1, minZoom: 0.3, padding: 0.15 }}
+              fitView
+              deleteKeyCode={['Backspace', 'Delete']}
+              proOptions={{ hideAttribution: true }}
+              defaultEdgeOptions={{ type: 'selfDrawn' }}
+              onEdgeClick={(e, edge) => {
+                e.stopPropagation();
+                setEdges((eds) =>
+                  eds.map((ed) => ({
+                    ...ed,
+                    selected: ed.id === edge.id,
+                    style: ed.id === edge.id ? EDGE_STYLE_SELECTED : EDGE_STYLE,
+                  }))
+                );
+              }}
+            />
+            {/* 07-02 自研候选线 SVG overlay (React Flow 外, 屏幕坐标) */}
+            {pending && <PendingLineOverlay pending={pending} />}
+          </NodeInteractionContext.Provider>
         </NodeUpdateContext.Provider>
       </div>
 
