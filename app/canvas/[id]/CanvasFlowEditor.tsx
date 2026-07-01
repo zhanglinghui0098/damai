@@ -546,7 +546,7 @@ function NodeScaffold({
             opacity: 0,
             transform: 'none',
             zIndex: 1,
-            pointerEvents: isBeingDraggedTo ? 'all' : 'none',
+            pointerEvents: 'none',  // 07-01 修红线: isConnectableEnd=false 后不能还拦 events, 透传给 + 端口
           }}
         />
 
@@ -972,7 +972,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             opacity: 0,
             transform: 'none',  // 关键: 覆盖默认 translate, 让 handle 真的铺满图
             zIndex: 1,  // 在图下面, 不挡视觉; 小 + 端口 zIndex=10 在上
-            pointerEvents: isBeingDraggedTo ? 'all' : 'none',  // 关键: 平时透传
+            pointerEvents: 'none',  // 07-01 修红线: isConnectableEnd=false 后不能还拦 events, 透传给 + 端口
           }}
         />
 
