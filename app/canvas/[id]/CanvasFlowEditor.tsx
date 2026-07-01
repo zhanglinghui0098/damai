@@ -1589,9 +1589,19 @@ const ConnectionLine: ConnectionLineComponent = ({
 };
 
 // 共享 edge 样式 (bezier + 箭头 + hover 高亮)
+//
+// 【REVERT 兜底】(07-01 desktop bug 修复时加)
+//   旧值 (如果新值出问题, 把下面 3 处改回去):
+//     EDGE_STYLE.stroke        : 'rgba(255,255,255,0.55)'   ← 改回这个
+//     EDGE_STYLE.strokeWidth   : 2                            ← 改回这个
+//     markerEnd.color          : 'rgba(255,255,255,0.55)'   ← 改回这个
+//
+// 改因: 旧值在 NODE_BG='#1a1a1a' 黑底上对比度太低, desktop Chrome 上 2px 白 0.55
+// 视觉上跟"消失"一样 (mobile 因屏幕小、节点稀疏不显眼). 07-01 改跟 ConnectionLine
+// 同色蓝紫, 透明度 0.85, 跟拖线中候选线视觉一致, 跟选中态 (#6e8cd6 实色) 有层次区分.
 const EDGE_STYLE: React.CSSProperties = {
-  stroke: 'rgba(255,255,255,0.55)',
-  strokeWidth: 2,
+  stroke: 'rgba(110,140,214,0.85)',
+  strokeWidth: 2.5,
 };
 const EDGE_STYLE_SELECTED: React.CSSProperties = {
   stroke: '#6e8cd6',
@@ -1606,7 +1616,7 @@ const defaultEdgeOptions = {
     type: MarkerType.ArrowClosed,
     width: 18,
     height: 18,
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(110,140,214,0.85)',
   },
 };
 
