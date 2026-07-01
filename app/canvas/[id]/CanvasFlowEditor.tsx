@@ -550,8 +550,9 @@ function NodeScaffold({
           }}
         />
 
-        {/* 小 + 端口 (selected 时浮出) */}
-        {showPorts && selected && (
+        {/* 小 + 端口 (selected 或 isBeingDraggedTo 时浮出, 07-01 tapnow 风格)
+            之前仅 selected 才出现, 拖到目标时目标节点没提示. 现在拖到时也弹 + 端口 + 发光. */}
+        {showPorts && (selected || isBeingDraggedTo) && (
           <>
             <Handle
               type="source"
@@ -562,11 +563,14 @@ function NodeScaffold({
               style={{
                 background: '#1A1A1A', width: 22, height: 22,
                 left: -32, top: '50%', transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.7)',
+                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
                 fontSize: 15, fontWeight: 300, lineHeight: '20px',
                 textAlign: 'center', cursor: 'crosshair',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.6)', zIndex: 10,
+                boxShadow: isBeingDraggedTo
+                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
+                  : '0 2px 10px rgba(0,0,0,0.6)',
+                zIndex: 10,
               }}
             >+</Handle>
             <Handle
@@ -578,11 +582,14 @@ function NodeScaffold({
               style={{
                 background: '#1A1A1A', width: 22, height: 22,
                 right: -32, top: '50%', transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.7)',
+                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%', color: 'rgba(255,255,255,0.95)',
                 fontSize: 15, fontWeight: 300, lineHeight: '20px',
                 textAlign: 'center', cursor: 'crosshair',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.6)', zIndex: 10,
+                boxShadow: isBeingDraggedTo
+                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
+                  : '0 2px 10px rgba(0,0,0,0.6)',
+                zIndex: 10,
               }}
             >+</Handle>
           </>
@@ -969,8 +976,8 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           }}
         />
 
-        {/* 端口 (左右 + 圆圈, 仅 selected 出现, 弹出图外) */}
-        {selected && (
+        {/* 端口 (左右 + 圆圈, selected 或 isBeingDraggedTo 时出现, 弹出图外) (07-01 tapnow 风格) */}
+        {(selected || isBeingDraggedTo) && (
           <>
             <Handle
               type="source"
@@ -984,7 +991,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
                 left: -32,  // 弹出图外 10px gap
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.7)',
+                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%',
                 color: 'rgba(255,255,255,0.95)',
                 fontSize: 15,
@@ -992,7 +999,9 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
                 lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
+                boxShadow: isBeingDraggedTo
+                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
+                  : '0 2px 10px rgba(0,0,0,0.6)',
                 zIndex: 10,
               }}
             >+</Handle>
@@ -1008,7 +1017,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
                 right: -32,  // 弹出图外 10px gap
                 top: '50%',
                 transform: 'translateY(-50%)',
-                border: '1.5px solid rgba(255,255,255,0.7)',
+                border: isBeingDraggedTo ? '1.5px solid #6e8cd6' : '1.5px solid rgba(255,255,255,0.7)',
                 borderRadius: '50%',
                 color: 'rgba(255,255,255,0.95)',
                 fontSize: 15,
@@ -1016,7 +1025,9 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
                 lineHeight: '20px',
                 textAlign: 'center',
                 cursor: 'crosshair',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
+                boxShadow: isBeingDraggedTo
+                  ? '0 0 0 3px rgba(110,140,214,0.4), 0 2px 10px rgba(0,0,0,0.6)'
+                  : '0 2px 10px rgba(0,0,0,0.6)',
                 zIndex: 10,
               }}
             >+</Handle>
