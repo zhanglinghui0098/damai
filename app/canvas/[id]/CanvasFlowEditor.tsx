@@ -533,7 +533,7 @@ function NodeScaffold({
           id={`snap-${id}`}
           position={Position.Left}
           isConnectableStart={false}
-          isConnectableEnd={true}
+          isConnectableEnd={false}  // 07-01: 改 false, + 端口是唯一 drop target, 连线终点精准在 + 圆心 (不再吸到 body 中点)
           style={{
             position: 'absolute',
             width: '100%',
@@ -959,7 +959,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           id="image-snap"
           position={Position.Left}
           isConnectableStart={false}
-          isConnectableEnd={true}
+          isConnectableEnd={false}  // 07-01: 改 false, + 端口是唯一 drop target, 连线终点精准在 + 圆心 (不再吸到 body 中点)
           style={{
             position: 'absolute',
             width: '100%',
@@ -1631,23 +1631,13 @@ const defaultEdgeOptions = {
   },
 };
 
-// 初始 demo 节点 (Phase 2.4 用真实案例模板替换)
-const initialNodes: Node[] = [
-  { id: '1', type: 'text', position: { x: 100, y: 100 }, data: { text: '现代极简客厅, 大理石地板, 自然光' } },
-  { id: '2', type: 'image', position: { x: 380, y: 100 }, data: { prompt: 'modern minimalist living room' } },
-  { id: '3', type: 'video-gen', position: { x: 660, y: 100 }, data: { prompt: 'walkthrough shot' } },
-  { id: '4', type: 'audio-gen', position: { x: 380, y: 320 }, data: { prompt: 'calm ambient music' } },
-  { id: '5', type: 'merge', position: { x: 940, y: 200 }, data: { inputs: 2 } },
-  { id: '6', type: 'output', position: { x: 1220, y: 200 }, data: {} },
-];
+// 初始节点: 07-01 改为空 (打开画布默认空白, 用户自己新建)
+// 之前 6 个 demo 节点 (text/image/video/audio/merge/output) + 5 条 demo edge 全部去掉
+// 重要: 现有画布的 localStorage state (key: `damai:canvas-v2:r2:${projectId}`) 不受影响,
+// 那些有用户工作的画布会从 localStorage 恢复; 只有"全新"或"清过 localStorage"的画布是空的
+const initialNodes: Node[] = [];
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', type: 'bezier' },
-  { id: 'e2-3', source: '2', target: '3', type: 'bezier' },
-  { id: 'e4-5', source: '4', target: '5', type: 'bezier' },
-  { id: 'e3-5', source: '3', target: '5', type: 'bezier' },
-  { id: 'e5-6', source: '5', target: '6', type: 'bezier' },
-];
+const initialEdges: Edge[] = [];
 
 // =====================================================================
 // Chrome 4 件套 (1:1 移植自老 CanvasEditor.tsx)
