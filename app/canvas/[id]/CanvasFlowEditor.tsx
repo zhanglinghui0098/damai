@@ -555,7 +555,7 @@ function NodeScaffold({
         {showPorts && (selected || isBeingDraggedTo) && (
           <>
             <Handle
-              type="source"
+              type="target"
               id="left"
               position={Position.Left}
               isConnectableStart={true}
@@ -980,7 +980,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
         {(selected || isBeingDraggedTo) && (
           <>
             <Handle
-              type="source"
+              type="target"
               id="left"
               position={Position.Left}
               isConnectableStart={true}
