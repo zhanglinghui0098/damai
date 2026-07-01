@@ -2429,8 +2429,11 @@ function CanvasFlowEditorInner({
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
-            // 07-01: 用 handleEdgesChange 替代 onEdgesChange, 屏蔽 React Flow 内部 add/remove/replace
-            onEdgesChange={handleEdgesChange}
+            // 07-01 修 Bug 2 终极版: 直接用 useEdgesState 解构的 onEdgesChange (不过滤)
+            //   之前 handleEdgesChange filter 'add'/'remove'/'replace' 是错的 —
+            //   React Flow 内部 store 看不到 edge, 边"消失"
+            //   这次回归 React Flow v12 原生行为, 让所有 change 传给它
+            onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onConnectStart={onConnectStart}
             onConnectEnd={onConnectEnd}
