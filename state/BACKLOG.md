@@ -1,8 +1,61 @@
 # 大脉 (damai) Backlog
 
-最后更新: 2026-06-29 19:15 CST
+最后更新: 2026-07-02 13:30 CST (画布修复完成 + 阿里云签名 3 家通过)
 
 ## ✅ 已完成 (recently done)
+
+### 07-02 13:30 画布 (sandbox v2) 总算改好了 🎉
+- ✅ 混合架构自研连接线 (commit 77f9029): 保留 React Flow v12 主框架, 替换连接线/端口为老画布 (CanvasEditor.old.tsx) 移植
+  - 新增: `PortDot` / `ConnectionPath` / `SelfDrawnEdge` / `NodeInteractionContext` / `PendingLineOverlay`
+  - 删: `onConnect` / `onConnectStart` / `onConnectEnd` / `handleEdgesChange` / `connectionLineComponent`
+  - 全局 window mousemove + findNearest (screen 距离) + tryConnect 自研
+- ✅ 修 3 个 e2e bug (commit b24e8b4): PortDot 视觉 (opacity 0.32+scale 0.65 → 0.7+0.95+2px 黑 outline) / findNearest 阈值 (world → screen 距离) / 隐形 Handle 注册
+- ✅ sandbox 路由独立 (commit 57c637b): `/sandbox/canvas` 完全不动 `/canvas/[id]`, 用 prototype 设计, localStorage 存 (`damai:canvas-v2:r2:sandbox`)
+- ✅ middleware 加 `/sandbox` 公域前缀 (commit 669d2c4): 主页可见, 不需登录
+- ✅ 主页 4 入口替换 `/canvas/new` → `/sandbox/canvas` (commit 5f0d362):
+  - `components/SiteFooter.tsx:13` Footer 画布链接
+  - `components/HeroAgent.tsx:247` "进画布" 按钮
+  - `components/StartCreating.tsx:27` 画布 tile
+  - `app/canvas/page.tsx:6` redirect
+- ✅ ECS 生产部署完成 (13:30 5f0d362 之后):
+  - tar 51M + 上传 + 备份 + 解压 + npm install + next build (1024M heap) + pm2 delete + start
+  - PM2 PID 141464 online 57.9MB
+  - `damai.net.cn` HTTP 200 (53107B)
+  - `damai.net.cn/sandbox/canvas` HTTP 200 (12678B, x-nextjs-cache HIT)
+  - `damai.net.cn/canvas/test` HTTP 200 (6614B, 老画布也活)
+- ⚠️ GitHub push 失败 (GnuTLS / connect timeout 134s), 但 deploy 不依赖 push (本地 tar)
+- ✅ 整体耗时 ~5-10min, 无 OOM
+
+### 07-02 11:44 sandbox 路由 (user 主动决策)
+- ✅ user 10:00 决定: v2 sandbox 路由完全独立, 不污染生产 `/canvas/[id]`
+- ✅ commit 57c637b: 新加 `/sandbox/canvas` 路由 (page.tsx 1KB + CanvasFlowSandbox.tsx 38KB + .module.css 13KB)
+- ✅ commit 669d2c4: middleware 加 `/sandbox` 前缀到公域
+
+### 07-02 08:20 修 3 个 e2e bug (PortDot / findNearest / Handle)
+- ✅ commit b24e8b4: PortDot 默认视觉 (0.32+0.65 → 0.7+0.95+2px 黑 outline), findNearest world → screen 距离, 隐形 Handle 注册
+
+### 07-02 07:49 混合架构自研连接线 (方案 2)
+- ✅ commit 77f9029: 保留 React Flow v12 主框架, 替换连接线/端口为自研老画布移植
+- ⚠️ dev HMR 验证 (3001 + cloudflared tunnel), 未部署 ECS
+
+### 07-01 节点 UI 同步 (ImageNode → 5 节点)
+- ✅ 6 个 commit (`1edc043` ~ `babe919`): 同步 ImageNode UI 到 text/video/audio/merge/output
+  - NodeScaffold helper
+  - localStorage 旧 measured 防护
+  - fitViewOptions 限制 zoom
+  - snap handle isConnectableEnd / pointerEvents
+  - Edge stroke 蓝紫 0.85 + 2.5px
+  - SSR hydration 修复 (page.tsx + ssr:false)
+
+### 07-01 拖线 bug 30+ commit 未修
+- ⚠️ desktop Chrome 拖完线消失, mobile 正常, SSR hydration 修复后部分缓解
+- ✅ user 决定: "画布脱线不打算继续改, 走方案 2 混合架构"
+
+### 07-02 阿里云 SMS 签名 3 家运营商通过
+- ✅ 06-29 13:50 真发测试链路通 (route OK, user 当时未收短信)
+- ✅ 06-29 后签名「杭州即客传媒」+ 模板 SMS_335341232 审核通过
+- ✅ **07-02 user 收到阿里云系统通知: 3 家运营商签名报备全部通过**
+- 🟡 **待 user 验证**: 选 3 个测试手机号 (移动/联通/电信各 1) → 试发 → 收口 P0 #5
 
 ### 06-29 19:10 画布连接线大改 (你 Windows 端 / Codex 推的)
 - ✅ ConnectionPath 改 cubic bezier 平滑曲线 (dx 至少 NODE_W*0.4, 不会甩半圆)

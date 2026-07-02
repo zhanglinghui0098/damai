@@ -1,9 +1,21 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-01 13:50 CST
+最后更新: 2026-07-02 13:30 CST
 
 ## 当前在做
-- 🚧 **节点 UI 同步后 output 尺寸 / viewport 锁 2x 修复挂起 07-01 13:50** — 详见 `state/HANDOFF-2026-07-01-NODE-UI-SYNC.md`
+- ✅ **画布 (sandbox v2) 总算改好了 (07-02 13:30) — user 验收** — 详见 `state/HANDOFF-2026-07-02.md` §2
+  - **完成**: sandbox 路由 (57c637b) + middleware /sandbox 公域 (669d2c4) + 混合架构自研 (77f9029) + PortDot 视觉 fix (b24e8b4) + 主页 4 入口改 /sandbox/canvas (5f0d362)
+  - **生产部署**: ECS damai.net.cn HTTP 200 + PM2 PID 141464 online 57.9MB (13:30 deploy 完成, 5-10min 全跑通, 无 OOM)
+  - **主页入口替换**: SiteFooter:13 + HeroAgent:247 + StartCreating:27 + app/canvas/page.tsx:6 全部 → /sandbox/canvas
+- 🟡 **阿里云 SMS 签名验证 (07-02) — 3 家运营商已通过, 待验证** — 详见 `state/HANDOFF-2026-07-02.md` §4
+  - **完成**: 06-29 真发测试链路通 + 签名「杭州即客传媒」+ 模板 SMS_335341232 审核通过
+  - **07-02 进展**: user 收到阿里云系统通知,3 家运营商签名报备全部通过
+  - **下一步**: user 选 3 个测试手机号 (3 家运营商各 1) → 试发 → 收口 P0 #5
+- ⚠️ **GitHub push 失败 (07-02)** — 2 次 `GnuTLS recv error / connect timeout 134s`
+  - **不影响 deploy**: deploy 用本地 tar, 不依赖 push
+  - **待 user 决策**: 切 SSH key / 用代理 / 跳过
+- ⏳ **新 session 第一步**: 读 `state/HANDOFF-2026-07-02.md` (完整时间线 + 文件位置 + 部署命令 + 后续计划)
+- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc`
   - **完成**: 同步 ImageNode UI 到 text/video/audio/merge/output 5 节点 (commit `1edc043` + `c1c7ad3` + `935a5b6` + `28a9e5a` + `78724b2` + `babe919`)
   - **NodeScaffold helper** 已建, 5 节点全用 NodeScaffold
   - **localStorage 旧 measured 防护**: save 去掉 measured 字段 (`28a9e5a`)
