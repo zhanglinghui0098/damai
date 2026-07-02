@@ -4,26 +4,18 @@ import { useCallback, useState, useEffect, useMemo, useRef, createContext, useCo
 import {
   ReactFlow,
   ReactFlowProvider,
+  Handle,
+  Position,
   useNodesState,
   useEdgesState,
   useReactFlow,
   useStore,
   useUpdateNodeInternals,
-  Handle,
-  Position,
-  addEdge,
-  ConnectionMode,
-  MarkerType,
   type Edge,
   type Node,
   type NodeProps,
   type NodeTypes,
   type EdgeProps,
-  type Connection,
-  type EdgeChange,
-  type OnConnect,
-  type OnConnectStart,
-  type OnConnectEnd,
   type ConnectionLineComponent,
 } from '@xyflow/react';
 
@@ -448,27 +440,44 @@ function NodeScaffold({
         {badge}
         {mainContent}
 
-        {/* 07-02 自研 PortDot — 取代 React Flow <Handle/> */}
-        {showPorts && (
-          <>
-            <PortDot
-              nodeId={id}
-              portId="left"
-              isInput
-              selected={selected}
-              isBeingDraggedTo={isBeingDraggedTo}
-              onMouseDown={(e) => onPortMouseDown(id, 'left', true, e)}
-            />
-            <PortDot
-              nodeId={id}
-              portId="right"
-              isInput={false}
-              selected={selected}
-              isBeingDraggedTo={isBeingDraggedTo}
-              onMouseDown={(e) => onPortMouseDown(id, 'right', false, e)}
-            />
-          </>
-        )}
+        {/* 07-02 自研 PortDot — 取代 React Flow <Handle/> 视觉 */}
+        <PortDot
+          nodeId={id}
+          portId="left"
+          isInput
+          selected={selected}
+          isBeingDraggedTo={isBeingDraggedTo}
+          onMouseDown={(e) => onPortMouseDown(id, 'left', true, e)}
+        />
+        <PortDot
+          nodeId={id}
+          portId="right"
+          isInput={false}
+          selected={selected}
+          isBeingDraggedTo={isBeingDraggedTo}
+          onMouseDown={(e) => onPortMouseDown(id, 'right', false, e)}
+        />
+
+        {/* 07-02 隐形 React Flow Handle — 只注册 handle id 到 React Flow store (避 #008)
+            视觉由自研 PortDot 接管, 这里 size=0 + opacity=0 + pointerEvents=none */}
+        <Handle
+          type="target"
+          id="left"
+          position={Position.Left}
+          isConnectable={false}
+          isConnectableStart={false}
+          isConnectableEnd={false}
+          style={{ width: 0, height: 0, opacity: 0, pointerEvents: 'none', border: 'none', background: 'transparent' }}
+        />
+        <Handle
+          type="source"
+          id="right"
+          position={Position.Right}
+          isConnectable={false}
+          isConnectableStart={false}
+          isConnectableEnd={false}
+          style={{ width: 0, height: 0, opacity: 0, pointerEvents: 'none', border: 'none', background: 'transparent' }}
+        />
       </div>
 
       {bottomSection}
@@ -817,10 +826,7 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
             <span>{isI2I ? 'i2i 模式 (用上游图当参考)' : '待生成 / 上传图片'}</span>
           </div>
         )}
-
-        {/* ============== 07-02 自研 PortDot — 取代 React Flow <Handle/> ==============
-            (image 节点不走 NodeScaffold, 自己挂 PortDot)
-            默认 subtle 永远可见, selected 时高亮, isBeingDraggedTo 时绿光 */}
+        {/* 07-02 自研 PortDot — 取代 React Flow <Handle/> 视觉 */}
         <PortDot
           nodeId={id}
           portId="left"
@@ -836,6 +842,27 @@ function ImageNode({ data, selected, id }: NodeProps<Node<ImageNodeData>>) {
           selected={selected}
           isBeingDraggedTo={isBeingDraggedTo}
           onMouseDown={(e) => onPortMouseDown(id, 'right', false, e)}
+        />
+
+        {/* 07-02 隐形 React Flow Handle — 只注册 handle id 到 React Flow store (避 #008)
+            视觉由自研 PortDot 接管, 这里 size=0 + opacity=0 + pointerEvents=none */}
+        <Handle
+          type="target"
+          id="left"
+          position={Position.Left}
+          isConnectable={false}
+          isConnectableStart={false}
+          isConnectableEnd={false}
+          style={{ width: 0, height: 0, opacity: 0, pointerEvents: 'none', border: 'none', background: 'transparent' }}
+        />
+        <Handle
+          type="source"
+          id="right"
+          position={Position.Right}
+          isConnectable={false}
+          isConnectableStart={false}
+          isConnectableEnd={false}
+          style={{ width: 0, height: 0, opacity: 0, pointerEvents: 'none', border: 'none', background: 'transparent' }}
         />
       </div>
 
@@ -1440,7 +1467,8 @@ function PortDot({
         position: 'absolute',
         ...(isInput ? { left: -PORT_R } : { right: -PORT_R }),
         top: '50%',
-        transform: `translateY(-50%) scale(${highlighted ? 1.4 : selected ? 1 : 0.65})`,
+        // 07-02 修: 默认 visible (0.7 op + 0.95 scale), 之前 0.32 op + 0.65 scale = 14px 几乎看不见
+        transform: `translateY(-50%) scale(${highlighted ? 1.4 : selected ? 1.1 : 0.95})`,
         width: PORT_R * 2,
         height: PORT_R * 2,
         borderRadius: '50%',
@@ -1453,24 +1481,24 @@ function PortDot({
           ? '1.5px solid rgba(140,220,160,1)'
           : selected
             ? '1.5px solid rgba(110,140,214,0.85)'
-            : '1.5px solid rgba(255,255,255,0.6)',
+            : '1.5px solid rgba(255,255,255,0.7)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: highlighted || selected ? '#fff' : 'rgba(255,255,255,0.9)',
-        fontSize: '1rem',
-        fontWeight: 200,
+        color: '#fff',
+        fontSize: '0.9rem',
+        fontWeight: 300,
         cursor: isInput ? 'default' : 'grab',
         pointerEvents: 'auto',
         lineHeight: 1,
         zIndex: 10,
-        opacity: highlighted || selected ? 1 : 0.32,
-        transition: 'opacity 0.25s ease, transform 0.25s ease, background 0.18s ease, border-color 0.18s ease',
+        opacity: highlighted || selected ? 1 : 0.7,
+        transition: 'opacity 0.15s ease, transform 0.15s ease, background 0.1s ease, border-color 0.1s ease',
         boxShadow: highlighted
           ? '0 0 0 5px rgba(140,220,160,0.18), 0 0 16px rgba(140,220,160,0.55)'
           : selected
             ? '0 0 0 3px rgba(110,140,214,0.25)'
-            : 'none',
+            : '0 0 0 2px rgba(0,0,0,0.4)',
       }}
     >
       +
@@ -1618,15 +1646,9 @@ const EDGE_STYLE_SELECTED: React.CSSProperties = {
 };
 
 const defaultEdgeOptions = {
-  type: 'bezier',
+  // 07-02: SelfDrawnEdge 自己画箭头, 不再需要 React Flow MarkerType
+  type: 'selfDrawn',
   style: EDGE_STYLE,
-  // 箭头: 末端三角, 跟连线同色
-  markerEnd: {
-    type: MarkerType.ArrowClosed,
-    width: 18,
-    height: 18,
-    color: 'rgba(110,140,214,0.85)',
-  },
 };
 
 // 初始节点: 07-01 改为空 (打开画布默认空白, 用户自己新建)
@@ -2183,8 +2205,9 @@ function CanvasFlowEditorInner({
   }), [handlePortMouseDown, ctxIsBeingDraggedTo]);
 
   // 自研 findNearest: 用 selector 找所有 PortDot DOM 元素 (data-port-node + data-port-input)
-  // 阈值 = PORT_R * 2 + 8 = 30px (老画布 .old.tsx line 591 一致)
-  const findNearestPort = useCallback((worldX: number, worldY: number, exceptNodeId: string, isInput: boolean) => {
+  // 07-02 修: 用**屏幕距离**判断阈值 (30px),不是 world 距离 (节点密集时 30px world 太小)
+  //   老画布 30px 是合理的(节点稀疏),但 React Flow 节点通常 300px 宽,30px 屏幕距离 = 真正"接近 port"
+  const findNearestPort = useCallback((screenX: number, screenY: number, exceptNodeId: string, isInput: boolean) => {
     let best: { nodeId: string; portId: string; d: number } | null = null;
     const selector = isInput ? '[data-port-input="1"]' : '[data-port-input="0"]';
     const allPorts = document.querySelectorAll(selector);
@@ -2193,16 +2216,15 @@ function CanvasFlowEditorInner({
       const portId = portEl.getAttribute('data-port-id');
       if (!nodeId || !portId || nodeId === exceptNodeId) continue;
       const rect = (portEl as HTMLElement).getBoundingClientRect();
-      const screenCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-      const portWorld = screenToFlowPosition(screenCenter);
-      const dx = portWorld.x - worldX;
-      const dy = portWorld.y - worldY;
-      const d = Math.sqrt(dx * dx + dy * dy);
+      // 用屏幕坐标距离 (跟用户鼠标位置同空间)
+      const portScreenX = rect.left + rect.width / 2;
+      const portScreenY = rect.top + rect.height / 2;
+      const d = Math.hypot(screenX - portScreenX, screenY - portScreenY);
       if (!best || d < best.d) best = { nodeId, portId, d };
     }
-    if (best && best.d <= PORT_R * 2 + 8) return { nodeId: best.nodeId, portId: best.portId };
+    if (best && best.d <= 60) return { nodeId: best.nodeId, portId: best.portId };  // 07-02: 30 → 60
     return null;
-  }, [screenToFlowPosition]);
+  }, []);
 
   // 自研 tryConnect: 鼠标松开 → 创建 React Flow Edge (走 selfDrawn type)
   const tryConnect = useCallback((target: { nodeId: string; portId: string }) => {
@@ -2225,14 +2247,19 @@ function CanvasFlowEditorInner({
   useEffect(() => {
     if (!pending) return;
     const onMove = (e: MouseEvent) => {
-      const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      // 07-02 修: 用屏幕坐标直接给 findNearestPort (世界坐标转换已不需要, getBoundingClientRect 已在屏幕空间)
       const nearest = pending.fromIsInput
-        ? findNearestPort(x, y, pending.fromNode, false)  // from input → 找 output
-        : findNearestPort(x, y, pending.fromNode, true);   // from output → 找 input
+        ? findNearestPort(e.clientX, e.clientY, pending.fromNode, false)  // from input → 找 output
+        : findNearestPort(e.clientX, e.clientY, pending.fromNode, true);   // from output → 找 input
+      // 仍然算世界坐标给 SVG overlay + SelfDrawnEdge
+      const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       setPending(p => p ? { ...p, mouseX: x, mouseY: y, mouseScreenX: e.clientX, mouseScreenY: e.clientY, hoveredPort: nearest } : null);
     };
     const onUp = (e: MouseEvent) => {
-      if (!pending.hoveredPort) {
+      if (pending.hoveredPort) {
+        // 07-02 修: 之前漏调 tryConnect, 这是连接真正创建的入口
+        tryConnect(pending.hoveredPort);
+      } else {
         // 落在空白画布 → 弹节点菜单 (跟原 onConnectEnd 一样的行为)
         const target = e.target as HTMLElement;
         const onCanvas = target.closest('[data-canvas-region]') !== null;
