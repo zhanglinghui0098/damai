@@ -1,0 +1,575 @@
+/* CanvasFlowSandbox.module.css — 从 prototype/index.html 拆出来的样式
+   07-02: 大脉画布 v2 sandbox, 用 prototype 验证的设计
+   ⚠️ 07-01 修复: 蓝紫 edge (rgba 110,140,214 0.85 + 2.5px) 保留 */
+
+.root {
+  position: absolute;
+  inset: 0;
+  background: #0a0a0a;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* 画布背景: radial-gradient 圆点 20x20 (跟生产 spec 一致) */
+.canvasBg {
+  position: absolute;
+  inset: 0;
+  background-color: #0a0a0a;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+/* 顶部状态条 */
+.topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  z-index: 10;
+}
+.logo {
+  color: #6e8cd6;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+.saveTime {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+}
+.saveTime .ok { color: #4ade80; }
+.credits {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+.credits .gem { color: #6e8cd6; }
+.topbarBtn {
+  background: rgba(110, 140, 214, 0.12);
+  border: 1px solid rgba(110, 140, 214, 0.25);
+  color: #c4b5fd;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbarBtn:hover { background: rgba(110, 140, 214, 0.2); }
+
+/* "脉" logo 右下 (36x36 圆形 蓝紫渐变) */
+.pulseLogo {
+  position: absolute;
+  right: 16px; bottom: 16px;
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #6e8cd6, #5a7fbf);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.pulseLogo:hover { transform: scale(1.08); }
+
+/* 自研 ZoomControls: 右下 28x86 垂直 */
+.zoomControls {
+  position: absolute;
+  right: 16px; bottom: 16px;
+  width: 28px; height: 86px;
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+.zoomBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.zoomBtn:hover { background: rgba(110, 140, 214, 0.2); color: #6e8cd6; }
+.zoomPct {
+  flex: 0 0 22px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  text-align: center;
+  line-height: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 左侧浮动工具 */
+.floatingTools {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 9;
+}
+.floatingTools button {
+  width: 32px; height: 32px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.floatingTools button:hover {
+  background: rgba(110, 140, 214, 0.2);
+  border-color: rgba(110, 140, 214, 0.4);
+  color: #6e8cd6;
+}
+
+/* 底部状态条 */
+.statusbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 10;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.statusbar .ok { color: #4ade80; }
+.statusbar .err { color: #f87171; }
+
+/* React Flow 节点基础 */
+.node {
+  background: #1a1a1a;
+  border: 1px solid rgba(110, 140, 214, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  min-width: 180px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+  transition: all 0.12s;
+}
+.node:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+.node.selected {
+  border: 1.5px solid #6e8cd6;
+}
+.node.isTarget {
+  border: 2px solid #6e8cd6;
+  box-shadow: 0 0 0 3px rgba(110, 140, 214, 0.3), 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+.node.isTargetPort {
+  border: 2px solid #8cdca0 !important;
+  box-shadow: 0 0 0 5px rgba(140, 220, 160, 0.18), 0 0 16px rgba(140, 220, 160, 0.55) !important;
+}
+.nodeHeader {
+  padding: 6px 10px;
+  background: rgba(110, 140, 214, 0.15);
+  color: #6e8cd6;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(110, 140, 214, 0.5);
+  border-radius: 8px 8px 0 0;
+}
+.nodeBody {
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+.node textarea {
+  width: 100%;
+  background: transparent;
+  color: #fff;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 0;
+}
+.placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  padding: 16px 0;
+  text-align: center;
+}
+.icon {
+  display: inline-block;
+  font-size: 14px;
+  color: #6e8cd6;
+}
+
+/* React Flow handle (港口 + 圆圈) */
+.handle {
+  width: 22px !important;
+  height: 22px !important;
+  background: #1a1a1a !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 50% !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 15px !important;
+  font-weight: 300 !important;
+  line-height: 20px !important;
+  text-align: center !important;
+  cursor: crosshair !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+  z-index: 10 !important;
+}
+.handle.isTarget {
+  border: 1.5px solid #6e8cd6 !important;
+  box-shadow: 0 0 0 3px rgba(110, 140, 214, 0.4), 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Edge 样式 — 蓝紫色, 2.5px (07-01 修复后保留) */
+.edge :global(.react-flow__edge-path) {
+  stroke: rgba(110, 140, 214, 0.85) !important;
+  stroke-width: 2.5 !important;
+}
+.edge.selected :global(.react-flow__edge-path) {
+  stroke: #6e8cd6 !important;
+  stroke-width: 2.8 !important;
+}
+.edgeCutBtn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px; height: 22px;
+  background: #1a1a1a;
+  border: 1px solid #f87171;
+  border-radius: 50%;
+  color: #f87171;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  z-index: 5;
+}
+.edgeCutBtn:hover {
+  background: #f87171;
+  color: #fff;
+}
+
+/* React Flow 背景 */
+.rfRenderer { background: #0a0a0a; }
+.rfBackground { background: #0a0a0a; }
+
+/* 节点菜单 (双击空白弹出) */
+.menuMask {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+}
+.nodeMenu {
+  position: absolute;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+  min-width: 140px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.nodeMenu button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.nodeMenu button:hover {
+  background: rgba(110, 140, 214, 0.2);
+}
+
+/* 信息面板 (右上) */
+.infoPanel {
+  position: absolute;
+  right: 12px; top: 56px;
+  width: 280px;
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  z-index: 9;
+}
+.infoPanel h4 {
+  margin: 0 0 6px 0;
+  color: #6e8cd6;
+  font-size: 12px;
+}
+.infoPanel ul { margin: 0; padding-left: 18px; }
+.infoPanel code {
+  background: rgba(110, 140, 214, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  color: #c4b5fd;
+}
+
+/* 节点 3 段布局 */
+.scaffold {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 300px;
+}
+.topSection {
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.uploadBtn {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 980px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.uploadBtn:hover {
+  background: rgba(110, 140, 214, 0.2);
+  border-color: rgba(110, 140, 214, 0.4);
+}
+
+.main {
+  position: relative;
+  width: 300px;
+  height: 200px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  overflow: visible;
+}
+.main.text { height: 140px; }
+.main.image { height: 220px; }
+.main.video { height: 200px; }
+.main.audio { height: 90px; }
+.main.merge { height: 120px; }
+
+.bottomSection {
+  margin-top: 14px;
+  width: 300px;
+  padding: 12px 14px 14px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolRow { display: flex; align-items: center; justify-content: space-between; }
+.leftTools { display: flex; align-items: center; gap: 6px; }
+.toolBtn {
+  width: 28px; height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.toolBtn:hover {
+  background: rgba(110, 140, 214, 0.15);
+  border-color: rgba(110, 140, 214, 0.3);
+  color: #6e8cd6;
+}
+
+/* ModelChip 下拉 */
+.modelChip { position: relative; }
+.modelChipBtn {
+  padding: 4px 8px;
+  background: rgba(110, 140, 214, 0.15);
+  border: 1px solid rgba(110, 140, 214, 0.3);
+  border-radius: 6px;
+  color: #6e8cd6;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.modelChipMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 30;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.modelChipMenu button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+}
+.modelChipMenu button:hover { background: rgba(110, 140, 214, 0.2); }
+.modelChipMenu button.active { background: rgba(110, 140, 214, 0.3); }
+
+/* ChipRow (单选 chip 组) */
+.chipRow {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.chipRow button {
+  flex: 1;
+  padding: 3px 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chipRow button.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.chipRow button .prefix { opacity: 0.5; margin-right: 2px; }
+
+/* Run button + cost */
+.runRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.costPill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 980px;
+  font-size: 11px;
+  color: #fff;
+}
+.costPill .gem { opacity: 0.6; font-size: 10px; }
+.runBtn {
+  margin-left: auto;
+  width: 32px; height: 32px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: #000;
+}
+.runBtn:hover { transform: scale(1.05); }
+.runBtn:disabled { background: rgba(255, 255, 255, 0.2); cursor: not-allowed; }
+.runBtn.running { background: rgba(110, 140, 214, 0.4); }
+.runBtn.done { background: rgba(74, 222, 128, 0.6); }
+.runBtn.error { background: rgba(248, 113, 113, 0.6); }
+
+/* i2i 角标 */
+.i2iBadge {
+  position: absolute;
+  top: -10px; left: 8px;
+  padding: 3px 8px;
+  background: linear-gradient(135deg, #6e8cd6, #c4b5fd);
+  color: #0a0a0a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-radius: 4px;
+  z-index: 11;
+  box-shadow: 0 2px 8px rgba(110, 140, 214, 0.4);
+}
+
+/* MergeNode 多输入 handle 小圆点 */
+.handleMerge {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* 状态文字 */
+.status {
+  font-size: 10px;
+  margin-right: auto;
+}
+.status.error { color: #f87171; }
+.status.running { color: #fbbf24; }
+.status.done { color: #4ade80; }
