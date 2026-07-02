@@ -1,5 +1,11 @@
 # 07-01 Hermes Handoff — Desktop Chrome 仅有的"线消失" bug 排查
 
+> **07-01 14:00 状态更新**: ✅ **BUG 已修复, 已部署**.
+> 修复 commit chain: `54f64e8` → `6c3c2cd` → `35b6ce2` → `2409976`.
+> 详见 §10 "修复记录" (本文件最后).
+>
+> ---
+
 > **新 session 必读** — 这是 07-01 07:00 ~ 10:30 我 (Hermes) 自己盲改 4 个 commit 没修好之后, 决定"挂起 + 转交" 的文档
 >
 > 任务: desktop Chrome 上拖完一根线会消失, mobile Safari/Chrome Android 不消失. 找根因.
@@ -163,3 +169,55 @@
 > 第三步: 改, 不超过 1 个 commit, 部署, user 验证."
 
 这是正确的路径, 不要再重蹈我盲改 4 个 commit 的覆辙.
+
+---
+
+## 10. 修复记录 (07-01 13:00 ~ 14:00, 新 session 完成)
+
+### 10.1 真实根因 (新 session 用 console 数据锁定的)
+
+**不只是颜色对比度**, 是**两个问题叠加**:
+
+1. **真因: SSR hydration mismatch** (你 `6c3c2cd` 加的 next/dynamic + ssr:false)
+   - React Flow v12 在 Next.js SSR 模式下, 服务端渲染空/静态, 客户端 hydration 替换成动态
+   - 中间 mismatch → edge DOM 没正确接上 → 视觉上"消失"
+   - `ssr:false` 让 React Flow 改成 client-only, 跳过 hydration mismatch
+
+2. **叠加: edge stroke 对比度太低** (我 `54f64e8` 改的)
+   - 旧值 `rgba(255,255,255,0.55)` + 2px 在 `#1a1a1a` 黑底上肉眼几乎看不见
+   - 改成 `rgba(110,140,214,0.85)` + 2.5px (跟 ConnectionLine 同色蓝紫)
+
+**两个都得改**, 单独一个都不够.
+
+### 10.2 修复 commit chain
+
+```
+2409976 (deploy HEAD)
+├─ snap handle isConnectableEnd=false  ← 让 + 端口是唯一 drop target, 终点精准
+├─ initialNodes/initialEdges = []       ← 打开画布默认空白
+35b6ce2
+└─ + 端口 visibility (selected || isBeingDraggedTo) + 蓝紫发光  ← tapnow 风格
+6c3c2cd
+└─ page.tsx next/dynamic + ssr:false    ← SSR hydration 修复 (desktop 真因)
+54f64e8
+└─ EDGE_STYLE 蓝紫 0.85 + 2.5px         ← edge 对比度修复 (REVERT 兜底注释已加)
+```
+
+### 10.3 之前 4 个失败 commit 的复盘
+
+| Commit | 错误归因 | 真实状态 |
+|--------|---------|---------|
+| `ead8294` | "handleEdgesChange filter React Flow emit add/remove/replace" | filter 在 desktop 上**根本没被触发** (console log 显示 0 次 add/remove), 整个方向是错的 |
+| `e71f315` | "加 console.log 诊断" | 撤回 (`8d86e80`), 后续排查**没用到这次诊断的代码** |
+| `8d86e80` | "撤回 e71f315, 恢复 ead8294" | 撤回前**没在 desktop Chrome 验证 e71f315 撤回后是否还有问题** |
+
+教训 (跟 §8 自我反思一致, 重复一遍):
+- 盲改 4 commit 的根因: **没 console 数据就 commit**
+- 这次新 session 成功的原因: **先收集 desktop Chrome F12 console 数据** (onConnect log, handleEdgesChange filter log 0 次, edge count=3, CSS 数据) → 锁定 2 个真因 → 2 个 commit 修复
+
+### 10.4 后续验收
+
+- ✅ Deployment: `2409976`, ECS `47.96.128.172:/opt/damai/`, HTTP 200, BUILD_ID `yXGPf8DwrrKTOrKJSeis0`
+- ✅ 验证: desktop edge 蓝紫实线 + 拖到目标时 + 端口浮现发光 + 连线终点在 + 圆心 + 打开画布空白
+- ⏳ mobile regression: 待 user 验证 (理论不应受影响, 但按规矩要验)
+
