@@ -244,7 +244,7 @@ export default function HeroAgent() {
             去选模板
           </button>
           <button
-            onClick={() => router.push("/canvas/new")}
+            onClick={() => router.push("/sandbox/canvas")}
             className="link-arrow"
             style={{ background: "none" }}
           >

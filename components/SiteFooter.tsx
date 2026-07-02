@@ -10,7 +10,7 @@ const COLUMNS = [
       { href: "/", label: "首页" },
       { href: "/case", label: "案例库" },
       { href: "/templates", label: "模板中心" },
-      { href: "/canvas/new", label: "画布" },
+      { href: "/sandbox/canvas", label: "画布" },
     ],
   },
   {

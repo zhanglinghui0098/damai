@@ -24,7 +24,7 @@ const QUICK_START: Tile = {
 };
 
 const CANVAS: Tile = {
-  href: "/canvas/new",
+  href: "/sandbox/canvas",
   thumbnail: "icon",
   iconColor: "#c8a45e",          // 商务金 (替代纯白, 商务感)
   title: "画布",
