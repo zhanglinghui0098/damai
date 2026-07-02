@@ -33,6 +33,7 @@ const PUBLIC_PREFIXES = [
   "/case",
   "/create",
   "/canvas",
+  "/sandbox",  // 07-02: 大脉画布 v2 sandbox, 公域 (本地 localStorage, 不接生产 API)
   "/codex-mockups",
   "/workbench",
 ];
