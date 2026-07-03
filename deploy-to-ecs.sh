@@ -61,9 +61,21 @@ else
   ${DOCKER_PREFIX} ${SCP_CMD} /tmp/damai_deploy.tar.gz "${ECS}:/tmp/damai_deploy.tar.gz"
   echo "  传输完成"
 
-  echo ""
-  echo "--- 解压 + 修权限 ---"
-  ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
+echo ""
+echo "--- 备份 public/case (deploy 不会带视频, 备份防止丢失) ---"
+${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
+    if [ -d /opt/damai/public/case ]; then
+        rm -rf /tmp/case.bak
+        cp -a /opt/damai/public/case /tmp/case.bak
+        echo "case backup: $(du -sh /tmp/case.bak | cut -f1)"
+    else
+        echo "no public/case to backup"
+    fi
+REMOTE
+
+echo ""
+echo "--- 解压 + 修权限 ---"
+${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
     cd /opt/damai && tar -xzf /tmp/damai_deploy.tar.gz
     chown -R root:root /opt/damai
     find /opt/damai -type d -exec chmod 755 {} +
@@ -71,6 +83,15 @@ else
     find /opt/damai/node_modules/.bin -type l -exec chmod +x {} + 2>/dev/null || true
     chmod 600 /opt/damai/.env.local 2>/dev/null || true
     echo "权限修复完成"
+REMOTE
+
+echo ""
+echo "--- 恢复 public/case (deploy 不会带视频, 从 backup 恢复) ---"
+${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
+    if [ -d /tmp/case.bak ] && [ ! -d /opt/damai/public/case ]; then
+        cp -a /tmp/case.bak /opt/damai/public/case
+        echo "case restored: $(du -sh /opt/damai/public/case | cut -f1)"
+    fi
 REMOTE
 
 echo ""
