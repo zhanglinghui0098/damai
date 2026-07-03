@@ -1,8 +1,13 @@
 # 大脉 (damai) Backlog
 
-最后更新: 2026-07-02 13:30 CST (画布修复完成 + 阿里云签名 3 家通过)
+最后更新: 2026-07-03 10:45 CST (4 天 gap 收口 + 画布改动 checklist 创建)
 
 ## ✅ 已完成 (recently done)
+
+### 07-03 10:45 4 天 gap 收口 + 画布改动 checklist (user 拍板)
+- ✅ **AGENT_MEMORY.md** 4 天 gap 收口 (06-29 06:45 → 07-03 10:30) — 13 节, 11.7KB, commit 7a48019 (本地 + GitHub 都通)
+- ✅ **新建 `state/CANVAS_CHANGE_CHECKLIST.md`** (7.3KB, 5 节) — 任何人改画布文件**前**必读, 4 档危险级别 + 7 条踩坑 + 混合架构正解
+- ✅ **STATUS.md / BACKLOG.md 增量更新** — V4A patch, 不重写
 
 ### 07-02 13:30 画布 (sandbox v2) 总算改好了 🎉
 - ✅ 混合架构自研连接线 (commit 77f9029): 保留 React Flow v12 主框架, 替换连接线/端口为老画布 (CanvasEditor.old.tsx) 移植
@@ -156,6 +161,25 @@
 - ✅ **用户实测验证 (06-26 06:42)**: Image A → Image B, dev log 出现 `[ark-image] i2i: inline 1 ref(s) as data URL`, B 节点 outputUrl 真作 i2i 参考图
 
 ## 📋 下一步 (next)
+
+### 紧急 (今天 07-03, 出差期间)
+- [ ] **user 拍内测新日** (07-01 没真开, A 7-08 / B 7-15 / C 跳过) — 本周内
+- [ ] **user 给 3 个测试手机号** (移动/联通/电信各 1) → 我 curl 收 P0 #5 SMS
+- [ ] **user 拍 ECS 升 2C/4G** (¥80/月, 07-10 前硬截止, 出差能用阿里云轻量 web 控制台 https://swas.console.aliyun.com/)
+
+### 出差期间我能推进的 (不需 user 电脑, 现在能开干)
+- [x] 刷 STATUS/BACKLOG + 建 checklist (本轮做, 已 commit 准备 push)
+- [ ] P1 #2.1 S4 dashboard ProjectsTab 接真 Bitable (短 <30min)
+- [ ] P2 #2.2 飞书节点表 schema 设计 + 创建 (中 30min-2h)
+- [ ] P2 #3.3 飞书生成任务表 schema 设计 + 创建 (短 <30min)
+- [ ] P3 CDN 接 OSS 配置 (中 30min-2h)
+- [ ] P3 Sentry 错误上报配置 (短 <30min)
+- [ ] 写 backup/告警 webhook 教程给 user (短 <30min)
+
+### 等 user 回去电脑才能做 (暂缓, 不阻塞公测 7-15)
+- [ ] 浏览器手动验证画布 (脱线 bug 反复验证, 需桌面 Chrome)
+- [ ] 3 个测试手机号 SMS 试发 (要 user 收验证码)
+- [ ] 飞书告警 webhook URL (要 user 在飞书群加机器人, PC/Mac 操作)
 
 ### 紧急 (今天 19:15-20:30)
 - [ ] **user 浏览器测画布** (硬刷 Ctrl+Shift+R, 测 3 改: bezier 平滑 / 箭头方向 / SVG 10400)

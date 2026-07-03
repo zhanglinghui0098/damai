@@ -1,8 +1,10 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-02 13:30 CST
+最后更新: 2026-07-03 10:45 CST (4 天 gap 收口 + 画布改动 checklist 创建)
 
 ## 当前在做
+- ✅ **07-03 4 天 gap 收口 + 画布改动 checklist 创建** — AGENT_MEMORY/STATUS/BACKLOG 都更新到 07-03 真实状态, 新文件 `state/CANVAS_CHANGE_CHECKLIST.md` 防画布血泪重演
+- ⏳ **新 session 第一步**: 读 `state/AGENT_MEMORY.md` (07-03 视角) + `state/CANVAS_CHANGE_CHECKLIST.md`
 - ✅ **画布 (sandbox v2) 总算改好了 (07-02 13:30) — user 验收** — 详见 `state/HANDOFF-2026-07-02.md` §2
   - **完成**: sandbox 路由 (57c637b) + middleware /sandbox 公域 (669d2c4) + 混合架构自研 (77f9029) + PortDot 视觉 fix (b24e8b4) + 主页 4 入口改 /sandbox/canvas (5f0d362)
   - **生产部署**: ECS damai.net.cn HTTP 200 + PM2 PID 141464 online 57.9MB (13:30 deploy 完成, 5-10min 全跑通, 无 OOM)
@@ -686,3 +688,25 @@ ALIYUN_OSS_BUCKET=damai-zlh-prod
 - 改完 state/ 必更新 (下次接手失忆)
 - 飞书 OpenAPI 直推 (不需 webhook)
 - SSH: `admin` + NOPASSWD sudo (无 root)
+
+## 🎯 2026-07-03 10:45 — 4 天 gap 收口 + 画布改动 checklist (user 拍板)
+
+### 背景
+AGENT_MEMORY.md 停在 06-29 06:45 (4 天 gap), 内测 07-01 实际**没真开** (那天整天修画布拖线 bug), 公测 07-15 还有 12 天。本轮 user 拍板:
+- 刷 STATUS / BACKLOG 到 07-03 真实状态
+- 建 `state/CANVAS_CHANGE_CHECKLIST.md` — 改画布文件**前**必读, 4 档危险 + 7 条踩坑 + 混合架构正解
+
+### 完成 (07-03)
+- ✅ AGENT_MEMORY.md 4 天 gap 收口 (commit 7a48019, 13 节)
+- ✅ 新建 `state/CANVAS_CHANGE_CHECKLIST.md` (7.3KB, 5 节)
+- ✅ STATUS.md / BACKLOG.md 增量更新 (V4A patch, 不重写)
+
+### 关键档位 (摘要, 全文见 checklist)
+| 档位 | 触发模式 | 处理 |
+|---|---|---|
+| 🚨 极高危 | React Flow v12 控制流 (onConnect / onEdgesChange / handleEdgesChange) | 先停, 跟 user 报备, 优先走混合架构 |
+| ⚠️ 高危 | SSR / localStorage / NodeScaffold / PortDot 自研 | dev HMR + 跑测试脚本 |
+| 🟡 中危 | Handle / Edge / 节点 textarea / 路由 | 改后必跑测试 |
+| ✅ 低危 | 非画布组件 / 后端 lib / CSS module | 默认处理 |
+
+- 飞书 OpenAPI 直推 (不需 webhook)
