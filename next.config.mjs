@@ -1,7 +1,4 @@
-// 07-03 Sentry Next.js 集成 (withSentryConfig 包装 nextConfig)
-// 触发条件: 部署后 Sentry 自动接 frontend + Node API + Edge middleware 报错
-import * as Sentry from "@sentry/nextjs";
-
+// 07-03 ARMS 集成 (阿里云原生监控, 不需要 Next.js wrapper)
 /** @type {import('next').NextConfig} */
 // v5.10 fix: 让 secret 在 build time inline 到所有 bundle（包括 Edge middleware）
 // 原因: Edge runtime 不读 .env.local, middleware 里 process.env.DAMI_SESSION_SECRET 是 undefined
@@ -24,11 +21,4 @@ const nextConfig = {
 };
 
 export default Sentry.withSentryConfig(nextConfig, {
-  // Source map 上传配置 (可选, 不配也能用, 只是 Sentry 上看不到源码)
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  silent: !process.env.CI,        // dev 本地不打印 Sentry 上传日志
-  hideSourceMaps: true,            // build artifact 不包含原始 source map
-  disableLogger: true,             // 关掉 Sentry 自带 logger, 用项目 logger
-});
+export default nextConfig;

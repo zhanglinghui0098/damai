@@ -1,10 +1,14 @@
-// 07-03 Next.js 14 instrumentation hook (官方推荐, 启动时注册 Sentry)
-// 触发条件: Next.js 启动时自动调用 register()
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    await import("./sentry.server.config");
-  }
-  if (process.env.NEXT_RUNTIME === "edge") {
-    await import("./sentry.edge.config");
+    if (!process.env.ARMS_LICENSE_KEY) return;
+    try {
+      const arms = require("aliyun-arms-nodejs-sdk");
+      arms.start({
+        pid: process.env.ARMS_LICENSE_KEY,
+        appId: "damai-server",
+      });
+    } catch (e) {
+      console.warn("[ARMS] init failed:", e.message);
+    }
   }
 }

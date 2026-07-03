@@ -38,7 +38,3 @@ state/案例库/  # 案例库本地素材 (不入 git, 内容已迁 OSS) — 06-
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
-
-# Sentry
-.sentryclirc
-*.tgz  # sentry-cli 上传用的 source map bundle
