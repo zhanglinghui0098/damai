@@ -1,7 +1,7 @@
 // =====================================================================
 // E2E: 大脉 Hermes 画布核心
 // 07-08 P1: 改任何画布代码前必须跑这个 spec, 失败不允许 commit
-// 4 个 test 覆盖核心: 加载 / 加节点 / 拖线 / 持久化
+// 5 个 test 覆盖核心: health / 加载 / 加节点 / 拖线 / 持久化
 // =====================================================================
 
 import { test, expect, Page } from '@playwright/test';
@@ -14,6 +14,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('画布核心 e2e', () => {
+  test('0. /api/health 返 200 + status=ok (公测前必备, 1 秒判断 prod 是否 OK)', async ({ request }) => {
+    // 07-08 P2 加: deploy script smoke test 也用这个 endpoint
+    const res = await request.get('/api/health');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe('ok');
+    expect(body.version).toBeTruthy();
+    expect(body.timestamp).toBeTruthy();
+  });
+
+
   test('1. 加载 /sandbox/canvas: 关键 UI 元素都在', async ({ page }) => {
     await page.goto('/sandbox/canvas');
     // 顶部 logo

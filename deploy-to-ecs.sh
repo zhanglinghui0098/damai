@@ -179,6 +179,7 @@ echo "--- PM2 start ---"
 ${DOCKER_PREFIX} ${SSH_CMD} pm2 start damai 2>&1 | tail -3
 
 # 07-08 P1: Smoke test (PM2 起来后, 等 10s, curl 关键路由)
+# 07-08 P2: 加 /api/health (公测前 1 秒判断 prod 是否 OK)
 echo ""
 echo "--- Smoke test (等 10s 让 PM2 起来, curl 关键路由) ---"
 SMOKE_OK=0
@@ -186,13 +187,20 @@ ${DOCKER_PREFIX} ${SSH_CMD} bash <<'REMOTE' && SMOKE_OK=1 || SMOKE_OK=0
   set +e
   sleep 10
   SMOKE_RESULT=0
-  for url in / /login /canvas /sandbox/canvas; do
+  for url in /api/health / /login /canvas /sandbox/canvas; do
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000${url})
     echo "  GET ${url} → ${code}"
     if [ "${code}" != "200" ]; then
       SMOKE_RESULT=1
     fi
   done
+  # 07-08 P2: 健康 endpoint 还要返回 status=ok (不只是 200)
+  HEALTH=$(curl -s --max-time 5 http://localhost:3000/api/health)
+  echo "  /api/health body: ${HEALTH}"
+  if ! echo "${HEALTH}" | grep -q '"status":"ok"'; then
+    echo "  /api/health 返回 status != ok"
+    SMOKE_RESULT=1
+  fi
   exit ${SMOKE_RESULT}
 REMOTE
 
