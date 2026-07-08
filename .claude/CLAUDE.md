@@ -11,6 +11,10 @@
 ```
 app/canvas/[id]/CanvasFlowEditor.tsx       # 画布主组件 (含 onConnect, Handle, save, load)
 app/canvas/[id]/CanvasFlowEditor.module.css # 画布样式
+app/sandbox/canvas/CanvasFlowSandbox.tsx  # React Flow 原生 sandbox (cp backup 后稳)
+app/sandbox/canvas/CanvasFlowSandbox.module.css
+app/sandbox/tldraw/CanvasFlowTldraw.tsx   # tldraw 阶段 1 验证 demo
+app/sandbox/canvas-v3/*                   # 07-08 自研 v3 (SVG + state 自管) — Hermes 决定重做
 ```
 
 ### 画布核心包含 (不动):
@@ -27,6 +31,23 @@ app/canvas/[id]/CanvasFlowEditor.module.css # 画布样式
   → 大重构, dev 跑了一下就 commit, 没充分测
   → 5 天后 production 拖线仍坏 ("连上就断")
   → 回滚 commit `8569554` 才修
+- 2026-07-08 user 决定推倒 React Flow + tldraw, **完全自研** v3
+  → 同样风险: 自研画布底座 = 5 天 bug 覆辙风险
+  → 所以**也锁住** (CLAUDE.md 是双向保险, 跟 user 决定冲突时, 锁是底线)
+
+### ⚠️ 2026-07-08 v3 自研警告
+
+user 决定推倒 React Flow + tldraw, 完全自研 v3 (`app/sandbox/canvas-v3/`).
+
+**这是高风险决策**, 5 天踩坑就是因为自研画布底座不稳. 这次自研要**严守**:
+- 严守 5 天踩坑教训 (SSR / localStorage 旧 measured / 端口命中范围 / viewport 锁)
+- **只**用 SVG + React state 自管 (避开 React Flow controlled mode)
+- **不自研** viewport (用 tldraw 或 Konva, 不自己写 zoom/pan)
+- **不自研** 拖线 (用 SVG mouse event + 60px 距离判定, 不自创连接 store)
+- 5 个验收项 (brief Part 5): 6 节点 + i2i + localStorage + RunButton + 主页入口
+- 严守 e2e: 改任何 v3 代码前 `npm run e2e`, 失败不允许 commit
+- 严守 deploy: deploy 脚本加 backup + smoke + 回滚 (commit 94e4a54)
+- 严守监控: 部署 ARMS 监控 (5 天没上, commit 677cc40+9b17608+2c9fff1+9426409)
 
 ### 可以改的 (UI / op-panel / 数据流):
 - 节点 op-panel (ModelChip / ChipRow / RunButton / NodeTextarea) — 微调

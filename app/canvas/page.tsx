@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Phase 4 收口: canvas-v2/ 整目录已删, 老路由 /canvas/[id] 直接 render React Flow
-// 所以 /canvas (列表入口) 也 redirect 到 /canvas/new (用老路由)
+// 07-08: /canvas (列表入口) 改 redirect 到 /sandbox/canvas-v3 (v3 自研画布)
+// 老 /sandbox/canvas (React Flow) 保留作 fallback, 不删
 export default function CanvasIndex() {
-  redirect("/sandbox/canvas");
+  redirect("/sandbox/canvas-v3");
 }

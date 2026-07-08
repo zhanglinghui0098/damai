@@ -40,7 +40,8 @@ const NAV = [
 export default function SiteNav() {
   const pathname = usePathname();
   // 沉浸式画布: canvas 路由不渲染 nav (避免干扰创作)
-  if (pathname?.startsWith("/canvas")) return null;
+  // 07-08: 加 /sandbox/canvas-v3 (v3 自研画布)
+  if (pathname?.startsWith("/canvas") || pathname?.startsWith("/sandbox/canvas")) return null;
 
   const [openMenu, setOpenMenu] = useState(false);
   const [openMobile, setOpenMobile] = useState(false);
