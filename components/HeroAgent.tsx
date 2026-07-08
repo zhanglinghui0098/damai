@@ -244,7 +244,7 @@ export default function HeroAgent() {
             去选模板
           </button>
           <button
-            onClick={() => router.push("/sandbox/canvas-v3")}  // 07-08: v3 自研画布 (替代 React Flow)
+            onClick={() => router.push("/sandbox/canvas")}  // 07-08: 回滚到 React Flow (v3 自研简陋)
             className="link-arrow"
             style={{ background: "none" }}
           >

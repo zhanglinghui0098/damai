@@ -10,7 +10,7 @@ const COLUMNS = [
       { href: "/", label: "首页" },
       { href: "/case", label: "案例库" },
       { href: "/templates", label: "模板中心" },
-      { href: "/sandbox/canvas-v3", label: "画布" },  // 07-08: v3 自研画布 (替代 /sandbox/canvas React Flow)
+      { href: "/sandbox/canvas", label: "画布" },  // 07-08: 回滚到 React Flow (v3 自研简陋不稳)
     ],
   },
   {
