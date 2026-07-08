@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "opennext:build": "open-next build --dangerously-use-unsupported-next-version true",
-    "opennext:dev": "wrangler dev .open-next"
+    "opennext:dev": "wrangler dev .open-next",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@xyflow/react": "^12.11.1",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",
+    "@playwright/test": "^1.49.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
