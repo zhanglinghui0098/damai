@@ -20,5 +20,4 @@ const nextConfig = {
   },
 };
 
-export default Sentry.withSentryConfig(nextConfig, {
 export default nextConfig;
