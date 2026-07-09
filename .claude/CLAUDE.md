@@ -15,7 +15,26 @@ app/sandbox/canvas/CanvasFlowSandbox.tsx  # React Flow 原生 sandbox (cp backup
 app/sandbox/canvas/CanvasFlowSandbox.module.css
 app/sandbox/tldraw/CanvasFlowTldraw.tsx   # tldraw 阶段 1 验证 demo
 app/sandbox/canvas-v3/*                   # 07-08 自研 v3 (SVG + state 自管) — Hermes 决定重做
+app/canvas/v2/CanvasFlowV2.tsx            # 07-09 全新干净版 (React Flow v12.11 锁版本, 不引用任何老代码)
+app/canvas/v2/CanvasFlowV2.module.css      # v2 样式
 ```
+
+### 2026-07-09 v2 决策记录 (重要)
+
+**新加 `/canvas/v2` 干净版** (commit 在你 push 后). 理由:
+- 5 天踩坑根因 = 自研画布底座不稳 (77f9029 + v3 两次)
+- React Flow v12 是行业标准 (Langflow / Flowise / Dify 在用)
+- v2 是 1 周前 cp backup `8569554` 的**新文件**重写, **0 老代码引用** (全干净, 不受 5 天踩坑污染)
+- v2 锁版本到 `v12.11.0`, 严守画布核心不动原则
+- 旧路由 (`/sandbox/canvas` `/sandbox/canvas-v3` `/sandbox/tldraw` `/canvas/[id]`) **全部保留**当 fallback
+- 公测期 1 周 (07-10 ~ 07-14), v2 为主, 旧路由兜底
+
+**严守 (v2 跟其他画布同样)**:
+- `<Handle>` `isConnectableStart/End` 一字不改 (5 天踩坑元凶)
+- `onConnect` 用 React Flow 自带, 不自研 store
+- 不引入 PortDot / ConnectionPath / SelfDrawnEdge (砍的 5 个方案)
+- 不引入 tldraw / Konva (whiteboard 方向错 / Canvas 底层 2000 行)
+- localStorage key 隔离 (`damai:canvas-v2:r2:v2:*`, 跟其他画布不冲突)
 
 ### 画布核心包含 (不动):
 - `onConnect` (拖线创建 edge)

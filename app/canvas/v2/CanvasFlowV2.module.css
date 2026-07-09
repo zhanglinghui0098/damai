@@ -1,0 +1,322 @@
+/* CanvasFlowV2.module.css — 大脉画布 v2 (干净版)
+   07-09 全新, 跟 prototype 视觉 1:1
+   ⚠️ 不引用任何老代码样式, 独立 .module.css */
+
+.root {
+  position: absolute;
+  inset: 0;
+  background: #0a0a0a;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 画布背景: radial-gradient 圆点 20x20 (跟 prototype 1:1) */
+.canvasBg {
+  position: absolute;
+  inset: 0;
+  background-color: #0a0a0a;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+/* 顶部状态条 (跟 prototype 1:1) */
+.topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  z-index: 10;
+}
+.logo { color: #6e8cd6; font-weight: 700; font-size: 18px; letter-spacing: 1px; }
+.saveTime { color: rgba(255,255,255,0.5); font-size: 11px; }
+.saveTime .ok { color: #4ade80; }
+
+.topbarBtn {
+  background: rgba(110, 140, 214, 0.12);
+  border: 1px solid rgba(110, 140, 214, 0.25);
+  color: #c4b5fd;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.topbarBtn:hover { background: rgba(110, 140, 214, 0.2); }
+
+/* 自研 ZoomControls (跟 prototype 1:1) */
+.zoomControls {
+  position: absolute;
+  right: 16px; bottom: 16px;
+  width: 28px; height: 86px;
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+.zoomBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.zoomBtn:hover { background: rgba(110, 140, 214, 0.2); color: #6e8cd6; }
+.zoomPct {
+  flex: 0 0 22px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  text-align: center;
+  line-height: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 信息面板 (右上, 跟 prototype 1:1) */
+.infoPanel {
+  position: absolute;
+  right: 12px; top: 68px;
+  width: 280px;
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  z-index: 9;
+}
+.infoPanel h4 { margin: 0 0 6px 0; color: #6e8cd6; font-size: 12px; }
+.infoPanel ul { margin: 0; padding-left: 18px; }
+.infoPanel ul li { margin-bottom: 2px; }
+
+/* 节点菜单 (双击空白弹出) */
+.menuMask { position: fixed; inset: 0; z-index: 19; }
+.nodeMenu {
+  position: absolute;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+  min-width: 140px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.nodeMenu button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+.nodeMenu button:hover { background: rgba(110, 140, 214, 0.2); }
+
+/* 节点基础 (跟 prototype 1:1) */
+.scaffold {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 300px;
+}
+.node {
+  background: #1a1a1a;
+  border: 1px solid rgba(110, 140, 214, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  min-width: 180px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+  transition: all 0.12s;
+}
+.node:hover { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); }
+.node.selected { border: 1.5px solid #6e8cd6; }
+
+.main {
+  position: relative;
+  width: 300px;
+  height: 200px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  overflow: visible;
+}
+.main.text { height: 140px; }
+.main.image { height: 220px; }
+.main.video { height: 200px; }
+.main.audio { height: 90px; }
+.main.merge { height: 120px; }
+
+.nodeHeader {
+  padding: 6px 10px;
+  background: rgba(110, 140, 214, 0.15);
+  color: #6e8cd6;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(110, 140, 214, 0.5);
+  border-radius: 8px 8px 0 0;
+}
+.nodeBody {
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+.icon { display: inline-block; font-size: 14px; color: #6e8cd6; }
+
+/* Handle 端口 (跟 prototype 1:1, 5 天踩坑元凶就是这个) */
+.handle {
+  width: 22px !important;
+  height: 22px !important;
+  background: #1a1a1a !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 50% !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 15px !important;
+  font-weight: 300 !important;
+  line-height: 20px !important;
+  text-align: center !important;
+  cursor: crosshair !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+  z-index: 10 !important;
+}
+.handleMerge { width: 18px !important; height: 18px !important; }
+
+/* Edge 样式 (跟 prototype 1:1, EDGE_STYLE 蓝紫 0.85 + 2.5px) */
+.edge :global(.react-flow__edge-path) {
+  stroke: rgba(110, 140, 214, 0.85) !important;
+  stroke-width: 2.5 !important;
+  fill: none;
+}
+.edge.edgeSelected :global(.react-flow__edge-path) {
+  stroke: #c4b5fd !important;
+  stroke-width: 2.8 !important;
+}
+.edgeCutBtn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px; height: 22px;
+  background: #1a1a1a;
+  border: 1px solid #f87171;
+  border-radius: 50%;
+  color: #f87171;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  z-index: 5;
+}
+.edgeCutBtn:hover { background: #f87171; color: #fff; }
+
+/* ModelChip (跟 prototype 1:1) */
+.modelChip { position: relative; }
+.modelChipBtn {
+  padding: 4px 8px;
+  background: rgba(110, 140, 214, 0.15);
+  border: 1px solid rgba(110, 140, 214, 0.3);
+  border-radius: 6px;
+  color: #6e8cd6;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  width: 100%;
+}
+.modelChipMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 30;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.modelChipMenu button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+}
+.modelChipMenu button:hover { background: rgba(110, 140, 214, 0.2); }
+.modelChipMenu button.active { background: rgba(110, 140, 214, 0.3); }
+
+/* ChipRow (跟 prototype 1:1) */
+.chipRow {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.chipRow button {
+  flex: 1;
+  padding: 3px 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chipRow button.active { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.chipRow button .prefix { opacity: 0.5; margin-right: 2px; }
+
+/* 底部状态条 */
+.statusbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 10;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
