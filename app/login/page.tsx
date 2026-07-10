@@ -135,22 +135,22 @@ function LoginForm() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "1.25rem 0.75rem",  // 07-10 mobile fix: 减小 padding 防输入框跑出 viewport
+        padding: "1rem 0.5rem",  // 07-10 fix v3: 再减小 mobile padding (1.25→1, 0.75→0.5)
         background: "var(--bg)",
-        overflowX: "hidden",  // 防御性:禁止横向滚动
+        overflowX: "hidden",
       }}
     >
       <div
         style={{
           position: "relative",
           width: "100%",
-          maxWidth: 360,  // 07-10 mobile fix: 420 → 360,适配 iPhone 375 不出 viewport
+          maxWidth: 320,  // 07-10 fix v3: 360 → 320 (适配 320px 极窄屏)
           background: "var(--bg-elevated)",
           border: "1px solid var(--border)",
           borderRadius: 16,
-          padding: "1.5rem 1.25rem 1.25rem",  // 07-10 mobile fix: 减小内 padding
+          padding: "1.5rem 1rem 1.25rem",  // 07-10 fix v3: 再减小 (1.5→1.5, 1.25→1)
           boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
-          boxSizing: "border-box",  // 防止 padding 撑破 maxWidth
+          boxSizing: "border-box",
         }}
       >
         {/* 顶部点缀线 — 蓝紫 (延续我们风格) */}
@@ -299,6 +299,7 @@ function LoginForm() {
                       }}
                       type="text"
                       inputMode="numeric"
+                      size={1}  // 07-10 fix v3: 防 input 默认 size=20 intrinsic min-width 撑出 grid
                       maxLength={1}
                       value={d}
                       onChange={(e) => onCodeChange(i, e.target.value)}
@@ -306,9 +307,9 @@ function LoginForm() {
                       onPaste={onCodePaste}
                       disabled={verifying}
                       style={{
-                        width: "100%",  // 07-10 fix: 强制 fit grid 1fr,防 input 默认宽度撑出卡片
+                        width: "100%",
                         minWidth: 0, /* v5.9: 防 6 个格子撑出登录卡 (grid 6 等分) */
-                        height: 56,
+                        height: 48,
                         textAlign: "center",
                         fontSize: "1.5rem",
                         fontWeight: 600,
