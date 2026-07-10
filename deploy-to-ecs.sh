@@ -47,7 +47,7 @@ rollback() {
     find /opt/damai -type f -exec chmod 644 {} +
     find /opt/damai/node_modules/.bin -type l -exec chmod +x {} + 2>/dev/null || true
     chmod 600 /opt/damai/.env.local 2>/dev/null || true
-    cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" npm install --include=dev --legacy-peer-deps
+    cd /opt/damai && NODE_OPTIONS="--max-old-space-size=384" npm install --include=dev --legacy-peer-deps
     pm2 start damai 2>&1 | tail -3
     echo "  rollback done"
 REMOTE
@@ -156,7 +156,7 @@ echo "--- npm install ---"
 ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
   set -e
   set -o pipefail
-  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" npm install --include=dev --legacy-peer-deps
+  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=384" npm install --include=dev --legacy-peer-deps
 REMOTE
 fi
 
@@ -166,11 +166,11 @@ echo "--- PM2 stop (释放 60M 内存, 避 build OOM) ---"
 ${DOCKER_PREFIX} ${SSH_CMD} pm2 stop damai 2>&1 | tail -3
 
 echo ""
-echo "--- npm run build（约 2-4 分钟，512M heap 适配 896Mi ECS）---"
+echo "--- npm run build（约 3-5 分钟，384M heap 适配 896Mi ECS 避 OOM）---"
 ${DOCKER_PREFIX} ${SSH_CMD} bash << 'REMOTE'
   set -e
   set -o pipefail
-  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=512" NEXT_TELEMETRY_DISABLED=1 npm run build
+  cd /opt/damai && NODE_OPTIONS="--max-old-space-size=384" NEXT_TELEMETRY_DISABLED=1 npm run build
 REMOTE
 
 # PM2 restart
