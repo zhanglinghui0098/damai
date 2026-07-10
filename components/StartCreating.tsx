@@ -24,7 +24,7 @@ const QUICK_START: Tile = {
 };
 
 const CANVAS: Tile = {
-  href: "/sandbox/canvas",
+  href: "/canvas-v2",  // 07-10 同步: codex 静态 SPA (production 主画布)
   thumbnail: "icon",
   iconColor: "#c8a45e",          // 商务金 (替代纯白, 商务感)
   title: "画布",
@@ -39,7 +39,7 @@ export default function StartCreating() {
     QUICK_START,
     CANVAS,
     ...recentProjects.map((p) => ({
-      href: `/canvas/${p.id}`,
+      href: `/canvas-v2?project=${p.id}`,  // 07-10 同步: 项目 tile 也走新画布
       thumbnail: "project" as const,
       thumbHue: p.hue,
       title: "未命名项目",      // v4.3: 首页 tile 一律未命名 (workbench 子页面才显示真名字)
