@@ -1,712 +1,157 @@
 # 大脉 (damai) 项目状态
 
-最后更新: 2026-07-03 10:45 CST (4 天 gap 收口 + 画布改动 checklist 创建)
+最后更新: **2026-07-10 13:25 CST** (画布 work + login fix v3 + SMS 真发 + 账号区隔 P0 待验)
 
-## 当前在做
-- ✅ **07-03 4 天 gap 收口 + 画布改动 checklist 创建** — AGENT_MEMORY/STATUS/BACKLOG 都更新到 07-03 真实状态, 新文件 `state/CANVAS_CHANGE_CHECKLIST.md` 防画布血泪重演
-- ⏳ **新 session 第一步**: 读 `state/AGENT_MEMORY.md` (07-03 视角) + `state/CANVAS_CHANGE_CHECKLIST.md`
-- ✅ **画布 (sandbox v2) 总算改好了 (07-02 13:30) — user 验收** — 详见 `state/HANDOFF-2026-07-02.md` §2
-  - **完成**: sandbox 路由 (57c637b) + middleware /sandbox 公域 (669d2c4) + 混合架构自研 (77f9029) + PortDot 视觉 fix (b24e8b4) + 主页 4 入口改 /sandbox/canvas (5f0d362)
-  - **生产部署**: ECS damai.net.cn HTTP 200 + PM2 PID 141464 online 57.9MB (13:30 deploy 完成, 5-10min 全跑通, 无 OOM)
-  - **主页入口替换**: SiteFooter:13 + HeroAgent:247 + StartCreating:27 + app/canvas/page.tsx:6 全部 → /sandbox/canvas
-- 🟡 **阿里云 SMS 签名验证 (07-02) — 3 家运营商已通过, 待验证** — 详见 `state/HANDOFF-2026-07-02.md` §4
-  - **完成**: 06-29 真发测试链路通 + 签名「杭州即客传媒」+ 模板 SMS_335341232 审核通过
-  - **07-02 进展**: user 收到阿里云系统通知,3 家运营商签名报备全部通过
-  - **下一步**: user 选 3 个测试手机号 (3 家运营商各 1) → 试发 → 收口 P0 #5
-- ⚠️ **GitHub push 失败 (07-02)** — 2 次 `GnuTLS recv error / connect timeout 134s`
-  - **不影响 deploy**: deploy 用本地 tar, 不依赖 push
-  - **待 user 决策**: 切 SSH key / 用代理 / 跳过
-- ⏳ **新 session 第一步**: 读 `state/HANDOFF-2026-07-02.md` (完整时间线 + 文件位置 + 部署命令 + 后续计划)
-- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc`
-  - **完成**: 同步 ImageNode UI 到 text/video/audio/merge/output 5 节点 (commit `1edc043` + `c1c7ad3` + `935a5b6` + `28a9e5a` + `78724b2` + `babe919`)
-  - **NodeScaffold helper** 已建, 5 节点全用 NodeScaffold
-  - **localStorage 旧 measured 防护**: save 去掉 measured 字段 (`28a9e5a`)
-  - **fitViewOptions 限制 zoom**: `maxZoom: 1, minZoom: 0.3, padding: 0.15` (`78724b2`)
-  - **挂起**: ECS 部署 `babe919`, HTTP 200, 5/6 节点尺寸正确, **output 还卡 150x222 (user 浏览器 localStorage 旧 measured, 需清一次) + viewport 锁 scale(2) (fitView 重算 useEffect 触发 "Application error", 已临时移除待查)**
-  - **新 session 第一步**: 排查 fitView useEffect 报错根因 + 找更稳的 viewport 重置方式 (defaultViewport 或 onInit setViewport)
-- 🚧 **桌面 Chrome 拖完线消失 排查挂起 07-01 10:30** — 详见 `state/HANDOFF-2026-07-01-DESKTOP-BUG.md`
-  - mobile (iOS Safari / Chrome Android) **已 OK** (user 10:05 截图证明 3 条线稳定)
-  - desktop Chrome (Mac/PC) **拖完线消失**, 换浏览器仍复现 → 不是插件
-  - user F12 console 唯一信号: `[damai] onConnect: ▶ Object` 触发, `[damai] edge change:` **无**
-  - **Hermes 决定不盲改**, 转新 session 排查 (commit `1ebfd66` 文档化 handoff)
-- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc`
-- ✅ **ImageNode UI 重做 07-01 05:30** — commit `2b570e2` + `d9a06cc` (stopPropagation 修正) 已 push + deploy
-  - **两段式布局** (按 user 07-01 截图):
-    - **Section A (图片区, 始终显示)**: i2i badge + `🖼 Image` 标签 + `↑ 上传` 按钮 (本地上传, 调 /api/canvas/upload FormData) + 图片 180px 高 / 占位框
-    - **Section B (操作台, 仅 selected 弹出)**: ✨/+ 工具行 + ↗ 展开 + NodeTextarea (`描述任何你想要生成的内容`) + 模型/比例/画质/数量 chips + 麦克风 + `◆cost` + RunButton
-  - **分隔**: border-top + background 0.25 黑, 视觉明显独立
-  - **stopPropagation**: 删 image area 的 (阻止 React Flow 选中, 修了), 操作台 / button 的保留
-  - **功能**:
-    - 上传 → /api/canvas/upload → 写 url/outputUrl/selectedOutputUrl (下游可作 i2i 上游)
-    - Run → /api/canvas/run-image, isI2I 自动塞 referenceUrls
-  - **deploy 教训 (07-01 05:25)**: ECS 物理内存仅 896Mi, `NODE_OPTIONS=--max-old-space-size=1024` 在 build 时 OOM SIGKILL. 修法 `pm2 stop` 释放 60M + `512M` heap + `NEXT_TELEMETRY_DISABLED=1` → build OK. 已写进 `deploy-to-ecs.sh` (commit `f49fbb0`)
-- ⏳ **待 user 验收 (07-01)**: 硬刷 `damai.net.cn/canvas/test` → 6 节点应都在 → 点图片(▣) → 操作台应弹出 → 点 ↑ 上传选本地图 → 上传后图片显示 + 下游 i2i 可用 → 点画布空白收起
-  - user 截图证据: 拖线时(图 1)有蓝线, 松手后(图 2)线消失
-  - 之前的 `058ed02` 部署**实际没修** — `handleEdgesChange` filter 没在 CanvasFlowEditor
-  - **根因**: onConnect addEdge → React Flow props.edges 变 → 内部 store 算 'add' change → emit 给 onEdgesChange → applyEdgeChanges 又加一条 (同 ID) → state 有 2 条重复 → React Flow 只显示 1 条 → 视觉"消失"
-  - **修法 (重新做)**: 加 `handleEdgesChange` 替代 `onEdgesChange`, filter 掉 `type: 'add'/'remove'/'replace'`, 只放行 `select/dimensions/position` 等用户交互
-  - 类型: `EdgeChange` (从 @xyflow/react 引入)
-  - 验证: build OK, 本机未跑交互测试 (本地无 GUI 浏览器), 待 NAS 部署后 user 浏览器验证
-  - **视觉层 (0bbac09)**: Handle 热区 16x16 → 20x20 + `boxShadow` 蓝紫光晕 + `transform: translateY(-50%)` 垂直居中
-  - **ConnectionLine 视觉**: 灰白 0.35 → 蓝紫 0.55 + strokeWidth 2 → 2.5/3 + 起点圈 + 终点圆点
-  - **i2i 数据流 (058ed02)**: ImageNode 加 useUpstreamUrls hook (useStore 订阅 edges/nodes) → 找 incoming edge → 上游 image 节点的 url → onRun 调 run-image API 传 `referenceUrls: [upstreamUrl]`
-  - **UI 标识**: 上游接了 image 节点时显示 `🔗 i2i 模式 · N 张参考图` 蓝紫 badge
-  - **errorMsg 字段**: API 失败时显示 ⚠ 错误信息
-  - 部署链路: tar 31.9MB → scp → 备份 /opt/damai.bak-20260701-051049/ → 复用 /opt/damai.bak-20260630-1320/node_modules (避 npm install OOM) → chmod +x node_modules/.bin/* → npm run build (1024M) → pm2 reload → HTTP 200 (12.8KB)
-  - **测试路径 (user 自验)**: 登录 → canvas/test → 双击空白加 image 节点 → 拖 image(2) 的 output 到新 image 节点的 input → 新节点显示 i2i badge → 点 Run → run-image API 收到 referenceUrls=[image(2).url] → 输出 i2i 结果
-  - **session 自动化注入**: middleware 会在 /api/canvas/* 走 session 验证后自动注入 x-tenant-id header,canvas 端 fetch 不用手动带
-- ⏳ **待 user 验证 (07-01)**: 浏览器硬刷 Ctrl+Shift+R, 加 image→image 边, 看 i2i badge + 跑 Run 调 API
-- ✅ **节点功能按键已部署 06-30 13:27 (commit 1ec14f1, 含 3fcefd6 节点按键)** — HTTP 200 + browser verify 6 类节点 UI 全在
-- ⚠️ **deploy 事故教训 (06-30 13:21)**: ECS `npm install --include=dev` 静默失败 (0.9G RAM OOM), `node_modules/.bin/next` symlink 没建, build `sh: next: command not found` → PM2 errored + damai.net.cn **502**
-- **修法**: `cp -a /opt/damai.bak-20260630-1320/node_modules /opt/damai/` (复用旧 node_modules 跳过 npm install) → `npm run build` OK → `pm2 delete + start` → curl 200
-- **deploy 脚本同步修**: `deploy-to-ecs.sh` 加 exclude `.open-next/.wrangler/.bak-v1/state/案例/state/案例库/hermes-reports/.env.local.bak-*/test*.txt/codex-cli` — 下次 tar 31M, 不会带 state/案例 3.6G 视频
-- ✅ Bug 1 + Bug 2 修复 06-30 07:51 — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
-- ✅ **Bug 1 + Bug 2 修复 06-30 07:51** — commit `99e8521` (Bug 1) + `b58246b` (Bug 2)
-  - **Bug 1 (节点删不掉)**: React Flow v12 默认不启用 delete key,加 `deleteKeyCode={['Backspace', 'Delete']}` 修 ✅ (user 已验证)
-  - **Bug 2 (连线消失) 根因**: React Flow v12 controlled mode 时序问题
-    - user 调 `setEdges` → React Flow 内部 store 通过 edgeQueue 推 update
-    - 但 `edgeLookup` 还没更新(时序),`getElementsDiffChanges` 算出 'add' change
-    - emit 给 user `onEdgesChange` → `applyEdgeChanges` **再加一条** duplicate (id 不同)
-    - state 里有 2 条不同 id 的边,React Flow render 只显示一条
-  - **Bug 2 修法**: `handleEdgesChange` filter 掉 React Flow 内部 emit 的 `add`/`remove`/`replace`,只接受 `select`/`dimensions`/`position`
-  - Source 分析 (node_modules/@xyflow/react/dist/esm/index.js):
-    - line 1810-1822 `onConnectExtended`: `hasDefaultEdges=false` 时不自动 setEdges
-    - line 985-1000 `edgeQueueHandler`: emit diff 给 user onEdgesChange
-    - line 793-812 `getElementsDiffChanges`: 遍历 items 算 add/remove/replace
-    - line 297-298 `StoreUpdater`: edges prop 变化时 setEdges 到内部 store
-  - user state 完全由 `onConnect` addEdge + `setEdges` 控制
-  - PM2 PID 118553 online 4m, HTTP 200 ⚠️ **待 user 验证 Bug 2 是否真修好**
-- ✅ **画布 Phase 3.5 完成 (chrome 1:1 恢复) 06-30 07:20** — commit `5552265`, push master, ECS 部署
-  - 1 文件改动 +466/-39 (CanvasFlowEditor.tsx 17KB → 30KB)
-  - **加 4 件套** (1:1 移植自老 CanvasEditor.tsx line 1021-1118 + 990-1012 + 1120+):
-    - TopBar: 顶部 56px, "大脉" 标题 + "已保存到云端" 时间 + ◆credits + 社区/分享按钮
-    - "脉" logo: 右下 36x36 圆形, 蓝紫渐变 `linear-gradient(135deg, #6e8cd6, #5a7fbf)`
-    - FloatingTools: 左侧 16px, 半透明 + 按钮展开 6 节点菜单 + 📁/📋/💬/N 占位按钮
-    - ZoomControls: 右下 28x86 垂直, +/-/百分比显示 (替代 React Flow Controls)
-  - **移除** React Flow MiniMap / Controls / Background Dots
-  - **背景**: 外层 div 加 `radial-gradient(circle, rgba(255,255,255,0.10) 1px, transparent 1px) 20px 20px` (跟老画布一致)
-  - **4 类操作 1:1 移植**:
-    - `onContextMenu={e => e.preventDefault()}` 挂外层 div
-    - 双击空白: `useReactFlow().screenToFlowPosition({x: e.clientX, y: e.clientY})` 精准坐标
-    - 拖拽: React Flow 内置 (onNodesChange 自动处理, 移除自研 onNodeDragStart)
-    - FloatingTools.onAdd: `useReactFlow().screenToFlowPosition` + `setNodes(add)`
-  - 保留 Phase 2: 6 节点类型 + localStorage 持久化 + 双击创建
-  - 部署链路: `tar --exclude=./public/case` (45M, 排除 3.6G mp4) → scp ECS → `mv app app.bak-*` + 解压 → npm install --legacy-peer-deps → next build → pm2 delete+start
-  - PM2 PID 117729 online, damai.net.cn/canvas-v2/test-3-5 HTTP 200
-  - DOM 验证: data-top-bar/logo/floating-tools/zoom-controls/canvas 全在, 6 节点 + 5 边
-  - ⚠️ vision_analyze 对右下 28-36px 小元素不灵敏 (但 DOM 坐标 + 截图都对)
-- ✅ **画布 Phase 3 完成 (老路由 redirect) 06-30 06:50** — commit `991c618`
-  - `/canvas/[id]/page.tsx` 改为 redirect 到 `/canvas-v2/[id]`
-  - 主页按钮仍指 `/canvas/[id]`,打开后自动跳新画布
-- ✅ **画布 Phase 2 完成 (6 节点类型 + state + 交互) 06-30 02:50** — commit `f15df9c`, 已部署
-  - `app/canvas/[id]/CanvasFlowEditor.tsx` 17KB (vs Phase 1 4KB)
-  - 6 节点类型真实组件: text (textarea 编辑) / image (preview + prompt) / video-gen (player) / audio-gen (audio) / merge (N 输入) / output (成片)
-  - 视觉: 深色 + 蓝紫边 + 端口选中高亮 + boxShadow
-  - Handle: 10x10 蓝紫色, merge 节点 N 个 input handle
-  - 边: React Flow 内置 bezier, stroke #6e8cd6 width 2
-  - **localStorage 持久化**: key `damai:canvas-v2:[projectId]:nodes/edges`, 300ms debounce
-  - **双击空白创建节点**: 用 pane 中心算法 (Phase 3 改成 screenToFlowPosition 精准)
-  - 初始 6 demo 节点 + 5 bezier 边 (Phase 2.4 用真实案例模板替换)
-  - `/canvas-v2/[id]` 路由 58.7kB (Phase 1 56.8kB, +1.9kB)
-  - 部署 02:49:28, vision 验证: 6 节点 + 5 曲线, 风格一致, 端口对比度偏低 (待优化)
-- ✅ **画布 Phase 1 完成 (scaffold) 06-30 01:10** — commit `6c90679`
-  - `app/canvas/[id]/CanvasFlowEditor.tsx` (4KB) — React Flow v12 scaffold, 6 placeholder node types
-  - `app/canvas-v2/[id]/page.tsx` (409B) — A/B 测试路由, 用 @/ alias 跨目录 import
-  - `npm run build` 通过, `/canvas-v2/[id]` 56.8kB, `/canvas/[id]` 老路由 15.1kB (未动)
-  - 部署 01:04:50, damai.net.cn HTTP 200, vision 验证 React Flow 画布渲染成功 (1 节点 + 1 bezier 边可见)
-  - send-code 二次触发又是 aliyun mode (pm2 restart 后 .env.local 重新加载)
-- ✅ **Cron A 失败教训** — 19:46 调度 Phase 1+2, 06-30 01:00 查 job 已从列表消失 (one-time auto-deleted)
-  - 没 commit 没 push, 状态被 daily handoff cron 22:00 备份过
-  - **根因**: @xyflow/react 06-27 已装 (b214eee commit), Cron A 跑 `npm install` 看到已装就跳过, 然后没创建文件就退
-  - **修法**: 直接在 session 干 Phase 1, 不靠 cron (cron session context 不可靠)
-  - **Cron B 已 kill** (`ca9df4036ea7`), 避免空跑 Phase 3+4
-- 🚧 **Phase 2 待做** — 6 节点类型 (text/image/video-gen/audio-gen/merge/output) 真实组件 + bezier 边 + useNodesState + 案例模板 + 5 核心交互
-- ⏳ **Phase 3-4** — UI 集成 + 测试 + 部署 + 收口
-  - ConnectionPath 改 cubic bezier 平滑曲线 (dx 至少 NODE_W*0.4, 不会甩半圆)
-  - 加箭头 marker (`<marker id="arrow">` + `<marker id="arrow-pending">`, path markerEnd 引用)
-  - SVG 改 10400×9600 覆盖全 panning 区域 (跨 margin 也能看到连接线)
-  - 线条颜色 rgba(110, 180, 255, 0.75), pending 时 (160, 200, 255, 0.9), strokeWidth 2 / pending 2.5
-  - 拆 commit: `de85d9c chore(gitignore) + ddfa331 fix(canvas)` (我 commit 0d380f8 误把 canvas 改动并入 chore, 重置后拆 2 commit)
-  - 部署 19:11:07, damai.net.cn HTTP 200, pm2 PID 72306
-  - send-code 二次触发仍是 aliyun mode (`provider: "aliyun"`, .env.local 在 pm2 restart 后终于加载)
-  - ⏳ **你硬刷 Ctrl+Shift+R 测**: bezier 平滑 / 箭头方向 / SVG 10400 跨 margin
-- ✅ **state/ 4T 共享盘 README 化 ✅ 06-29 18:30** (user 反馈 "其他 agent 改错")
-  - 新建 `state/README.md` (5KB, 强制所有 agent 必读, 路径速查 + 必读 4 件套 + 3 警告)
-  - 更新 `state/BACKLOG.md` (加今天 06-29 全部 session 进展, 之前停在 09:01)
-  - 标过期 `codex-deliveries/damai-codex-brief-overview.md` (6/18 老版, 指向 state/README.md)
-  - 改 `codex-deliveries/README.md` 索引 (新方式: 让 Codex 自己读 state/, 不复制 brief)
-- ✅ **P0 #5 SMS 真发收口 🚀 06-29 13:50** (签名「杭州即客传媒」运营商报备通过, 真发 1 条到 15925670098, `provider: aliyun`)
-  - ⏳ user 收验证码 + 贴 6 位数 + 我跑 verify-code 收口 P0 #5 (最后 1 步)
-- ✅ **Canvas i2i 验证通过 (06-26 06:42 CST)** — user 实测 Image A → Image B, B 节点 outputUrl 真作 i2i 参考图生成新图
-  - `lib/ark-image.ts computeArkSize` MIN_PIXELS clamp: 任意 aspect × quality 都不会被 Ark 400
-  - `CanvasEditor.tsx` toAbs 转换相对 URL → 绝对 URL: Node fetch + Ark 都能拉到上游 outputUrl
-  - 关键 log: `[ark-image] i2i: inline N ref(s) as data URL, total XXX KB` (Ark 真拿到了)
-- 部署: cloudflared tunnel **https://clerk-treatments-herald-decorating.trycloudflare.com/** (06-26 06:36 CST 第 3 次换 URL: 容器重启后 3000 端口冲突, dev 跳到 3001)
-- ✅ AIInput v7 删除完成: 静态 1px 蓝紫边框 (无动画/无光晕/无光圈)
-- ✅ Canvas 端口简化完成: 每节点 1 input + 1 output, 删了 MAX_INPUTS/addInputPort/removeInputPort/onAddInput prop/+按钮
-- ⚠️ **cloudflared 530 stale 状态**: tunnel registered 但请求 530 — kill -9 + 重启可恢复, URL 会变
-- ⚠️ **容器重启会杀手动进程 (06-26 06:26 教训)**: Hermes PID 1 06:26 启动 = 容器刚重启 (uptime 13.6 天但 PID 1 新). `npm run dev` + cloudflared 全死. 容器重启后 npm 默认 3000 被占 → dev 跳到 3001. **需在容器重启后手动重启这两个后台进程**. 长期方案: docker-compose entrypoint 加启动脚本, 或 Cloudflare named tunnel (固定 URL).
+## 🟢 当前在做 (07-10)
 
-## 关键决策
-- 减法 + 一站式 (v4 起): 经销商 IT 弱, 不能跳剪映, 大脉必须覆盖抽卡/拼接/字幕/BGM/出片
-- 蓝紫色调: --accent: #6e8cd6, 头像光晕 rgba(168,184,224,0.55)
-- Codex base 保留: avatar ball + 2 eyes + blue glow + GO ↗ + "+" 按钮
-- i2i 必须 fix 3 件套: ① image 节点 inputs 不能空 (`inputs: [{ id: "in", label: "素材", type: "image" }]`) ② templateStarter image 节点要传 `_iIn` 而不是 `[]` ③ 上游 outputUrl 转绝对路径 (Node fetch 解析不了相对)
-- **Codex CLI 0.142 强绑 OpenAI 官方 API（直接用）**: flag 无 --transport/--base-url/--wire-api, default config 只有 trust_level, minimaxi 这种 Chat Completions 中转商**直接**跑不通 (WebSocket + Responses API 协议不兼容)
-- **解决方案 = CC Switch 转译 (user 已验证)**: user Windows 上 Codex+CC Switch+minimaxi 跑通 → NAS 端照搬: 在 codex-cli 容器内装 CC Switch, Codex → CC Switch → minimaxi. **不要再质疑 user 已说过的"CC Switch 转译 API"这条信息** (之前我说不认, 被骂了)
-- **NAS Codex 容器保留学到的工程经验**: Daocloud 镜像源 (docker.m.daocloud.io) 绿联 daemon 白名单允许, npmmirror.com 国内 NPM 镜像, docker-compose env_file + restart 模式正确
+### ✅ **画布 v2 codex 静态 SPA 已 work + user 验收** (07-10)
+- 部署链路: codex 静态 SPA → `public/canvas-v2/{index.html, assets/}` + nginx `location /canvas-v2` 块 (不经过 next.js 重 build, 绕 1.8G OOM)
+- React Flow v12 uncontrolled 模式, 6 节点 (text/image/video/audio/merge/output), i2i auto, MiniMap, ZoomControls, 双击菜单
+- **节点连不上问题已修** (user 验收)
+- 主页所有画布入口 (5 处) → `/canvas-v2`: `StartCreating.tsx:27,42` + `HeroAgent.tsx:247` + `SiteFooter.tsx:13` + `app/canvas/page.tsx` redirect
+- **⚠️ 硬警告 user 07-10 原话: "后续调整的时候, 切记不要再去动这一块, 动时必须先提醒, 你自己不要动"**
+  - 架构已 6+ 次横跳血泪 (06-08 / 06-19 / 06-23 / 06-26 / 07-08)
+  - user 明令 "实在是不想再改了"
+  - 后续画布 UI/功能微调必须先列方案 + 风险 + 等 user 拍板, **绝不擅自改**
 
-## 待办
-- [ ] **Cloudflare named tunnel** (推荐): URL 永久固定, 容器重启不换 → 一次到位解决 530 + 重启换 URL 痛点
-- [ ] docker-compose entrypoint 脚本: 容器启动自动跑 npm run dev + cloudflared
-- [ ] compact AIInput 用于 canvas 顶部 + report 顶部
-- [ ] AI 视频 SaaS 产品上线 (damai 待上线, B 端先)
-- [ ] B 端: 顾家家居 (宁波) 客餐厅 2026 年度短视频项目 (365 天周期)
-- [ ] B 端: 即客传媒 (广告服务) + 天禧派 (零售) + 大脉 (SaaS) 三线打通
-- [ ] 9router 在 NAS 验证 ARM64 Docker 镜像 (等用户跑 `sudo docker pull decolua/9router:latest`)
+### ✅ **Login fix v3 完成** (commit `a69a53b`, 07-10 13:15)
+**user 痛点**: "登录页面的ui设计有点问题, 输入栏跑到画面外了" → "没有work, 还是跑出去"
 
-## 文件位置
-- 项目根: /opt/data/projects/damai
-- 主页: app/page.tsx
-- AIInput: components/AIInput.tsx + app/globals.css
-- Canvas: app/canvas/[id]/CanvasEditor.tsx
-- Ark API: lib/ark-image.ts + app/api/canvas/run-image/route.ts
-- 全局样式: app/globals.css
-- GitHub: github.com/zhanglinghui0098/damai.git (master 分支)
+**3 件事一起改**:
+1. **6 位 input 加 `size={1}`** ← 关键, 防浏览器默认 size=20 intrinsic min-width 撑出 grid
+2. **input style**: `width: "100%"` + `boxSizing: "border-box"` + `padding: 0` + `height: 48` (从 56)
+3. **父容器**: `maxWidth: 420 → 320` + `padding: "2rem 1.5rem" → "1rem 0.5rem"` + `boxSizing: "border-box"` + `overflowX: "hidden"`
 
-## 重要背景
-- 飞书 App: cli_aa9768a568b8dcb6 (drive:drive + bitable:app 权限已开)
-- Bitable app_token: RPvQbE65Ga4pN6sFop1cZfI1nWg (12 表 389 字段)
-- Codex 在 NAS 工作, 他的代码存档在 /opt/data/projects/damai/
-- 公网访问走 cloudflared quick tunnel (URL 会变) 或 named tunnel (URL 固定)
+**配套 nginx 修**:
+- `/_next/static` cache `max-age=31536000, immutable` → `max-age=3600, must-revalidate`
+- **user "还是跑出" 真根因**: 浏览器 cache 1 年吃老 chunk, webpack content hash 没变 → 用户永远拿到没 size:1 的老 JS
+- nginx reload 不杀 server
 
-## 教训 (非技能类,仅项目相关)
-- AIInput 光圈 7 版仍未收敛, 已删除: 用户对边框动效过敏, 不要再主动加
-- 用户对 Verify-Fix-Verify 循环敏感: 3 版不对就问"删/换/参考图", 不要硬撑
-- Canvas i2i 这条 bug 06-25/06-26 改了 3-4 次才收敛, 中间 user 在 SMB 编辑把 patch 覆盖了 → **重要的 Hermes 端 patch 完成后, 提醒 user 不要在 SMB 那边同时编辑同一个文件**
+**user 接下来要做的**: **硬刷 /login** (`Ctrl+Shift+R` / `Cmd+Shift+R`) 清浏览器端 cache → 测 mobile (375 / 320 viewport)
+
+### ✅ **SMS 真发 work** (07-10)
+- 签名「杭州即客传媒」+ 模板 SMS_335341232 审核通过 (06-29)
+- 3 家运营商签名报备通过 (07-02)
+- `DAMI_SMS_REAL=false → true` + 重 build 让 inline 进 bundle (07-10)
+- `curl POST /api/auth/send-code` 15925670098 → `{"ok":true,"provider":"aliyun"}` 200 ✅
+- user 收到真短信验证码 (138 号段限流但 user 真号 OK)
+- **隐藏 bug**: `lib/auth.ts` d() 函数 hardcode `dev-stub-damai-session-secret-rotate-in-prod-2026-06-24`, `DAMI_SESSION_SECRET` 真值在 .env.local 但 sign + verify 都用 stub → session 仍 work, 不阻塞
+
+## 🟡 P0 公测前必做 (07-15 deadline)
+
+### ⏳ **账号区隔/多租户数据隔离 (P0 未验)**
+**user 07-10 原话**: "账号的区隔啊等等一些信息数据啊, 这个还需要验证"
+
+**需测 (短 <30 min)**:
+1. 不同手机号注册 → 各自 session 隔离
+2. 各自 canvas/projects 互不可见
+3. middleware `x-tenant-id` header 注入正确
+4. 飞书 Bitable 写库按 `tenant_id` 分区 (没混数据)
+5. 同 session 跨浏览器失效 (cookie httpOnly + sameSite)
+6. `lib/canvas-store.ts` / `lib/feishu-bitable.ts` 所有 read/write 都有 tenant_id 过滤
+
+**已知风险**:
+- `middleware.ts` verifySession 只校验签名, 不带 tenant_id 注入 (待查)
+- `app/api/canvas/[id]/route.ts` 可能没 tenant_id 过滤
+- 飞书 Bitable `case-library` / `task-log` 写库没 `tenant_id` 字段
+
+### ⏳ **Login mobile viewport 验证 (P0)**
+- user 硬刷 /login + 测 mobile (iPhone SE 320 / iPhone 12 390 / Android 360)
+- vision 验 mobile 6 位 input 真的 fit
+
+## 🚧 已知 Issue (不阻塞 P0, 但要追踪)
+
+### ⚠️ **task-log 路由 silent fail**
+- `app/api/canvas/task-log/route.ts` (untracked) 引用 `lib/feishu-bitable.ts` 5 个不存在的 export
+- build silent 跳过, 实际编译不出路由
+- **修法**: 加 5 个函数到 `lib/feishu-bitable.ts` 或 删 `task-log/`
+
+### ⚠️ **devDeps 跟 next 14 冲突**
+- `@opennextjs/cloudflare@1.19.11` 要 `next@>=15.5.18`, 跟 `next@14.2.35` 冲突
+- `@playwright/test` + `wrangler` 也是大包
+- 用 `--legacy-peer-deps` 绕过
+- 长期 fix: 删这 3 个 devDeps 或升 next 15+ (大改)
+
+### ⚠️ **DAMI_SESSION_SECRET dev-stub**
+- `lib/auth.ts` d() 函数 hardcode dev-stub secret, 不是 .env.local 真值
+- sign + verify 两边都用 stub → session 仍 work
+- **修法**: d() 函数改 `process.env.DAMI_SESSION_SECRET` 优先
+
+### ⚠️ **deploy-to-ecs.sh 永久 bug**
+- 假设 `DOCKER_PREFIX="docker exec hermes-hermes-1"` 在容器内跑
+- 实际在 NAS host (`DXP4800PLUS-8BAF`) 跑不通 (`docker: command not found`)
+- **修法**: 改脚本适配 host 或建 `deploy-from-nas-host.sh`
+
+### ⚠️ **deploy 后 30G 磁盘满风险**
+- 每次 deploy backup 3.6G (`/tmp/damai.bak.20260710-*`)
+- 旧 `app.bak-20260701-*` 6 个 × 12 dir 残留 (3-5G) — 07-10 10:50 已清
+- **修法**: deploy 脚本备份成功后自动 `rm -rf ${BACKUP_DIR}` (只保留当前次)
+
+## 📊 ECS 资源现状 (07-10 13:25)
+
+| 资源 | 状态 |
+|------|------|
+| 内存 | 1.8Gi total / 1.5Gi available (升配后 2C/2G, 不是 4G) |
+| Swap | 2.0Gi (我加的 swapfile2) |
+| 磁盘 | 30G / 19G used / 8.9G avail 69% |
+| next-server | v14.2.35 online, pid 6754, mem 58.1MB |
+| PM2 damai | online, pid 6742, uptime 10s |
+| 公网路由 | /api/health / / /login /canvas-v2/ 全 200/307 |
+
+## 📁 关键文件位置
+
+| 文件 | 作用 |
+|------|------|
+| `app/login/page.tsx` | LoginForm (a69a53b fix v3) |
+| `components/StartCreating.tsx` | 主页画布入口 (line 27, 42 → /canvas-v2) |
+| `app/canvas/page.tsx` | /canvas redirect → /canvas-v2 |
+| `public/canvas-v2/` | codex 静态 SPA 384K |
+| `/etc/nginx/conf.d/damai.conf` | nginx 配置 (cache header 已修) |
+| `lib/feishu-bitable.ts` | 飞书 Bitable SDK (缺 5 个 export) |
+| `lib/auth.ts` | d() 函数 hardcode dev-stub (待修) |
+| `middleware.ts` | session 验证 (待查 tenant_id 注入) |
+| `next.config.mjs` | `env: { DAMI_SESSION_SECRET, DAMI_SMS_REAL }` inline |
+| `.env.local` | DAMI_SMS_REAL=true ✅, VOLC_API_KEY=*** 真值, DAMI_SESSION_SECRET=*** 真值 (但被 hardcode 覆盖) |
+| `state/HANDOFF-2026-07-10.md` | 详细时间线 + 部署命令 (待写) |
+| `state/CANVAS_CHANGE_CHECKLIST.md` | 画布改动硬规则 (防横跳血泪重演) |
+| `state/AGENT_MEMORY.md` | agent 视角 (07-03 视角, 需更新到 07-10) |
+
+## 🔑 关键密码/IP 备忘
+
+- ECS: `root@47.96.128.172` (阿里云轻量 SWAS, **不是** ECS)
+- SSH 密码: `Zlh199483`
+- sshpass: `sshpass -p Zlh199483 ssh -o StrictHostKeyChecking=no root@47.96.128.172`
+- ECS hostname: `DXP4800PLUS-8BAF` (UGREEN DXP4800 Plus)
+- 飞书 App: `cli_aa9768a568b8dcb6`
+- Bitable app_token: `RPvQbE65Ga4pN6sFop1cZfI1nWg` (12 表 389 字段)
+
+## ⏳ D1-D5 公测倒计时 (07-10 → 07-15)
+
+| 日期 | 任务 | 状态 |
+|------|------|------|
+| 07-10 (D5) | 画布重设计 + deploy ✅, login fix v3 ✅, SMS 真发 ✅ | ✅ |
+| 07-10 (D5) | 账号区隔/多租户验证 | ⏳ P0 |
+| 07-10 (D5) | login mobile viewport 验证 | ⏳ 等 user 硬刷 |
+| 07-11 (D4) | ARMS 阈值告警 + 全 e2e | ⏳ |
+| 07-12 (D3) | 4 人 soak day 0 | ⏳ |
+| 07-13 (D2) | 修 P0P1 | ⏳ |
+| 07-14 (D1) | 修 P0P1 | ⏳ |
+| 07-15 (D0) | 公测开闸 50 人 | ⏳ |
+
+## 📝 下一 session 第一步
+
+1. 读 `state/STATUS.md` (本文件, 07-10 视角)
+2. 读 `state/AGENT_MEMORY.md` (需更新)
+3. 读 `state/CANVAS_CHANGE_CHECKLIST.md` (画布改动硬规则)
+4. **账号区隔验证**: 不同手机号注册 → session/canvas/Bitable 隔离
+5. **等 user 反馈 mobile login fit**
 
 ---
 
-## 2026-06-26 06:45 — Canvas i2i 验证通过 ✅
-
-### 背景
-Image-to-Image (图生图) 是大脉核心功能之一：上游 image 节点的 outputUrl 当参考图，下游 image 节点基于它生成新图。这条链路在 v3-tapnow-redesign 后一直断。
-
-### 修了 3 轮才收敛
-- **06-25 18:43 session**: 加 image 节点 input port (`inputs: [{id:"in",type:"image"}]`), template starter 改用 `_iIn`, 补 image→video-gen 边
-- **06-26 04:00 session**: i2i 没出图 (Ark 400 image size 1920x1080 < 3686400 minimum)
-- **06-26 04:00 session**: 相对路径 `/canvas-output/xxx.jpeg` Node fetch 解析不了 → fallback 静默失败
-- **06-26 05:27 session**: patch 丢失 (user SMB 编辑覆盖) → 重打
-- **06-26 06:42 session**: ✅ user 实测验证通过
-
-### 修复点 (lib/ark-image.ts + CanvasEditor.tsx)
-1. **`computeArkSize` MIN_PIXELS clamp** — 1K + 16:9 算出 1920×1080 = 2.07M 不达 Ark 底线 3.68M, 自动按 sqrt(3686400/当前像素) 放大
-2. **`toAbs` 相对路径转绝对** — 收集上游 referenceUrls 时, `/canvas-output/xxx.jpeg` 变成 `${window.location.origin}/canvas-output/xxx.jpeg`, 让服务端 fetch + Ark 都能拉到
-3. **template starter 必传 `_iIn`** — image 节点 inputs 不能 `[]`
-
-### 验证 (user 06-26 06:42)
-- ✅ Image A 生成 → outputUrl 正常
-- ✅ Image A → Image B 连线 → 跑 B 节点
-- ✅ dev log 出现 `[ark-image] i2i: inline 1 ref(s) as data URL, total XXX KB` (Ark 真拿到了参考图)
-- ✅ B 节点生成的图视觉上跟 A 有关联 (同一产品/场景延续), 不是完全无关图
-
-### 关键经验
-1. **截图测试 log 看 `inline ... as data URL`** 比肉眼看图更准 — 出现这一行 = 真的用了参考图
-2. **patch 不要指望留在文件里** — user 在 SMB 同时编辑会覆盖, 重要 fix 后最好 commit 一次锁住
-3. **跨 session 协作时把"已修但未验证"标到 BACKLOG**, 避免重复调研
-
----
-
-## 2026-06-25 14:08 — Windows ↔ Hermes 容器 4T 共享打通 ✅
-
-### 背景
-用户希望 Windows 端能直接编辑 Next.js 代码，容器内 `npm run dev` 自动 hot reload。
-原 `Mounts: null`（绿联 inspect 字段差异，实际 `Binds` 字段有 2 个挂载）。
-
-### 执行步骤（4 步打通）
-1. **建 4T 子目录 + 复制现有数据**：
-   ```bash
-   sudo mkdir -p /volume4/4T/damai/hermes-project
-   sudo docker cp hermes-hermes-1:/opt/data/projects/damai/. /volume4/4T/damai/hermes-project/
-   # Successfully copied 10.7GB
-   ```
-
-2. **commit 备份 + 停 + 删容器**：
-   ```bash
-   sudo docker commit hermes-hermes-1 hermes-backup-20260625
-   sudo docker stop hermes-hermes-1 && sudo docker rm hermes-hermes-1
-   ```
-
-3. **重建容器（保留原 mount + 加 4T mount）**：
-   ```bash
-   sudo docker run -d \
-     --name hermes-hermes-1 \
-     --network host --restart always \
-     -v /volume2/1T/Hermes:/opt/data:rw \
-     -v /volume1/10T/Hermes:/volume1/10T/Hermes:rw \
-     -v /volume4/4T/damai/hermes-project:/opt/data/projects/damai:rw \
-     hermes-backup-20260625 gateway run
-   ```
-
-4. **启动 Next.js dev + cloudflared**（容器重建后这两个手动进程丢了）：
-   ```bash
-   cd /opt/data/projects/damai && nohup npm run dev > /tmp/next-dev.log 2>&1 &
-   nohup cloudflared tunnel --url http://localhost:3000 --no-autoupdate --protocol http2 > /tmp/cf-bg.log 2>&1 &
-   ```
-
-### 结果
-- 容器 ID: `f0cf39ef2831`
-- Next.js dev server: HTTP 200 (5.14s 首次编译)
-- 公网 URL: **https://machine-affairs-either-extended.trycloudflare.com/**
-- Windows 端: 改 `Z:\damai\hermes-project\*` → 容器内可见 → Next.js hot reload
-
-### 临时口子回滚
-- 删 `/opt/data/projects/damai/app/api/download-backup/route.ts` ✅
-- middleware.ts 移除 `/api/download-backup` 那一行 ✅
-- 验证: `curl /api/download-backup` → HTTP 404
-
-### 关键经验
-1. **绿联 SSH 用户名 = 手机号**，不是 `root`（root 禁用了）
-2. **普通用户 docker 命令要 sudo**（不在 docker 组）
-3. **`Mounts: null` ≠ 没挂载**，要看 `HostConfig.Binds`（绿联 inspect 字段差异）
-4. **容器重建会杀掉手动启动的后台进程**（npm run dev + cloudflared），必须重启
-5. **cloudflared HTTP2 隧道重启后 URL 会变**（不是固定的 trycloudflare.com URL）
-6. **首次 cloudflared curl 可能 530**（origin 还没编译完），等 20-30s 就好
-## ✅ 2026-06-26 23:56 — 大脉 v1 上线 🚀
-
-**域名**: https://damai.net.cn ✅
-**SSL**: Let's Encrypt (90 天自动续期) ✅
-**服务器**: 阿里云轻量 47.96.128.172 (Alibaba Cloud Linux 3, 0.9G RAM)
-**进程**: PM2 + Node 20.20.2 + Next.js 14.2.35
-
-### 部署链路
-- 本地源码 (1.1M, 排除 node_modules/.next/videos) → scp → /opt/damai
-- npm install --legacy-peer-deps (424 包)
-- next build (51M .next/, 23 路由)
-- PM2 daemon (`pm2 save` + `pm2 startup systemd`)
-- nginx reverse proxy + certbot SSL
-
-### 修过的坑
-1. 源码 000 权限 → chmod -R u+rwX
-2. `.open-next/` 残留 (本地 opennext:build 产物) → 排除
-3. `npm ci --omit=dev` 跳过 dev deps 后 webpack 找不到 typescript → 改 `--include=dev`
-4. `find -exec chmod 644` 把 .bin/ 可执行文件也改了 → 加 `-type l` 补 +x
-5. **4 处 i2i 修复留的 TS 错误** (CanvasEditor.tsx: toAbs 作用域/null 过滤/对象重复 key/upstreamNodes 类型) → `next.config.mjs` 加 `typescript: { ignoreBuildErrors: true }` 放行
-6. 端口已开放，nginx 启动 OK
-
-### 已知 TODO
-- 视频上传中 (后台 rsync, 3.6G) — 跑完案例库才能正常显示 poster
-- image-to-image 实跑 (要真实 VOLC_API_KEY, 当前 placeholder)
-- 4 处 TS 错误后续 dev 模式慢慢修
-
----
-
-## ✅ 2026-06-27 — 阿里云 OSS 接入 (damai-zlh-prod 杭州)
-
-**目标**: ECS 磁盘不再承载生成的图, 全部走 OSS (¥0.12/GB/月)
-
-### 链路
-1. **lib/oss.ts** (新) — 单例 client + ENV 校验 + `uploadBuffer/buildKey/uploadFile/deleteObject/ossEnvCheck`, 按月分目录 `canvas-output/yyyy/mm/` 和 `uploads/yyyy/mm/`
-2. **lib/ark-image.ts** — 新增 `downloadImageToOss` (OSS 优先, fallback 到本地 `downloadImageToPublic`), 旧的保留
-3. **app/api/canvas/run-image/route.ts** — 改用 `downloadImageToOss`, i2i 链路自动拿到完整 https URL (无需 toAbs)
-4. **app/api/canvas/upload/route.ts** — OSS 优先, 本地 fallback, 返回 `{storage: "oss"|"local"}`
-5. **next.config.mjs** — 加 `typescript: { ignoreBuildErrors: true }` (STATUS.md 06-26 写了但实际没加, 真修补; 还兜底 ali-oss 6.23 无 .d.ts)
-6. **lib/oss.ts** — 顶部 `@ts-nocheck` 防 ali-oss 类型缺失
-
-### ENV (写 `/opt/damai/.env.local` chmod 600)
-```
-ALIYUN_OSS_ACCESS_KEY_ID=LTAI5t8tJCnfeNh4ys7dg9tj
-ALIYUN_OSS_ACCESS_KEY_SECRET=<32 字符, secret>
-ALIYUN_OSS_REGION=oss-cn-hangzhou
-ALIYUN_OSS_BUCKET=damai-zlh-prod
-```
-
-### 部署
-- npm install ali-oss --save --include=dev --legacy-peer-deps --registry=https://registry.npmmirror.com
-- next build (52s, 23 路由, 84MB)
-- pm2 reload damai (新 PID 37721, online)
-- ⚠️ ECS .env.local 第一次写时 secret 误写 placeholder `***`, 立刻修正, 备份 `.env.local.bak-20260627`
-
-### 验证
-- ✅ `POST /api/canvas/upload` → `{"ok":true,"url":"https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/uploads/2026/06/mqvjqs7alaye_upload.jpg","storage":"oss"}`
-- ✅ ECS `/opt/damai/public/uploads/` 不存在 → 没走 fallback → 100% 写 OSS
-- ✅ **OSS Bucket 公共读 (BPA 关闭 + ACL=公共读)**: `GET` HTTP 200 + 82261 bytes + image/jpeg (06-27 07:24 user 完成)
-- ✅ **i2i 生产端到端 (06-27 07:24 user 实跑)**: 用 OSS upload URL 当 referenceUrl → POST `/api/canvas/run-image` → 17.64s 完成
-  - 返回 `outputUrl`: `https://damai-zlh-prod...canvas-output/2026/06/mqvl1lo7codp_0.jpeg` (2560×2560, 211KB)
-  - `refUsed: 1` → Ark 真用了 reference (不是 fallback 到纯文生图)
-| ✅ **第二次 POST upload 稳定**: `storage:"oss"` 持续生效
-
----
-
-## ✅ 2026-06-27 08:54 — AccessKey Rotate 收口
-
-### 背景
-原主账号 AK `LTAI5t8tJCnfeNh4ys7dg9tj` Secret 在 06-27 08:32 session 因 .env.local placeholder bug 暴露给对话。
-
-### 执行
-1. User 在 RAM 控制台创建**新主账号 AK** `LTAI5t6k3vqta8v3GYSmDbCx` (30 字符 Secret,UID `1148781509211780`)
-2. ECS `/opt/damai/.env.local`:
-   - sed 替换 ID 和 SECRET
-   - chmod 600 / chown root:root
-   - 备份 `.env.local.bak-20260627-083234`
-3. pm2 reload damai (PID 38887, online)
-
-### 验证 (curl + sshpass 并发)
-- ✅ `GET https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/canvas-output/2026/06/mqvks35afj3g_0.jpeg` → HTTP 200 + 275959 bytes + image/jpeg + Cache-Control 1年
-- ✅ `POST localhost:3000/api/canvas/upload` → `{"ok":true,"url":"https://damai-zlh-prod.oss-cn-hangzhou.aliyuncs.com/uploads/2026/06/mqvndb1m28gj_upload.jpg","storage":"oss"}`
-- ✅ ECS `/opt/damai/public/uploads/` 不存在 = 100% 写 OSS,无 fallback
-
-### 关键发现
-- 用的是**主账号 AK** → 默认有全部 OSS 权限 → 之前列的"RAM 给子账号加 OSS 权限"实际是多余的(子账号是未来计划)
-- BPA 公共读配置经上一轮已完成,本轮未动
-
-### 待 user 完成(安全收口)
-- [x] ~~**RAM 控制台禁用旧 AK `LTAI5t8tJCnfeNh4ys7dg9tj`**~~ — 06-27 09:10 确认**已销毁**(user 创建新 Key 时或后续手动销毁,回收站 + 列表都查不到,比"禁用"更严)
-- [x] ~~**Bucket 防盗链** (Referer 白名单)~~ — 06-27 09:11 验证关闭 (user 选定方案 1,任意 Referer 都 200)
-
-### ECS 旧图残留 (15MB / 9 文件, user 决策: **不动**)
-- `/opt/damai/public/canvas-output/`: 7 个 `_0.jpeg` (~750KB, 06-27 00:52-00:59) + 1 个 88KB jpeg
-- `/opt/damai/public/uploads/`: 不存在(确认 100% 走 OSS)
-- 实际总共 15MB(不是我之前估算的 88KB)
-- ⚠️ 重要发现:这 9 个文件**全部不在 OSS 上**(`client.head()` 验证 `NoSuchKey`),是 OSS 接入前(06-27 07:24)的历史数据
-- **user 决策 (06-27 09:11): 不动** — 保留 ECS 本地,后续如需清理再单独评估(尤其 2 张 4MB+10MB upload 素材,user 可能画布还在引用)
-- → `/opt/damai/public/uploads/` 目录不存在这条之前已误写,已修正
-
-### 整体验证 (06-27 09:11 收口报告)
-| 测试 | 结果 |
-|---|---|
-| `GET` 无 Referer | HTTP 200 + 275KB ✅ |
-| `GET` Referer: https://test.com | HTTP 200 ✅(防盗链关了) |
-| `GET` Referer: https://damai.net.cn | HTTP 200 ✅ |
-| `POST /api/canvas/upload` | `storage: "oss"` + 完整 https URL ✅ |
-| PM2 damai | PID 38887 online 37m ✅ |
-| ECS `/opt/damai/public/` | 3.6G (案例库视频为主,canvas-output 旧图 88KB) |
-
-### i2i 踩过的坑 (完整链路)
-1. ✅ lib/oss.ts (4 函数 + ENV 校验 + 单例)
-2. ✅ lib/ark-image.ts:downloadImageToOss (OSS 优先, 本地 fallback)
-3. ✅ app/api/canvas/upload/route.ts: OSS 优先
-4. ✅ app/api/canvas/run-image/route.ts: 改用 downloadImageToOss
-5. ✅ next.config.mjs: typescript.ignoreBuildErrors (兜底)
-6. ✅ ECS npm install + build + pm2 reload
-7. ✅ ECS .env.local 加 OSS env (chmod 600, secret placeholder bug 已修)
-8. ✅ 阿里云 OSS 控制台 → 关 BPA + 设 ACL 公共读
-9. ✅ GET HTTP 200 (公共读生效)
-10. ✅ i2i 端到端跑通 (Ark 真下载 reference + 生成新图 + 上传 OSS)
-
-### 备份 + 告警 (新)
-- `scripts/backup-to-nas.sh` — 凌晨 2 点 cron 跑, rsync ECS canvas-output + uploads → NAS `/volume1/10T/Hermes/projects/damai-backup/`
-- `scripts/alert-resources.sh` — 每 5 分钟 cron, 磁盘/RAM/PM2/HTTP 监控 → 飞书 webhook
-- crontab: `0 2 * * *` + `*/5 * * * *` 已加
-- ⚠️ NAS_BACKUP_HOST 仍是 placeholder `192.168.1.x`, 第一次跑 NAS 不可达会 log 失败, 待 user 改真 IP
-
-### 安全
-- ECS `.env.local` chmod 600 ✅
-- 部署后 user 应在阿里云 RAM 控制台 → AccessKey → **Rotate** 一次 (Secret 这次明文经过对话)
-- lib/oss.ts 错误信息不暴露 ENV 内容, 只说"未配置,请检查 .env.local"
-- 沙箱层自动截断 secret 字符串在对话回显 (但变量值仍是真值, 用于写文件)
-
-### 教训 (非技能,项目相关)
-- 写 env 时一定用真实 secret, **不要 placeholder** — 我犯过一次, 已修, 但这种事以后用 unit test 或 dry-run 验证 (grep "SECRET=" 找 placeholder)
-- shell 嵌套 heredoc 容易炸, 复杂脚本写到 /tmp/.js 文件再 scp, ssh 跑 (避免 inline 转义)
-- node 用 ESM `import` 跟 CommonJS `require` 不一样, ali-oss 6.x 是 ESM `.default`, 写诊断脚本要用 ESM (或 .mjs)
-
-### 下一步 (按阶段计划)
-- ✅ ~~.0.2 (你): 阿里云 OSS 控制台 → damai-zlh-prod → 权限管理 → 读写权限 → 公共读 → 保存~~
-- ✅ ~~.0.2 (我): 设公共读后 curl GET 验证 HTTP 200 + i2i 实跑 (生产端到端)~~
-- ✅ ~~.0.3 (我): dev 模式验 i2i 链路~~
-- [ ] 阶段 1: NAS 备份脚本改真 IP + 飞书告警 webhook URL + 加 Bitable 用户表
-- [ ] 阶段 2: Bitable 接项目表 + 节点表 + canvas 从 localStorage 改飞书
-- [ ] 阶段 3: CDN 接 OSS + 升级 ECS 2C/4G + Sentry
-
----
-
-## ✅ 2026-06-27 07:42 — 生产 i2i 端到端验证通过 🚀
-
-**事件**: user 设 OSS 公共读 + 关 BPA 后, 链路全通
-
-### 关键发现: BPA 是默认开关
-- 创建 Bucket 时阿里云自动开启 **BPA (阻止公共访问)** — 它会**强制锁住 ACL 单选**
-- 即使选"公共读"也保存失败 (单选按钮被灰)
-- **必须先关 BPA**, 才能回 "读写权限" tab 改 ACL
-
-### 验证 log (PM2 /var/log/damai-out-0.log)
-```
-07:29:50 [oss] uploaded uploads/2026/06/mqvkcrn9fhmu_upload.jpg (11KB)
-07:30:09 [run-image] ip=39.182.87.202 prompt=现代极简客厅... qty=1 ref=1
-07:30:09 [ark-image] i2i: 从远程下载参考图 (11.6KB)
-07:30:09 [ark-image] i2i: ✅ 注入 1 张参考图到 body.image (15.5KB), strength=0.65
-07:30:09 [ark-image] request: model=doubao-seedream-5-0-260128 size=2560x1440
-07:30:35 [oss] uploaded canvas-output/2026/06/mqvkdq3igl0g_0.jpeg (236KB)
-
-07:41:21 [run-image] ip=39.182.87.202 prompt=现代极简风格家居场景... qty=1 ref=1
-07:41:21 [ark-image] i2i: 从远程下载参考图 (80.3KB)
-07:41:21 [ark-image] i2i: ✅ 注入 1 张参考图到 body.image (107.1KB), strength=0.65
-07:41:21 [ark-image] request: model=doubao-seedream-5-0-260128 size=2560x1440
-07:41:45 [oss] uploaded canvas-output/2026/06/mqvks35afj3g_0.jpeg (269KB)
-```
-
-### 完整链路
-```
-用户上传 思考者.jpg
-  → ECS /api/canvas/upload
-  → lib/oss.ts uploadBuffer → 阿里云 OSS
-  → 返回 https://damai-zlh-prod.../uploads/2026/06/mqvkcrn9fhmu_upload.jpg
-
-用户画布: Image A → Image B 拖线, 跑 B 节点
-  → ECS /api/canvas/run-image (body.referenceUrls = [OSS URL])
-  → lib/ark-image.ts refUrlToDataUrl → fetch(OSS URL) → 80KB buffer
-  → 火山方舟 image generations (i2i strength=0.65)
-  → 下载生成的 269KB jpeg → lib/oss.ts uploadBuffer → OSS
-  → 返回 https://damai-zlh-prod.../canvas-output/2026/06/mqvks35afj3g_0.jpeg
-```
-
-### 验证项
-- ✅ POST /api/canvas/upload → storage:"oss", 完整 https URL
-- ✅ GET OSS URL → HTTP 200 + Content-Type: image/jpeg + Cache-Control 1年
-- ✅ POST /api/canvas/run-image (referenceUrl=OSS) → size 2560x1440, refUsed 1
-- ✅ ECS /opt/damai/public/uploads/ 不存在 (没走 fallback)
-- ✅ PM2 日志 [ark-image] i2i + [oss] uploaded 完整链路可见
-- ✅ 浏览器前端 `<img src=OSS URL>` 能直接加载 (公共读 + Cache-Control)
-
-### 06-26 vs 06-27 对比
-| | 06-26 dev (NAS cloudflared) | 06-27 生产 (damai.net.cn) |
-|---|---|---|
-| VOLC key | placeholder `***` | 真 ark-cb...1209 ✅ |
-| Storage | ECS 磁盘 `/public/canvas-output/` | 阿里云 OSS ✅ |
-| Public URL | 相对 `/canvas-output/xxx.jpg` 需 toAbs | 完整 https 直接用 ✅ |
-| i2i | ✅ dev log 验证通过 | ✅ 生产全链路 + OSS 落图 |
-
----
-
-## ✅ 2026-06-27 9:50 — 项目连贯性备份 (commit + push master)
-
-### 背景
-6:50-8:10 session (149 条) 完成 OSS 接入 + i2i 端到端 + AK rotate + 收口。8:10-9:50 1h40m, user 手动重写 SiteNav.tsx, 并要求做项目连贯性备份抗失忆 (类似 06-26 流程)。9:41 开新 session, 我错算时间戳拼"阶段 1 收口"剧本, user 9:50 提醒"你得直接到 9:50"后修正 (session_search 拿 LLM summary 不是 transcript, 看不到 1h40m 内 user 手动操作)。
-
-### 9:50 真实状态
-- **8:10-9:50 user 1h40m 手动改的就 1 个文件**: `components/SiteNav.tsx` (286→355, +70)
-  - 加 4 个 SVG Icon 组件 (Home/Workspace/TV/Data)
-  - 菜单重命名: 主页 / 工作空间 / 大脉TV / 数据中台
-  - 子菜单: 欢迎页 / 我的项目 / 数据复盘 / 数据分析
-  - 新增"登录 / 切换"按钮 → `window.dispatchEvent(new Event("damai:auth:open"))`
-- 其他 24 个 M 文件 `git diff --numstat` 全 0 (mtime 变了, 编辑器 buffer 留的, 内容没真改)
-- 凌晨 2 点 NAS backup cron 失败 (NAS_BACKUP_HOST 还是 placeholder)
-
-### 备份 commit (本次 9:50)
-- **`b214eee` feat(oss): 06-27 阿里云 OSS 接入** (7 文件, 763+ / 49-)
-  - lib/oss.ts (新) + lib/ark-image.ts downloadImageToOss
-  - app/api/canvas/{run-image,upload}/route.ts: OSS 优先
-  - next.config.mjs: typescript.ignoreBuildErrors
-  - package.json + package-lock.json: ali-oss ^6.23.0
-  - scripts/{backup-to-nas,alert-resources}.sh (新)
-  - .env.local.example + state/STATUS.md + state/BACKLOG.md
-  - state/ALIYUN-DEPLOY-LESSONS.md + docs/08-OSS-部署与备份-2026-06-27.md (新)
-- **`68df2b5` feat(nav): 06-27 9:25 导航 UI 重构** (1 文件, 355+ / 285-)
-  - components/SiteNav.tsx (user 手动)
-- **`(即将)` docs(state): 06-27 9:50 项目连贯性收口** (1 文件)
-  - state/STATUS.md 加本段
-
-### 阶段 0 完成对照 (user 9:50 复盘)
-- ✅ **0.1** OSS Bucket `damai-zlh-prod` 公共读 + BPA 关 + RAM AccessKey
-  - 主账号 AK `LTAI5t6k3vqta8v3GYSmDbCx` (06-27 08:54 rotate 收口)
-  - 旧 AK `LTAI5t8tJCnfeNh4ys7dg9tj` 已销毁 (06-27 09:10, 回收站 + 列表都查不到)
-- ✅ **0.2** lib/ark-image.ts:244 downloadImageToOss (OSS 优先, 本地 fallback)
-- ✅ **0.3** app/api/canvas/upload/route.ts OSS 优先
-- ✅ **0.4** 验证: POST /api/canvas/upload → `{storage:"oss", url:"https://damai-zlh-prod..."}` + i2i 端到端 (06-27 07:42 user 实跑 refUsed:1)
-
-### 阶段 1 阻塞 (9:50 仍待 user)
-- ⚠️ **1.1** NAS backup cron 凌晨 2 点失败: 本地 `NAS_HOST=192.168.2.10` (LAN1 10Gbps) 已改, 但 ECS 上没同步 (sshpass 临时密码没继承, SSH 进不去)
-- ⚠️ **1.2** 飞书告警 webhook URL 缺失, 告警脚本只本地 log
-- ❌ **1.3** 飞书 Bitable 用户表 (代码 0 处引用, App 权限已开但没接)
-- ⏳ **1.4** 待 user 验证
-
-### 阶段 2 / 3 (未启动)
-- ❌ 2.1-2.5 飞书接项目表 + 节点表 + canvas 改飞书 + workbench 真数据 (5-7 天工作日, 2 周内)
-- ❌ 3.1 ECS 升级 2C/4G (¥80/月)
-- ❌ 3.2 CDN 接 OSS (¥20/月)
-- ❌ 3.3 飞书生成任务表
-- ❌ 3.4 dashboard 真数据
-- ❌ 3.5 Sentry
-
-### 关键里程碑
-- ✅ 6:50-8:10 OSS 接入 + i2i 全通
-|  | 6:50-9:50 SiteNav UI 重构 (user 手动) |  |
-|  | 9:50 项目连贯性备份 (3 commit + push master) |  |
-|  | ⏳ 下周 1.3 飞书用户表 |  |
-|  | ⏳ 2 周内 2.x canvas + project 接飞书 |  |
-|  | ⏳ 1 月 3.x CDN + 升级 + Sentry |  |
-
-### 阻塞 ask user (清单)
-1. **飞书告警 webhook URL** (1.2) — 飞书群 → 设置 → 群机器人 → 添加机器人 → 自定义机器人 → 复制 URL
-2. **NAS 备份 SSH user + 认证方式** (1.1) — memory 写 SSH 用手机号 `15925670098`, 之前 placeholder 是 `zhanglh`, **未确认**
-3. **ECS 47.96.128.172 root 密码** (推 1.1 脚本用) — 上 session sshpass 临时密码没继承, Permission denied
-
----
-
-## 🚧 2026-06-29 上午 — 阿里云 SMS 接入 (进行中)
-
-### 背景
-大脉 auth 模块代码 06-24 已写完 (`lib/sms.ts` + `lib/auth.ts` + `lib/verify-store.ts` + `lib/hmac.ts` + 3 个 API routes + middleware + login page), dev 用 stub 模式跑通. **本次接入真实短信 = 验证链路 + 等签名可用后切真实发送**.
-
-### 已完成 (06-29 08:22-08:55 CST)
-- ✅ **阿里云账号实名认证**: 主账号 UID `1148781509211780` (杭州即客传媒)
-- ✅ **开通 SMS 服务 (dysmsapi)**: 杭州 region, 套餐未选 (用免费档够了, 内测 < 100 条)
-- ✅ **创建主账号 AK**: `LTAI5tHD8iA4n8rCRSmDbCx` (跟 OSS 用同一 AK, 06-27 rotate 收口后)
-  - Secret 由 user 在 RAM 控制台创建, 我**没看过** Secret (不写对话, 不进 .env.local.example)
-- ✅ **创建短信签名**: 「杭州即客传媒」, 🟢 **审核通过**, ⏳ **运营商实名制报备中** (1-2h 后「可用·正常」)
-  - 签名来源: 企事业单位全称 (简称 OK, 阿里云认)
-  - 资质附件: 营业执照 (user 上传)
-- ✅ **验证码模板**: `SMS_335341232` (激活赠送, 模板类型=验证码, 🟢 **审核通过**, ⚫ 当前「不可用」= 等签名可用后自动解)
-  - 模板内容: 默认 6 位验证码 + 5 分钟有效 (赠送模板自带, 不用再申请)
-- ✅ **`.env.local.example` 加 SMS 段** (06-29 08:55, 我改的): 5 个 env vars, 注释清楚
-
-### 待 user (按顺序)
-| # | 操作 | 谁 | 时机 |
-|---|---|---|---|
-| 1 | 把新 AK Secret 贴飞书 (或 SMB 改 .env.local) | user | **现在** |
-| 2 | `.env.local` 改 4 个真值 + `DAMI_SMS_REAL=false` (留 stub) | user | **现在** |
-| 3 | 我重启 `npm run dev` + 跑 stub curl 验证 | 我 | 收到 user 通知后 |
-| 4 | user 切 `DAMI_SMS_REAL=true` | user | **等签名变 🟢 可用·正常** (1-2h) |
-| 5 | 我跑真发 curl + user 实测收 1 条短信 | 我 + user | 第 4 步后 |
-
-### 当前阻塞 / 等
-- **签名「可用·正常」**: 阿里云侧 1-2h 自动完成, user 端需要 1-2h 后回签名列表刷新看
-- **user 改 `.env.local`**: 等 Secret + 4 行替换
-- **(远期) ECS 生产同步**: 这次本地 dev 跑通后, 把同样 5 个 env vars 加到 ECS `/opt/damai/.env.local` + 重启 PM2 = 上线
-
-### 关键发现 (给未来会话)
-1. **「可用·异常」≠ 真异常** = 运营商实名制报备还没完, 1-2h 后自动「可用·正常」, 不影响继续申请模板, 不影响代码逻辑 (签名本身已审批通过)
-2. **「模板不可用」= 签名没准备好**, 不是模板问题, **别再申请新的** (白费时间 + 占名额)
-3. **赠送模板 (SMS_335341232) 审核过就行**, 不用自建, 节省 0.5-2h 审核
-4. **SIGN_NAME 跟营业执照一字不差** = 「杭州即客传媒」OK, 「即客传媒」可能被拒 (短太狠), 「极客传媒」100% 拒 (口误)
-5. **主账号 AK 通杀** = OSS + SMS + 未来其它服务共用一个 AK, 简化管理 (子账号是未来 RAM 精细化权限计划)
-
-### 代码现状 (不需要改)
-- `lib/sms.ts`: 完整 (HMAC-SHA1 签名 + Dysmsapi 2017 API + stub fallback), 06-24 写过没改
-- `lib/auth.ts` + `lib/verify-store.ts` + `lib/hmac.ts`: 完整
-- `app/api/auth/{send-code,verify-code,logout}/route.ts`: 完整
-- `app/login/page.tsx`: 完整 (60s 倒计时 + 6 位输入框)
-- `middleware.ts`: 完整 (PUBLIC_PATHS + verifySession 注入 tenantId)
-- ✅ **本 session 没改任何 auth 代码**, 只改了 `.env.local.example` (template)
-
-### 备份 (本次)
-- 提交 `.env.local.example` (git-safe 模板, 加了 SMS 段)
-- 提交 `state/STATUS.md` + `state/BACKLOG.md` (加 06-29 段)
-- 推 master → 抗失忆 (跟 06-27 9:50 模式一致)
-
-### 教训 (非技能)
-- **.env.local 不主动代写 Secret** = user 改或贴 Secret 都行, 我只 sed 已知真值 (AK ID/SIGN_NAME/TEMPLATE_CODE), Secret 让 user 自己管
-- **签名+模板 都审核过 ≠ 立即可用** = 还要等运营商实名制报备 (阿里云内部流程, 用户控制不了, 只能等)
-- **dev stub 模式长期可用** = 验证码直接返前端 + console.log, 内测登录完全够, 真实短信只对生产发送有意义
-
----
-
-## 🎯 06-29 10:30 — 内测 07-01 优先级 + 公测 07-15 节奏
-
-### P0 — 内测 07-01 前必做 (阻塞中)
-
-| # | 任务 | 时长 | 阻塞 | 状态 |
-|---|---|---|---|---|
-| 1 | **deploy 06-27+ 到阿里云轻量 ✅** (47.96.128.172, commit 70d7ced 已上生产, damai.net.cn 200 OK, pm2 online) | 30min/30min | done | done (脚本 scripts/deploy-to-ecs.sh 写好) |
-| 2 | **本地 stub curl 测试 ✅** (port 3001, 5/5 通过: send-code → verify-code → Bitable upsert → 上传 401/200 → Bitable 验真 1 条) | 5min/5min | done | done |
-| 3 | **飞书 Bitable 用户表 S1+S2+S3 ✅** (00_用户档案, 11 fields, verify-code 自动 upsert + session.tenantId 来自 Bitable) | 3.5h/4h | 阶段 1.3 收口 | done |
-| 4 | **OSS+API tenant 隔离 S3+1 ✅** (OSS key 加 tenantId 前缀, middleware 强制 /api/canvas session, 2 API route 401 没 tenantId 拒绝) | 3h/3h | 阶段 2 OSS 完整隔离完成 | done |
-| 5 | **SMS 真发测试** (DAMI_SMS_REAL=true 后) | 5min | 🟡 阿里云侧运营商报备 (1-2h) | 等签名变🟢 |
-
-### P1 — 公测 07-15 前做 (1.5 周后, 不急)
-
-- 自动化 `deploy-to-ecs.sh` 脚本 ✅ **06-29 写好** (2h, 公测 10 经销商并发时必建)
-- 阿里云轻量升 2C/4G (¥80/月, **07-10 前必做**, 否则 100 并发 OOM)
-- 阶段 2 飞书项目表 **S1+S2+S3 ✅ 06-29 14:30** (`00_项目表` 12 fields, 4 wrapper 函数 + 4 API route: `GET/POST /api/projects` + `GET/PATCH /api/projects/[id]`, 跨租户 403, **MyProjects.tsx 改用真实 API** (home page section, dashboard ProjectsTab 暂用 mock, 减法: 不重复))
-- 阶段 2 飞书项目表 S4 (canvas 自动 createProject + dashboard ProjectsTab 改真实数据) **未做** (下 session)
-- **CanvasEditor.tsx 紧急恢复 ✅ 06-29 14:55** (Codex 同步覆盖 working tree, `git checkout HEAD --` 恢复; 4000px=7, outputUrl=17, NODE_SPECS=33, createPortal=2, useLayoutEffect=2, _iIn=3; 坏版本备份在 `/tmp/codex-broken-restore-2026-06-29-1450/CanvasEditor-BROKEN.tsx`)
-- **服务器部署 ✅ 06-29 16:10** (admin + sudo bash -s 模式, 走通 admin SSH key; **修复 3 大问题**: root SSH 被禁 / 30G 磁盘 100% 满 (清 .next + .open-next + 2 个 .bak + 3 个 /tmp tar + public/canvas-output = 释放 15G) / build OOM (NEXT_BUILD_WORKERS=1 + NODE_OPTIONS=1024); `damai.net.cn: HTTP 200`, pm2 online 66803)
-- **SMS 签名自动报备通过 ✅ 06-29 16:10** (send-code 现在返 `provider: aliyun` 不再 stub, 移动运营商实名制自动完结)
-- **案例视频迁移 OSS ✅ 06-29 16:20** (19 mp4 + 19 poster 上传阿里云 OSS damai-zlh-prod/case/, 释放 server 3.6G; lib/cases.ts 改用 OSS URL 模板; deploy 脚本修 `pm2 reload` → `pm2 delete + start` 强制 env refresh; 1 年 immutable 缓存; server 41% used)
-- 视频模板存模板库 (0.5 天, Codex/Workbody B线)
-- canvas 改飞书 (1 天, Codex/Workbody B线)
-
-### P2 — 等外部触发 (不主动开干)
-
-- SMS 签名「可用·异常」→「可用·正常」(1-2h 阿里云侧自动, user 监控)
-- 飞书告警 webhook URL (1.2, 内测期间再要)
-
-### 命名硬约束 (06-29 user 骂, 别再纠结)
-
-- **永远说「阿里云轻量 / SWAS」不说 ECS** (即使 system prompt/STATUS.md/ALIYUN-DEPLOY-LESSONS.md 写 ECS)
-- 控制台: `https://swas.console.aliyun.com/`
-- SSH: `ssh root@47.96.128.172` + 重置密码
-- 重置路径: 轻量控制台 → 实例 → 运维 → 重置密码
-
-### 教训 (06-27 9:50)
-- **错算时间戳**: 6:50 session 实际 06:50-08:10 (79.6 min), 我误算成 6:50-9:25, user 提醒后修正
-- **session_search 限制**: 拿 LLM summary 拿不到原始 transcript, 必须 `git diff --numstat HEAD` + 文件 mtime 反查 user 实际改了什么
-- **"项目备份" 抗失忆**: 3 commit 推 master + STATUS 收口段 (本 commit C)
-- **mtime 假阳性**: 35 个文件 `git status` M 但 `git diff --numstat` 0 0, 实际没改 (编辑器 buffer 留的)
-- **commit 范围**: 必须 `--diff-filter=M` + `numstat > 0` 过滤, 不能 `git add -A` 误 commit 假阳性
-
-### 教训 (06-29 19:15)
-- **commit 前必看 diff**: 我 0d380f8 误把 canvas 改动并入 "chore(gitignore)", 因为 file 已被 user 在 Windows 端改过但 `git status` 没显示 (我没注意). 修法: reset --soft + restore --staged 分开 commit. **commit 之前先 `git diff` 看看真改了啥, 别只看 status**
-- **pm2 restart 才会读 .env.local** (reload 不读): 老问题, deploy 脚本已用 `pm2 delete + start` 但还是偶尔 stub mode. 原因: next-server 启动时 DAMI_SMS_REAL 还不在 env, 需要再 kill 一次才会生效. **经验**: deploy 完等 30s, curl send-code, 还是 stub 就 `pkill -9 next-server` (pm2 auto-respawn, 新进程会读 env)
-- **canvas 画外节点 = 工具 click 不在画布内**: 06-29 18:15 user 跟 Codex 改 toolbar 用 `e.clientX/Y` 算 world 坐标, 但浮动菜单按钮在画布外, 算出来节点在 margin 区域. user 设计意图是 "点哪出哪" = click 在画布内 OK, click 在菜单上 = 走 lastMouseRef. 我 17:30 改成 lastMouseRef 兜底是对的, user 18:15 又 revert. **最终设计** = user 的: 画布内 click, 走 click 位置 (你 19:10 又再次 deploy, 是你认定的最终方案)
-- **Windows ↔ NAS 4T 盘同步**: 改动在 Windows Z: 改完, NAS 4T 盘有, 但 git status 有时不显示 (因为 mtime 假阳性). **永远 commit 前先 `git diff` 看实际改动**
-- **session 必收口 (本次教训)**: 长 session context 撑爆 8h+ (我从 11:00 干到 19:15 8h15min), 中间断过 2 次 (用户 inactivity). **操作: 19:15 收口 4 commit (1 推过 + 3 本地), state/ 全部更新, push 待网络好再做, 打开新 session 讨论技术问题**
-
----
-
-## 🎯 19:15 收口段 (给下个 session)
-
-### 当前生产状态
-- **damai.net.cn**: HTTP 200, 阿里云轻量 SWAS 47.96.128.172, NOT ECS
-- **pm2**: damai online, PID 72306 (deployed 19:11:07)
-- **代码 HEAD**: 本地 `ddfa331 fix(canvas)`, origin `e7aaefd` (落后 4 commit: 1c3be77, a163d0f, de85d9c, ddfa331)
-- **磁盘**: SWAS 30G 用 41% (清完老 bak), 本地 NAS 4T 盘 50M tar
-- **send-code**: 真发 aliyun mode (待 user 贴 6 位验证码收 P0 #5)
-- **canvas 行为**: cubic bezier 平滑 + 箭头 + SVG 10400×9600 (本次 19:10 deploy 终态)
-
-### 下个 session 必读
-1. `state/README.md` (入口, 120 行)
-2. `state/STATUS.md` (本文件, 524 行, 主状态)
-3. `state/BACKLOG.md` (116 行, ✅ / 🚧 / ⏳)
-4. `state/HANDOFF-LATEST.md` (跨 session 交接)
-5. `git log --oneline -15` (看 commit 顺序)
-
-### 下个 session 待办 (按优先级)
-1. **P0 #5 verify-code 收口**: 跑 `curl POST /api/auth/verify-code` 用 user 贴的 6 位数, 收 P0 全部 5 sub-task
-2. **push 落后 4 commit**: `git push origin master --force-with-lease` (本地领先 4 commit: 1c3be77, a163d0f, de85d9c, ddfa331, origin 落后在 e7aaefd)
-3. **P1 #2.1 S4**: dashboard ProjectsTab 接真 Bitable (替换 mock-data-workbench)
-4. **讨论技术问题**: user 说"新开一个 session 讨论", 可能是 canvas 架构 / 性能 / 跨 session 协作 等
-
-### 重要硬规则 (06-29 复盘)
-- 服务器是 SWAS 不是 ECS, 控制台 `https://swas.console.aliyuncs.com/`
-- 画布是自研 SVG 不是 React Flow, 别加 `@xyflow/react`
-- Codex base 保留: avatar ball + 2 eyes + blue glow + GO ↗ + "+" 按钮
-- 蓝紫色调: `--accent: #6e8cd6`
-- 减法 + 一站式: 经销商 IT 弱, 不跳剪映, 大脉必覆盖抽卡/拼接/字幕/BGM/出片
-- 部署前必看 `git diff` (防误并 commit)
-- 改完 state/ 必更新 (下次接手失忆)
-- 飞书 OpenAPI 直推 (不需 webhook)
-- SSH: `admin` + NOPASSWD sudo (无 root)
-
-## 🎯 2026-07-03 10:45 — 4 天 gap 收口 + 画布改动 checklist (user 拍板)
-
-### 背景
-AGENT_MEMORY.md 停在 06-29 06:45 (4 天 gap), 内测 07-01 实际**没真开** (那天整天修画布拖线 bug), 公测 07-15 还有 12 天。本轮 user 拍板:
-- 刷 STATUS / BACKLOG 到 07-03 真实状态
-- 建 `state/CANVAS_CHANGE_CHECKLIST.md` — 改画布文件**前**必读, 4 档危险 + 7 条踩坑 + 混合架构正解
-
-### 完成 (07-03)
-- ✅ AGENT_MEMORY.md 4 天 gap 收口 (commit 7a48019, 13 节)
-- ✅ 新建 `state/CANVAS_CHANGE_CHECKLIST.md` (7.3KB, 5 节)
-- ✅ STATUS.md / BACKLOG.md 增量更新 (V4A patch, 不重写)
-
-### 关键档位 (摘要, 全文见 checklist)
-| 档位 | 触发模式 | 处理 |
-|---|---|---|
-| 🚨 极高危 | React Flow v12 控制流 (onConnect / onEdgesChange / handleEdgesChange) | 先停, 跟 user 报备, 优先走混合架构 |
-| ⚠️ 高危 | SSR / localStorage / NodeScaffold / PortDot 自研 | dev HMR + 跑测试脚本 |
-| 🟡 中危 | Handle / Edge / 节点 textarea / 路由 | 改后必跑测试 |
-| ✅ 低危 | 非画布组件 / 后端 lib / CSS module | 默认处理 |
-
-- 飞书 OpenAPI 直推 (不需 webhook)
+## 已完结 (历史)
+- ✅ 07-03 4 天 gap 收口 + 画布改动 checklist 创建
+- ✅ 07-02 画布 (sandbox v2) 改好 + user 验收
+- ✅ 07-01 ImageNode UI 重做
+- ✅ 06-30 画布 Phase 3.5 (chrome 1:1 恢复) + Bug 1+2 修复
+- ✅ 06-26 v4 减法 + 一站式重构
+- (更早 略)
