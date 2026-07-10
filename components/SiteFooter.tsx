@@ -10,7 +10,7 @@ const COLUMNS = [
       { href: "/", label: "首页" },
       { href: "/case", label: "案例库" },
       { href: "/templates", label: "模板中心" },
-      { href: "/sandbox/canvas", label: "画布" },  // 07-08: 回滚到 React Flow (v3 自研简陋不稳)
+      { href: "/canvas-v2", label: "画布" },  // 07-10: codex 自研静态 SPA (生产主画布)
     ],
   },
   {
