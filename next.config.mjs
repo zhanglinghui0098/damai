@@ -18,6 +18,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // 07-10: codex canvas-flow-demo 部署为静态 SPA
+  async rewrites() {
+    return [
+      { source: "/canvas-v2", destination: "/canvas-v2/index.html" },
+      { source: "/canvas-v2/", destination: "/canvas-v2/index.html" },
+    ];
+  },
 };
 
 export default nextConfig;
