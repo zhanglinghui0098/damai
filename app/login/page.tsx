@@ -135,20 +135,22 @@ function LoginForm() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "2rem 1.5rem",
+        padding: "1.25rem 0.75rem",  // 07-10 mobile fix: 减小 padding 防输入框跑出 viewport
         background: "var(--bg)",
+        overflowX: "hidden",  // 防御性:禁止横向滚动
       }}
     >
       <div
         style={{
           position: "relative",
           width: "100%",
-          maxWidth: 420,
+          maxWidth: 360,  // 07-10 mobile fix: 420 → 360,适配 iPhone 375 不出 viewport
           background: "var(--bg-elevated)",
           border: "1px solid var(--border)",
           borderRadius: 16,
-          padding: "2rem 1.75rem 1.5rem",
+          padding: "1.5rem 1.25rem 1.25rem",  // 07-10 mobile fix: 减小内 padding
           boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+          boxSizing: "border-box",  // 防止 padding 撑破 maxWidth
         }}
       >
         {/* 顶部点缀线 — 蓝紫 (延续我们风格) */}
