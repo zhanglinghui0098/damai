@@ -306,6 +306,7 @@ function LoginForm() {
                       onPaste={onCodePaste}
                       disabled={verifying}
                       style={{
+                        width: "100%",  // 07-10 fix: 强制 fit grid 1fr,防 input 默认宽度撑出卡片
                         minWidth: 0, /* v5.9: 防 6 个格子撑出登录卡 (grid 6 等分) */
                         height: 56,
                         textAlign: "center",
@@ -316,6 +317,8 @@ function LoginForm() {
                         borderRadius: 10,
                         color: "var(--text)",
                         outline: "none",
+                        boxSizing: "border-box",  // 07-10 fix: padding 不撑破 width 100%
+                        padding: 0,  // 重置浏览器默认 padding
                       }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
