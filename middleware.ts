@@ -42,6 +42,13 @@ const PUBLIC_PREFIXES = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // 07-10: /canvas-v2/ 静态 SPA rewrite (比 next.config.mjs 的 rewrites 更早生效)
+  if (pathname === "/canvas-v2" || pathname === "/canvas-v2/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/canvas-v2/index.html";
+    return NextResponse.rewrite(url);
+  }
+
   // 1) 公域直接放行
   if (PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
