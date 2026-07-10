@@ -204,6 +204,7 @@ export default function LoginModal() {
           padding: "2rem 1.75rem 1.5rem",
           boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(110,140,214,0.08)",
           animation: "scaleIn 0.2s cubic-bezier(0.32, 0.72, 0, 1)",
+          overflow: "hidden",
         }}
       >
         {/* 顶部点缀线 — 沿用大脉蓝紫 (截图参考用黄绿, 我们延续) */}
@@ -487,7 +488,7 @@ function CodeInputs({
   disabled: boolean;
 }) {
   return (
-    <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+    <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
       {code.map((d, i) => (
         <input
           key={i}
@@ -503,10 +504,11 @@ function CodeInputs({
           onPaste={onPaste}
           disabled={disabled}
           style={{
-            flex: 1,
-            height: 56,
+            width: "100%",
+            maxWidth: 52,
+            aspectRatio: "1",
             textAlign: "center",
-            fontSize: "1.5rem",
+            fontSize: "1.25rem",
             fontWeight: 600,
             background: "var(--bg-gray)",
             border: "1px solid var(--border)",
