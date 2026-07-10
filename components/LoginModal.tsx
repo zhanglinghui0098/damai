@@ -488,7 +488,7 @@ function CodeInputs({
   disabled: boolean;
 }) {
   return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+    <div style={{ display: "flex", gap: 6, justifyContent: "center", maxWidth: "100%", overflow: "hidden" }}>
       {code.map((d, i) => (
         <input
           key={i}
@@ -504,9 +504,10 @@ function CodeInputs({
           onPaste={onPaste}
           disabled={disabled}
           style={{
-            width: "100%",
-            maxWidth: 52,
-            aspectRatio: "1",
+            width: 44,
+            height: 52,
+            minWidth: 36,
+            flex: "0 0 auto",
             textAlign: "center",
             fontSize: "1.25rem",
             fontWeight: 600,
@@ -515,6 +516,7 @@ function CodeInputs({
             borderRadius: 10,
             color: "var(--text)",
             outline: "none",
+            boxSizing: "border-box",
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = "var(--accent)";
