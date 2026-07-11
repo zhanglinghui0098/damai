@@ -138,7 +138,7 @@ export async function sendCode(phone: string): Promise<SendResult & { code: stri
     return { ok: true, provider: "stub", code };
   }
 
-  // 真实模式 — 阿里云
+  // 真实模式 — 阿里云. code 必须返回 (cookie 存的就是这个 code)
   const result = await sendAliyun(phone, code, env);
-  return { ...result, code: result.ok ? "" : code };
+  return { ...result, code };
 }

@@ -414,7 +414,9 @@ function MergeNode({ id, data, selected }: NodeProps) {
 function OutputNode({ id, data, selected }: NodeProps) {
   const d = data as any;
   return (
-    <NodeScaffold id={id} type="output" showPorts={false} mainClass="video">
+    // 07-09 修: 不传 showPorts={false}, 让 output 节点也有 'left' port (接上游)
+    // React Flow edge#008 错: targetHandle id 在 node 上找不到
+    <NodeScaffold id={id} type="output" mainClass="video">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, flex: 1 }}>
         ◉ 成片输出
       </div>
