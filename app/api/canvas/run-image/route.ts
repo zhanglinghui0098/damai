@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateImage, downloadImageToOss } from "@/lib/ark-image";
 
+export const runtime = "nodejs";
+
 /**
  * POST /api/canvas/run-image
  * Body: { prompt, model?, aspect?, quality?, watermark?, quantity?, referenceUrls?: string[] }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateVideo } from "@/lib/ark-video";
 import { downloadImageToOss } from "@/lib/ark-image";  // 复用 OSS 下载
 
+export const runtime = "nodejs";
+
 const PROMPT_MAX = 2000;
 const RATE_LIMIT = 10;
 const RATE_WINDOW = 60 * 1000;
