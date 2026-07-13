@@ -1,6 +1,57 @@
 # 大脉 (damai) 项目状态
 
-最后更新: **2026-07-10 13:25 CST** (画布 work + login fix v3 + SMS 真发 + 账号区隔 P0 待验)
+最后更新: **2026-07-13 21:50 CST** (画布 v5 brief 定稿: 换栈到 @antv/x6)
+
+## 🟢 当前在做 (07-13)
+
+### 📋 **画布 v5 项目 Brief 定稿** (commit pending, 07-13 21:50)
+**user 痛点**: 画布 v3/v4 累计 35+ 次改动全部失败, 6+ 横跳血泪, 业务推进困难
+
+**🎯 35+ 失败根因 (本 session 突破)**:
+- codex 抄 TapNow UI 时, 自动触发了 `@antv/x6` (阿里 AntV) 的训练数据
+- 但项目用的是 `@xyflow/react 12.5.0`, 2 个库**完全不同**:
+  - x6 用 `Port/Cell/Graph`, xyflow 用 `Handle/Node/Edge`
+  - x6 命令式 (`graph.addNode`), xyflow 声明式 (props)
+  - 事件名 / 渲染机制 / 状态管理 全部不同
+- codex 写的是 x6 API 风格, 跑在 xyflow 引擎 = 35+ 次**全部行为不匹配**
+
+**🔍 验证 (07-13)**:
+- `tapnow.com/zh-HK` HTML + bundle 扫描
+- 425 处 `Port` 命中, 0 处 `Handle` → 100% 用 x6
+- 阿里 AntV 全家桶 (x6 + g6 + Cell + Graph)
+
+**✅ 决策: 换底座到 @antv/x6 (v5 重做)**
+- 业务对标 TapNow **同栈**, 抄无障碍
+- 阿里生态 (你的 ECS/OSS/钉钉/飞书 全部阿里系)
+- 国内 B 端标准 (钉钉/飞书/简道云/ProcessOn 早期都用 x6)
+- 中文文档/招聘, 团队学习成本低
+- 商业升级路径明确 (XFlow 商业版)
+
+**📄 完整 Brief**: `state/CANVAS_V5_BRIEF.md` (17 KB, 5 Part + 7 TBD + 5 阶段)
+- 包含: 需求侧 / 技术栈 / 风险与已踩坑 / 实施计划 / TBD
+- 包含: 35+ 失败档案 + 8 个新风险 + 7 条工作流纪律
+- 包含: 禁用词清单 (Grep Gate) + 验收标准 + 时间盒
+
+**⏰ 时间盒**:
+- 理想: 4 周出 v5 1.0
+- 现实: 5-6 周 (含学习 + 招人)
+- **7-15 顾家 717 deadline**: 1.0 仍用 v2 production, v5 是 1.1 之后
+
+**🎯 Phase 0 启动项** (1 周):
+- [ ] Hermes 读 @antv/x6 官方文档
+- [ ] codex 写 50 行 x6 demo
+- [ ] 跑通最小 reference (2 节点 + 1 连线)
+- [ ] 写 `state/CODE_STYLE.md` (禁用词清单)
+- [ ] 写 `state/CANVAS_FAILURES.md` (历史 35+ 失败档案)
+
+**⚠️ 7 条工作流纪律 (防再踩)**:
+1. 视觉/实现分离 (看截图只参考视觉, 不说"做这个")
+2. 改前必查 (列方案 + 风险 + 等拍板)
+3. Grep Gate (禁用词验证, 通过才 commit)
+4. Minimal Reference (50 行黄金 reference)
+5. 验证 Gate (5 步清单, 不信 "完成")
+6. Post-Mortem (失败立刻写, 不积压)
+7. 招人配合 (招 1 个 x6 经验, 1-2 周)
 
 ## 🟢 当前在做 (07-10)
 
